@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>优惠券管理 - 花语轩管理后台</title>
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
+    <style>
+        body {background: #f1f1f1;}
+        .cp-status {padding: 3px 8px;border-radius: 3px;font-size: 12px;}
+        .cp-active {background: #f6ffed;color: #52c41a;}
+        .cp-inactive {background: #f5f5f5;color: #8c8c8c;}
+        .cp-rule {color: #1c4b8a;font-weight: 600;}
+        .cp-window {color: #595959;font-size: 12px;line-height: 1.6;}
+        .cp-stock-full {color: #f5222d;}
+        .cp-form-tip {color: #999;font-size: 12px;margin-top: 4px;line-height: 1.5;}
+        .layui-form-item {margin-bottom: 14px;}
+    </style>
+</head>
+<body>
+    <div class="layui-layout layui-layout-admin">
+        <div class="layui-header header" style="background: #211f1a;">
+            <div class="logo"><i class="fas fa-leaf"></i> 花语轩管理后台</div>
+            <div class="user-info">
+                <span><i class="fas fa-user-circle"></i> 管理员</span>
+                <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+            </div>
+        </div>
+
+        <div class="layui-side layui-bg-black" style="top: 60px;width: 200px;">
+            <div class="layui-side-scroll">
+                <ul class="layui-nav layui-nav-tree" lay-filter="nav">
+                    <li class="layui-nav-item">
+                        <a href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-th"></i> 商品管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/product-list"><i class="fas fa-box"></i> 商品列表</a></dd>
+                            <dd><a href="/admin/category-list"><i class="fas fa-tags"></i> 分类管理</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-shopping-cart"></i> 订单管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/order-list"><i class="fas fa-list-alt"></i> 订单列表</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-users"></i> 用户管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/user-list"><i class="fas fa-user"></i> 用户列表</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item layui-nav-itemed">
+                        <a href="javascript:;"><i class="fas fa-cog"></i> 系统设置</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/banner-list"><i class="fas fa-image"></i> 轮播图管理</a></dd>
+                            <dd><a href="/admin/notice-list"><i class="fas fa-bullhorn"></i> 公告管理</a></dd>
+                            <dd class="layui-this"><a href="/admin/coupon-list"><i class="fas fa-ticket-alt"></i> 优惠券</a></dd>
+                            <dd><a href="/admin/audit-list"><i class="fas fa-history"></i> 操作日志</a></dd>
+                        </dl>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="layui-body" style="left: 200px;">
+            <div class="content-body" style="padding: 20px;">
+                <div class="layui-card">
+                    <div class="layui-card-header">
+                        <i class="fas fa-ticket-alt"></i> 优惠券
+                        <span style="color:#8c8c8c;font-size:12px;margin-left:10px;">券面条款在用户领取时快照，改模板不影响已发出的券</span>
+                        <button class="layui-btn layui-btn-xs layui-btn-normal" style="float: right;" onclick="huCouponAdd()">
+                            <i class="fas fa-plus"></i> 新建优惠券
+                        </button>
+                    </div>
+                    <div class="layui-card-body">
+                        <table class="layui-hide" id="couponTable" lay-filter="couponTable"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-footer">© 2024 花语轩鲜花销售系统 - 版权所有</div>
+    </div>
+
+    <script type="text/html" id="operateTpl">
+        <a class="layui-btn layui-btn-xs" lay-event="edit"><i class="fas fa-edit"></i> 编辑</a>
+        {{# if(d.status === 'active') { }}
+        <a class="layui-btn layui-btn-warm layui-btn-xs" lay-event="disable"><i class="fas fa-ban"></i> 下架</a>
+        {{# } else { }}
+        <a class="layui-btn layui-btn-xs" lay-event="enable"><i class="fas fa-check"></i> 上架</a>
+        {{# } }}
+        <a class="layui-btn layui-btn-primary layui-btn-xs" lay-event="issue" title="定向发放给用户"><i class="fas fa-paper-plane"></i></a>
+        <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del"><i class="fas fa-trash"></i> 删除</a>
+    </script>
+
+    <script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+    <script th:src="@{/jquery-3.7.1.min.js}"></script>
+    <script th:src="@{/js/admin-common.js}"></script>
+    <script th:inline="none">
+        layui.use(['table', 'layer', 'form', 'laydate'], function () {
+            var table = layui.table;
+            var layer = layui.layer;
+            var laydate = layui.laydate;
+            var esc = huAdmin.esc;
+            var categories = [];
+
+            function categoryName(id) {
+                var hit = categories.filter(function (c) { return c.id === id; })[0];
+                return hit ? hit.name : '指定分类';
+            }
+
+            function fmt(v) {
+                return v ? String(v).replace('T', ' ').slice(0, 16) : '';
+            }
+
+            /* 表格行内只保留月-日，完整时间放在 title 悬浮提示里，避免窄列被省略号截断 */
+            function md(v) {
+                var s = fmt(v);
+                return s ? s.slice(5, 10) : '';
+            }
+
+            function renderTable() {
+                table.render({
+                    elem: '#couponTable',
+                    url: '/api/admin/coupons',
+                    /* 券模板数量有限：一次拉全量，避免后台忽略分页参数造成空页 */
+                    page: false,
+                    where: {limit: 100},
+                    cols: [[
+                        {field: 'code', title: '券码', width: 110},
+                        {field: 'name', title: '名称', minWidth: 154},
+                        {field: 'ruleText', title: '券面规则', minWidth: 196, templet: function (d) {
+                            return '<span class="cp-rule">' + esc(d.ruleText || '-') + '</span>';
+                        }},
+                        {field: 'issued', title: '发行/已领/限领', width: 100, templet: function (d) {
+                            var left = d.total > 0 ? (d.total - (d.issued || 0)) : null;
+                            var text = (d.issued || 0) + ' / ' + (d.total > 0 ? d.total : '∞') + ' / ' + (d.perUserLimit || 1);
+                            return left != null && left <= 0
+                                ? '<span class="cp-stock-full" title="本批已领完">' + text + '</span>' : text;
+                        }},
+                        {field: 'startTime', title: '领取窗口 / 有效期', width: 176, templet: function (d) {
+                            var recv = (!d.startTime && !d.endTime) ? '长期可领'
+                                : (md(d.startTime) || '立即') + '~' + (md(d.endTime) || '不限');
+                            var valid = d.validDays > 0 ? '领后' + d.validDays + '天'
+                                : (d.validEndTime ? '至' + md(d.validEndTime) : '随活动结束');
+                            var full = '领取 ' + (fmt(d.startTime) || '立即') + ' ~ ' + (fmt(d.endTime) || '不限') +
+                                '\n有效 ' + (d.validDays > 0 ? '领取后 ' + d.validDays + ' 天内' : (fmt(d.validStartTime) || '立即') + ' ~ ' + (fmt(d.validEndTime) || '随活动结束'));
+                            return '<span class="cp-window" title="' + esc(full) + '">' + esc(recv) + ' · ' + esc(valid) + '</span>';
+                        }},
+                        {field: 'scope', title: '适用范围', width: 96, templet: function (d) {
+                            return d.scope === 'category' ? esc(categoryName(d.categoryId)) : '全场通用';
+                        }},
+                        {field: 'status', title: '状态', width: 70, templet: function (d) {
+                            return '<span class="cp-status cp-' + esc(d.status) + '">' + (d.status === 'active' ? '上架' : '下架') + '</span>';
+                        }},
+                        {title: '操作', width: 246, toolbar: '#operateTpl', fixed: 'right'}
+                    ]]
+                });
+            }
+
+            function reload() {
+                table.reload('couponTable');
+            }
+
+            function toggleStatus(row, status) {
+                layer.confirm(status === 'active' ? '确定上架「' + row.name + '」？' : '下架后用户将无法继续领取，已领取的券仍可使用。', function (index) {
+                    huAdmin.request({
+                        url: '/api/admin/coupons/' + row.id + '/status?status=' + status,
+                        type: 'POST',
+                        ok: function () {
+                            layer.close(index);
+                            reload();
+                        }
+                    });
+                });
+            }
+
+            table.on('tool(couponTable)', function (obj) {
+                if (obj.event === 'edit') {
+                    openForm(obj.data);
+                } else if (obj.event === 'disable') {
+                    toggleStatus(obj.data, 'inactive');
+                } else if (obj.event === 'enable') {
+                    toggleStatus(obj.data, 'active');
+                } else if (obj.event === 'issue') {
+                    openIssue(obj.data);
+                } else if (obj.event === 'del') {
+                    huAdmin.confirmDelete('确定要删除「' + obj.data.name + '」吗？已发放的券不受影响。',
+                        '/api/admin/coupons/' + obj.data.id, reload);
+                }
+            });
+
+            function field(label, control, tip) {
+                return '<div class="layui-form-item"><label class="layui-form-label">' + label + '</label>' +
+                    '<div class="layui-input-block">' + control +
+                    (tip ? '<div class="cp-form-tip">' + tip + '</div>' : '') + '</div></div>';
+            }
+
+            /**
+             * 新增/编辑共用表单：coupon 为 null 表示新建。
+             * 满减 / 折扣、全场 / 分类 两组字段互斥，切换时直接隐藏不相关输入，避免误填
+             */
+            function openForm(coupon) {
+                var isEdit = !!coupon;
+                var v = coupon || {code: '', name: '', type: 'cash', threshold: '', amount: '',
+                    discountRate: '', maxDiscount: '', total: 100, perUserLimit: 1,
+                    scope: 'all', status: 'active', validDays: 30};
+                var catOptions = '<option value="">' + (isEdit ? '' : '请选择分类') + '</option>' + categories.map(function (c) {
+                    return '<option value="' + esc(c.id) + '"' + (v.categoryId === c.id ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+                }).join('');
+
+                layer.open({
+                    type: 1,
+                    title: isEdit ? '编辑优惠券 · ' + esc(v.code) : '新建优惠券',
+                    area: ['620px', '680px'],
+                    content: '<form class="layui-form" style="padding:20px 24px 0">' +
+                        '<div style="display:flex;gap:12px">' +
+                        '<div style="flex:1">' + field('券码', '<input type="text" id="cfCode" value="' + esc(v.code) + '" class="layui-input" placeholder="如 FLOWER30">', '3-30 位字母数字，自动转大写') + '</div>' +
+                        '<div style="flex:1.4">' + field('名称', '<input type="text" id="cfName" value="' + esc(v.name) + '" class="layui-input" placeholder="如 新客满199减30">') + '</div>' +
+                        '</div>' +
+                        '<div style="display:flex;gap:12px">' +
+                        '<div style="flex:1">' + field('类型', '<select id="cfType" lay-filter="cfType">' +
+                            '<option value="cash"' + (v.type === 'cash' ? ' selected' : '') + '>满减券</option>' +
+                            '<option value="discount"' + (v.type === 'discount' ? ' selected' : '') + '>折扣券</option></select>') + '</div>' +
+                        '<div style="flex:1">' + field('使用门槛', '<input type="number" id="cfThreshold" value="' + esc(v.threshold == null ? '' : v.threshold) + '" class="layui-input" placeholder="0 表示无门槛">', '按适用范围内的商品小计算') + '</div>' +
+                        '</div>' +
+                        '<div class="cash-only">' + field('满减金额', '<input type="number" id="cfAmount" value="' + esc(v.amount == null ? '' : v.amount) + '" class="layui-input" placeholder="如 30">') + '</div>' +
+                        '<div class="discount-only">' +
+                        '<div style="display:flex;gap:12px">' +
+                        '<div style="flex:1">' + field('折扣率', '<input type="number" step="0.01" id="cfRate" value="' + esc(v.discountRate == null ? '' : v.discountRate) + '" class="layui-input" placeholder="0.88 表示 8.8 折">') + '</div>' +
+                        '<div style="flex:1">' + field('最高抵扣', '<input type="number" id="cfMaxDiscount" value="' + esc(v.maxDiscount == null ? '' : v.maxDiscount) + '" class="layui-input" placeholder="留空不封顶">') + '</div>' +
+                        '</div></div>' +
+                        '<div style="display:flex;gap:12px">' +
+                        '<div style="flex:1">' + field('发行量', '<input type="number" id="cfTotal" value="' + esc(v.total == null ? 0 : v.total) + '" class="layui-input">', '0 表示不限量') + '</div>' +
+                        '<div style="flex:1">' + field('每人限领', '<input type="number" id="cfPerUser" value="' + esc(v.perUserLimit == null ? 1 : v.perUserLimit) + '" class="layui-input">') + '</div>' +
+                        '</div>' +
+                        '<div style="display:flex;gap:12px">' +
+                        '<div style="flex:1">' + field('可领开始', '<input type="text" id="cfStart" value="' + fmt(v.startTime) + '" class="layui-input" placeholder="留空立即开始" readonly>') + '</div>' +
+                        '<div style="flex:1">' + field('可领截止', '<input type="text" id="cfEnd" value="' + fmt(v.endTime) + '" class="layui-input" placeholder="留空不限" readonly>') + '</div>' +
+                        '</div>' +
+                        '<div style="display:flex;gap:12px">' +
+                        '<div style="flex:1">' + field('有效天数', '<input type="number" id="cfValidDays" value="' + esc(v.validDays == null ? '' : v.validDays) + '" class="layui-input" placeholder="如 30">', '与右侧固定到期二选一') + '</div>' +
+                        '<div style="flex:1">' + field('固定到期', '<input type="text" id="cfValidEnd" value="' + fmt(v.validEndTime) + '" class="layui-input" placeholder="留空按天数" readonly>') + '</div>' +
+                        '</div>' +
+                        '<div style="display:flex;gap:12px">' +
+                        '<div style="flex:1">' + field('适用范围', '<select id="cfScope" lay-filter="cfScope">' +
+                            '<option value="all"' + (v.scope !== 'category' ? ' selected' : '') + '>全场通用</option>' +
+                            '<option value="category"' + (v.scope === 'category' ? ' selected' : '') + '>指定分类</option></select>') + '</div>' +
+                        '<div style="flex:1" class="category-wrap' + (v.scope === 'category' ? '' : ' layui-hide') + '">' + field('分类', '<select id="cfCategory">' + catOptions + '</select>') + '</div>' +
+                        '</div>' +
+                        field('状态', '<select id="cfStatus">' +
+                            '<option value="active"' + (v.status !== 'inactive' ? ' selected' : '') + '>上架</option>' +
+                            '<option value="inactive"' + (v.status === 'inactive' ? ' selected' : '') + '>下架</option>') +
+                        '<div class="layui-form-item"><div class="layui-input-block">' +
+                        '<button type="button" class="layui-btn" id="cfSubmit">保存</button></div></div>' +
+                        '</form>',
+                    success: function () {
+                        layui.form.render(null, null);
+                        laydate.render({elem: '#cfStart', type: 'datetime', trigger: 'click'});
+                        laydate.render({elem: '#cfEnd', type: 'datetime', trigger: 'click'});
+                        laydate.render({elem: '#cfValidEnd', type: 'datetime', trigger: 'click'});
+                        syncFields();
+                        jQuery('#cfSubmit').on('click', function () {
+                            var payload = buildPayload();
+                            if (!payload) return;
+                            huAdmin.request({
+                                url: isEdit ? '/api/admin/coupons/' + coupon.id : '/api/admin/coupons',
+                                type: isEdit ? 'PUT' : 'POST',
+                                data: payload,
+                                ok: function () {
+                                    layer.closeAll('page');
+                                    reload();
+                                }
+                            });
+                        });
+                    }
+                });
+            }
+
+            function syncFields() {
+                var cash = jQuery('#cfType').val() !== 'discount';
+                jQuery('.cash-only').toggleClass('layui-hide', !cash);
+                jQuery('.discount-only').toggleClass('layui-hide', cash);
+                var byCategory = jQuery('#cfScope').val() === 'category';
+                jQuery('.category-wrap').toggleClass('layui-hide', !byCategory);
+            }
+
+            /* 类型 / 范围切换：layui 改写原生 select 时不派发 change，两种事件都挂上 */
+            layui.form.on('select(cfType)', syncFields);
+            layui.form.on('select(cfScope)', syncFields);
+            jQuery(document).on('change', '#cfType, #cfScope', syncFields);
+
+            function val(id) {
+                return jQuery.trim(jQuery(id).val());
+            }
+
+            function dec(id) {
+                var text = val(id);
+                return text === '' ? null : Number(text);
+            }
+
+            function iso(id) {
+                var text = val(id);
+                return text ? text.replace(' ', 'T') : null;
+            }
+
+            /** 前端只做必填与时间先后拦截，条款合法性以后端 validate 为准 */
+            function buildPayload() {
+                var type = val('#cfType');
+                var code = val('#cfCode');
+                var name = val('#cfName');
+                if (!code || !name) {
+                    huAdmin.toast('券码与名称必填', 'err');
+                    return null;
+                }
+                var startTime = iso('#cfStart');
+                var endTime = iso('#cfEnd');
+                if (startTime && endTime && endTime < startTime) {
+                    huAdmin.toast('可领截止不能早于开始时间', 'err');
+                    return null;
+                }
+                var validDays = Number(val('#cfValidDays')) || 0;
+                var validEndTime = iso('#cfValidEnd');
+                if (validDays > 0 && validEndTime) {
+                    huAdmin.toast('有效天数与固定到期时间只能填一个', 'err');
+                    return null;
+                }
+                var scope = val('#cfScope');
+                var categoryId = val('#cfCategory');
+                if (scope === 'category' && !categoryId) {
+                    huAdmin.toast('请选择适用分类', 'err');
+                    return null;
+                }
+                return {
+                    code: code,
+                    name: name,
+                    type: type,
+                    threshold: val('#cfThreshold') === '' ? 0 : Number(val('#cfThreshold')),
+                    amount: type === 'cash' ? dec('#cfAmount') : null,
+                    discountRate: type === 'discount' ? dec('#cfRate') : null,
+                    maxDiscount: type === 'discount' ? dec('#cfMaxDiscount') : null,
+                    total: Number(val('#cfTotal')) || 0,
+                    perUserLimit: Number(val('#cfPerUser')) || 1,
+                    startTime: startTime,
+                    endTime: endTime,
+                    validDays: validDays,
+                    validEndTime: validEndTime,
+                    scope: scope,
+                    categoryId: scope === 'category' ? categoryId : null,
+                    status: val('#cfStatus')
+                };
+            }
+
+            /** 定向发券：拿到的同样是条款快照，后续改模板不影响这张券 */
+            function openIssue(coupon) {
+                jQuery.getJSON('/api/admin/users?page=1&limit=100', function (res) {
+                    if (!res || res.code !== 200 || !res.data || !res.data.length) {
+                        huAdmin.toast('用户列表加载失败', 'err');
+                        return;
+                    }
+                    var options = res.data.map(function (u) {
+                        return '<option value="' + esc(u.id) + '">' + esc(u.fullName || u.username || u.phone || u.id) +
+                            (u.phone ? '（' + esc(u.phone) + '）' : '') + '</option>';
+                    }).join('');
+                    layer.open({
+                        type: 1,
+                        title: '发放「' + esc(coupon.name) + '」',
+                        area: ['460px', '250px'],
+                        content: '<form class="layui-form" style="padding:22px 24px 0">' +
+                            field('选择用户', '<select id="ifUser" lay-search>' + options + '</select>') +
+                            '<div class="layui-form-item"><div class="layui-input-block">' +
+                            '<button type="button" class="layui-btn" id="ifSubmit">确认发放</button></div></div>' +
+                            '</form>',
+                        success: function () {
+                            layui.form.render('select', null);
+                            jQuery('#ifSubmit').on('click', function () {
+                                huAdmin.request({
+                                    url: '/api/admin/coupons/issue',
+                                    type: 'POST',
+                                    data: {couponId: coupon.id, userId: val('#ifUser')},
+                                    ok: function () {
+                                        layer.closeAll('page');
+                                        reload();
+                                    }
+                                });
+                            });
+                        }
+                    });
+                }).fail(function () {
+                    huAdmin.toast('用户列表加载失败', 'err');
+                });
+            }
+
+            /* 列表里的「适用范围」要显示分类名，先取分类字典再渲染表格 */
+            jQuery.getJSON('/api/categories')
+                .done(function (res) {
+                    if (res && res.code === 200) categories = res.data || [];
+                })
+                .always(renderTable);
+
+            window.huCouponAdd = function () {
+                openForm(null);
+            };
+        });
+    </script>
+</body>
+</html>

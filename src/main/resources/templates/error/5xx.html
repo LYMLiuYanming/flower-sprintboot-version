@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title th:text="${status} + ' · 花房打了个盹 · 花语轩'">500 · 花房打了个盹 · 花语轩</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<main class="hu-error">
+    <div class="hu-container">
+        <div class="hu-error__code" th:text="${status} ?: '500'">500</div>
+        <h1 class="hu-error__title">花房临时打了个盹</h1>
+        <p class="hu-error__desc">
+            服务开了一小会儿差，我们已经记下这次异常。稍等片刻再试一次，通常就会恢复。
+            <span th:if="${message != null and !#strings.isEmpty(message)}" class="hu-error__path"
+                  th:text="'（' + ${message} + '）'"></span>
+        </p>
+        <div class="hu-error__actions">
+            <a href="/index" class="hu-btn hu-btn--solid"><i class="fa fa-home"></i>&nbsp;回到首页</a>
+            <button type="button" class="hu-btn hu-btn--ghost" onclick="location.reload()"><i class="fa fa-refresh"></i>&nbsp;重新加载</button>
+            <a href="/products" class="hu-btn hu-btn--plain">继续逛花礼</a>
+        </div>
+        <div class="hu-error__links">
+            <span class="hu-muted" style="font-size:13px">需要帮助：</span>
+            <a href="/user/orders">我的订单</a>
+            <a href="/cart">购物车</a>
+            <a href="mailto:service@huayuxuan.com">联系客服</a>
+        </div>
+    </div>
+</main>
+
+<div th:replace="~{common/footer :: footer}"></div>
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>操作日志 - 花语轩管理后台</title>
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
+    <style>
+        body {background: #f1f1f1;}
+        .audit-uri {font-family: Consolas, Monaco, monospace;font-size: 12px;color: #555;word-break: break-all;}
+        .audit-method {display: inline-block;min-width: 46px;text-align:center;padding: 1px 6px;border-radius: 3px;font-size: 11px;margin-right: 6px;}
+        .m-POST {background: #e6f7ff;color: #1890ff;}
+        .m-PUT {background: #fff7e6;color: #fa8c16;}
+        .m-PATCH {background: #f9f0ff;color: #722ed1;}
+        .m-DELETE {background: #fff1f0;color: #f5222d;}
+        .audit-ok {color: #52c41a;}
+        .audit-bad {color: #f5222d;}
+        .audit-detail {padding: 16px 18px;font-size: 13px;line-height: 1.7;}
+        .audit-detail .kv {margin-bottom: 10px;}
+        .audit-detail .kv b {color: #888;font-weight: normal;margin-right: 6px;}
+        .audit-detail pre {background: #f7f7f7;border: 1px solid #eee;border-radius: 3px;padding: 10px;white-space: pre-wrap;word-break: break-all;max-height: 260px;overflow: auto;}
+    </style>
+</head>
+<body>
+    <div class="layui-layout layui-layout-admin">
+        <div class="layui-header header" style="background: #211f1a;">
+            <div class="logo"><i class="fas fa-leaf"></i> 花语轩管理后台</div>
+            <div class="user-info">
+                <span><i class="fas fa-user-circle"></i> 管理员</span>
+                <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+            </div>
+        </div>
+
+        <div class="layui-side layui-bg-black" style="top: 60px;width: 200px;">
+            <div class="layui-side-scroll">
+                <ul class="layui-nav layui-nav-tree" lay-filter="nav">
+                    <li class="layui-nav-item">
+                        <a href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-th"></i> 商品管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/product-list"><i class="fas fa-box"></i> 商品列表</a></dd>
+                            <dd><a href="/admin/category-list"><i class="fas fa-tags"></i> 分类管理</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-shopping-cart"></i> 订单管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/order-list"><i class="fas fa-list-alt"></i> 订单列表</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-users"></i> 用户管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/user-list"><i class="fas fa-user"></i> 用户列表</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item layui-nav-itemed">
+                        <a href="javascript:;"><i class="fas fa-cog"></i> 系统设置</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/banner-list"><i class="fas fa-image"></i> 轮播图管理</a></dd>
+                            <dd><a href="/admin/notice-list"><i class="fas fa-bullhorn"></i> 公告管理</a></dd>
+                            <dd><a href="/admin/coupon-list"><i class="fas fa-ticket-alt"></i> 优惠券</a></dd>
+                            <dd class="layui-this"><a href="/admin/audit-list"><i class="fas fa-history"></i> 操作日志</a></dd>
+                        </dl>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="layui-body" style="left: 200px;">
+            <div class="content-body" style="padding: 20px;">
+                <div class="layui-card">
+                    <div class="layui-card-header">
+                        <i class="fas fa-history"></i> 操作日志
+                    </div>
+                    <div class="layui-card-body">
+                        <div class="layui-form" lay-filter="searchForm">
+                            <div class="layui-form-item">
+                                <div class="layui-inline">
+                                    <label class="layui-form-label">业务模块:</label>
+                                    <div class="layui-input-inline">
+                                        <select name="module">
+                                            <option value="">全部</option>
+                                            <option value="商品">商品</option>
+                                            <option value="分类">分类</option>
+                                            <option value="订单">订单</option>
+                                            <option value="用户">用户</option>
+                                            <option value="轮播图">轮播图</option>
+                                            <option value="公告">公告</option>
+                                            <option value="优惠券">优惠券</option>
+                                            <option value="统计看板">统计看板</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="layui-inline">
+                                    <label class="layui-form-label">关键词:</label>
+                                    <div class="layui-input-inline">
+                                        <input type="text" name="keyword" placeholder="操作人 / 动作 / 接口 / 内容" class="layui-input">
+                                    </div>
+                                </div>
+                                <div class="layui-inline">
+                                    <button class="layui-btn" lay-submit lay-filter="search">
+                                        <i class="fas fa-search"></i> 搜索
+                                    </button>
+                                    <button type="button" class="layui-btn layui-btn-primary" id="btnReset">
+                                        <i class="fas fa-undo"></i> 重置
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <table class="layui-hide" id="auditTable" lay-filter="auditTable"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-footer">© 2024 花语轩鲜花销售系统 - 版权所有</div>
+    </div>
+
+    <script type="text/html" id="operateTpl">
+        <a class="layui-btn layui-btn-xs" lay-event="detail"><i class="fas fa-eye"></i> 详情</a>
+    </script>
+
+    <script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+    <script th:src="@{/jquery-3.7.1.min.js}"></script>
+    <script th:src="@{/js/admin-common.js}"></script>
+    <script th:inline="none">
+        layui.use(['table', 'form', 'layer'], function () {
+            var table = layui.table;
+            var form = layui.form;
+            var layer = layui.layer;
+            var esc = huAdmin.esc;
+            var FILTER_KEY = 'hu-admin-filter-audit';
+            var state = huAdmin.listState('audit');
+
+            table.render({
+                elem: '#auditTable',
+                url: '/api/admin/audit-logs',
+                cols: [[
+                    {field: 'createdAt', title: '时间', width: 162, templet: function (d) {
+                        return d.createdAt ? new Date(d.createdAt).toLocaleString() : '-';
+                    }},
+                    {field: 'operatorName', title: '操作人', width: 90, templet: function (d) { return esc(d.operatorName || '-'); }},
+                    {field: 'module', title: '模块', width: 96, templet: function (d) { return esc(d.module); }},
+                    {field: 'action', title: '动作', width: 86, templet: function (d) { return esc(d.action); }},
+                    {field: 'uri', title: '目标接口', minWidth: 244, templet: function (d) {
+                        return '<span class="audit-uri"><i class="audit-method m-' + esc(d.method) + '">'
+                            + esc(d.method) + '</i>' + esc(d.uri) + '</span>';
+                    }},
+                    {field: 'resultCode', title: '结果', width: 106, templet: function (d) {
+                        var ok = d.resultCode === 200 || d.resultCode === 0;
+                        var head = d.resultCode == null ? '<span style="color:#bbb">-</span>'
+                                : ok ? '<span class="audit-ok">成功</span>'
+                                : '<span class="audit-bad">' + esc(d.resultCode) + '</span>';
+                        return head + (d.resultMsg ? '<br><small style="color:#999">' + esc(d.resultMsg) + '</small>' : '');
+                    }},
+                    {field: 'ip', title: '来源 IP', width: 128, templet: function (d) { return esc(d.ip || '-'); }},
+                    {field: 'detail', title: '请求内容', minWidth: 150, templet: function (d) {
+                        if (!d.detail) return '<span style="color:#bbb">-</span>';
+                        var text = d.detail.length > 40 ? d.detail.substring(0, 40) + '…' : d.detail;
+                        return '<span style="font-size:12px;color:#888">' + esc(text) + '</span>';
+                    }},
+                    {field: 'op', title: '操作', width: 76, toolbar: '#operateTpl', fixed: 'right'}
+                ]],
+                page: state.pageConfig(),
+                limit: state.limit(),
+                limits: [20, 30, 50, 100],
+                done: state.done('/api/admin/audit-logs')
+            });
+
+            function currentFilter() {
+                try { return JSON.parse(sessionStorage.getItem(FILTER_KEY) || '{}'); } catch (e) { return {}; }
+            }
+
+            (function restore() {
+                var f = currentFilter();
+                if (!f.module && !f.keyword) return;
+                form.val('searchForm', f);
+                table.reload('auditTable', {where: f, page: {curr: state.pageConfig().curr || 1}});
+            })();
+
+            form.on('submit(search)', function (data) {
+                sessionStorage.setItem(FILTER_KEY, JSON.stringify(data.field));
+                state.reset();
+                table.reload('auditTable', {where: data.field, page: {curr: 1}});
+                return false;
+            });
+
+            $('#btnReset').on('click', function () {
+                sessionStorage.removeItem(FILTER_KEY);
+                state.reset();
+                form.val('searchForm', {module: '', keyword: ''});
+                table.reload('auditTable', {where: {module: '', keyword: ''}, page: {curr: 1}});
+            });
+
+            table.on('tool(auditTable)', function (obj) {
+                if (obj.event !== 'detail') return;
+                var d = obj.data;
+                layer.open({
+                    type: 1,
+                    title: '操作详情 · ' + esc(d.module) + ' ' + esc(d.action),
+                    area: ['640px', '520px'],
+                    content: '<div class="audit-detail">' +
+                        kv('操作人', esc(d.operatorName || '-')) +
+                        kv('时间', d.createdAt ? new Date(d.createdAt).toLocaleString() : '-') +
+                        kv('来源 IP', esc(d.ip || '-')) +
+                        kv('接口', '<span class="audit-method m-' + esc(d.method) + '">' + esc(d.method) + '</span>' + esc(d.uri)) +
+                        kv('结果', (d.resultCode || '-') + (d.resultMsg ? ' · ' + esc(d.resultMsg) : '')) +
+                        kv('请求内容', '<pre>' + esc(pretty(d.detail)) + '</pre>') +
+                        '</div>'
+                });
+            });
+
+            function kv(label, value) {
+                return '<div class="kv"><b>' + label + '</b>' + value + '</div>';
+            }
+
+            /** 详情存的是原始 JSON 串，展示前尽量格式化；解析失败按原文输出 */
+            function pretty(detail) {
+                if (!detail) return '（无请求体）';
+                try { return JSON.stringify(JSON.parse(detail), null, 2); } catch (e) { return detail; }
+            }
+        });
+    </script>
+</body>
+</html>

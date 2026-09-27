@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>我的订单 · 花语轩</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<div class="hu-pagehead">
+    <div class="hu-container hu-pagehead__row">
+        <div>
+            <div class="hu-crumb"><a href="/index">首页</a> / <a href="/user/profile">个人中心</a> / <span>我的订单</span></div>
+            <h1>我的订单</h1>
+            <p class="hu-pagehead__sub">每一次交付都可追溯，售后与评价都在这里</p>
+        </div>
+        <div class="hu-pagehead__aside">
+            <span class="hu-muted" style="font-size:13px">全部订单</span>
+            <span class="hu-num" id="orderTotal" style="font-size:26px">—</span>
+        </div>
+    </div>
+</div>
+
+<div class="hu-container">
+    <div class="hu-account">
+        <aside>
+            <div class="hu-panel hu-idcard">
+                <span class="hu-idcard__avatar"
+                      th:text="${loginUser != null and loginUser.fullName != null} ? ${#strings.substring(loginUser.fullName,0,1)} : '花'">花</span>
+                <div>
+                    <div class="hu-idcard__name" th:text="${loginUser != null ? loginUser.fullName : '顾客'}">用户名</div>
+                    <div class="hu-idcard__meta" th:text="${loginUser != null and loginUser.phone != null} ? ${loginUser.phone} : '未绑定手机号'">手机号</div>
+                </div>
+            </div>
+            <div class="hu-panel hu-panel--pad hu-side-sticky">
+                <h3 class="hu-side-title">账户导航</h3>
+                <ul class="hu-navtabs">
+                    <li><a href="/user/profile"><i class="fa fa-user-o"></i>个人资料</a></li>
+                    <li><a href="/user/orders" class="is-active"><i class="fa fa-file-text-o"></i>我的订单</a></li>
+                    <li><a href="/user/favorites"><i class="fa fa-heart-o"></i>我的收藏</a></li>
+                    <li><a href="/user/coupons"><i class="fa fa-ticket"></i>我的优惠券</a></li>
+                    <li><a href="/user/addresses"><i class="fa fa-map-marker"></i>收货地址</a></li>
+                    <li><a href="/user/settings"><i class="fa fa-cog"></i>账号设置</a></li>
+                    <li><a href="/cart"><i class="fa fa-shopping-bag"></i>购物车</a></li>
+                    <li><a href="/auth/logout" style="color:var(--hu-clay)"><i class="fa fa-sign-out"></i>退出登录</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <div>
+            <div class="hu-panel">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2>订单列表</h2>
+                        <p>待付款订单 30 分钟内未支付将自动取消并回补库存</p>
+                    </div>
+                    <span class="hu-pill hu-pill--muted" id="filterLabel">全部</span>
+                </div>
+                <div class="hu-panel__body">
+                    <div class="hu-chips" id="statusTabs" style="margin-bottom:22px">
+                        <button type="button" class="hu-chip is-active" data-status="">全部</button>
+                        <button type="button" class="hu-chip" data-status="pending">待付款</button>
+                        <button type="button" class="hu-chip" data-status="paid">待发货</button>
+                        <button type="button" class="hu-chip" data-status="shipped">配送中</button>
+                        <button type="button" class="hu-chip" data-status="completed">已完成</button>
+                        <button type="button" class="hu-chip" data-status="cancelled">已取消</button>
+                    </div>
+
+                    <div id="orderList"></div>
+
+                    <div id="orderEmpty" class="hu-empty" style="display:none">
+                        <i class="fa fa-file-text-o"></i>
+                        <strong>暂无相关订单</strong>
+                        <span style="font-size:14px">挑一束合心意的花，让今天有点不一样</span>
+                        <a href="/products" class="hu-btn hu-btn--solid hu-btn--sm" style="margin-top:18px">去选购花礼</a>
+                    </div>
+
+                    <div id="orderPager" class="hu-pager" style="margin-top:24px"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<script th:inline="javascript">
+    const PLACEHOLDER = /*[[@{/img/product-placeholder.svg}]]*/ '/img/product-placeholder.svg';
+    const PAGE_SIZE = 5;
+    let status = '';
+    let page = 1;
+    let total = 0;
+
+    const STATUS_PILL = {
+        pending: 'hu-pill--warn',
+        paid: 'hu-pill--ok',
+        processing: 'hu-pill--ok',
+        shipped: 'hu-pill--ok',
+        delivered: 'hu-pill--ok',
+        completed: 'hu-pill--ok',
+        cancelled: 'hu-pill--muted',
+        refunded: 'hu-pill--muted'
+    };
+
+    function esc(s) {
+        return $('<i>').text(s == null ? '' : String(s)).html();
+    }
+
+    function money(v) {
+        return Number(v || 0).toFixed(2).replace(/\.00$/, '');
+    }
+
+    function time(v) {
+        return v ? String(v).replace('T', ' ').slice(0, 16) : '-';
+    }
+
+    function renderSkeletons() {
+        let html = '';
+        for (let i = 0; i < 2; i++) {
+            html += '<div class="hu-ordercard"><div class="hu-ordercard__head">' +
+                '<div class="hu-skeleton hu-skeleton--line" style="width:220px;margin:0"></div></div>' +
+                '<div class="hu-ordercard__body">' +
+                '<div class="hu-skeleton hu-skeleton--line" style="width:60%"></div>' +
+                '<div class="hu-skeleton hu-skeleton--line" style="width:40%;margin-top:14px"></div>' +
+                '</div></div>';
+        }
+        $('#orderList').html(html);
+    }
+
+    function itemRow(item) {
+        return '<div class="hu-ordercard__item">' +
+            '<img src="' + esc(item.productImage || PLACEHOLDER) + '" alt="" ' +
+            'onerror="this.onerror=null;this.src=\'' + PLACEHOLDER + '\'">' +
+            '<div><a class="hu-ordercard__name" href="/product/' + esc(item.productId) + '">' + esc(item.productName) + '</a>' +
+            '<div class="hu-ordercard__sub">' + (item.reviewed ? '已评价 · 感谢反馈' : '未评价') + '</div></div>' +
+            '<div class="hu-muted" style="font-size:13px">× ' + esc(item.quantity) + '</div>' +
+            '<div style="text-align:right;font-size:14px;font-variant-numeric:tabular-nums">¥' +
+            money(item.subtotal != null ? item.subtotal : item.price) + '</div>' +
+            '</div>';
+    }
+
+    function actions(o) {
+        let html = '';
+        if (o.canPay) {
+            html += '<button class="hu-btn hu-btn--solid hu-btn--sm" data-act="pay" data-id="' + esc(o.id) + '">' +
+                '<i class="fa fa-credit-card"></i>立即支付</button>';
+        }
+        if (o.canConfirmReceipt) {
+            html += '<button class="hu-btn hu-btn--accent hu-btn--sm" data-act="receipt" data-id="' + esc(o.id) + '">' +
+                '<i class="fa fa-check"></i>确认收货</button>';
+        }
+        if (o.canCancel) {
+            html += '<button class="hu-btn hu-btn--ghost hu-btn--sm" data-act="cancel" data-id="' + esc(o.id) + '">取消订单</button>';
+        }
+        if (o.canReview) {
+            html += '<a class="hu-btn hu-btn--ghost hu-btn--sm" href="/order/' + esc(o.id) + '#review">写评价</a>';
+        }
+        html += '<a class="hu-btn hu-btn--plain hu-btn--sm" href="/order/' + esc(o.id) + '">查看详情</a>';
+        return html;
+    }
+
+    function card(o) {
+        const items = o.items || [];
+        const shown = items.slice(0, 2).map(itemRow).join('');
+        const more = items.length > 2
+            ? '<div class="hu-ordercard__more">共 ' + items.length + ' 件商品，完整清单请进入订单详情</div>' : '';
+        return '<div class="hu-ordercard">' +
+            '<div class="hu-ordercard__head">' +
+            '<span class="hu-ordercard__no">订单号 ' + esc(o.orderNo) + '</span>' +
+            '<span>下单 ' + time(o.createdAt) + '</span>' +
+            '<span class="hu-pill ' + (STATUS_PILL[o.status] || 'hu-pill--muted') + '">' +
+            esc(o.statusLabel || o.status) + '</span></div>' +
+            '<div class="hu-ordercard__body">' + (shown || '<div class="hu-ordercard__sub" style="padding:12px 0">商品明细已不可用</div>') + '</div>' +
+            more +
+            '<div class="hu-ordercard__foot">' +
+            '<span class="hu-ordercard__pay">实付<b>¥' + money(o.payAmount) + '</b></span>' +
+            '<span class="hu-ordercard__acts">' + actions(o) + '</span>' +
+            '</div></div>';
+    }
+
+    function renderPager() {
+        const pages = Math.ceil(total / PAGE_SIZE);
+        if (pages <= 1) {
+            $('#orderPager').html('');
+            return;
+        }
+        let html = '<button ' + (page === 1 ? 'disabled' : 'data-page="' + (page - 1) + '"') + '><i class="fa fa-chevron-left"></i></button>';
+        for (let i = 1; i <= pages; i++) {
+            html += '<button class="' + (i === page ? 'is-active' : '') + '" data-page="' + i + '">' + i + '</button>';
+        }
+        html += '<button ' + (page === pages ? 'disabled' : 'data-page="' + (page + 1) + '"') + '><i class="fa fa-chevron-right"></i></button>';
+        $('#orderPager').html(html);
+    }
+
+    function load() {
+        renderSkeletons();
+        $('#orderEmpty').hide();
+        const url = '/api/orders?page=' + page + '&limit=' + PAGE_SIZE + (status ? '&status=' + status : '');
+        huApi({
+            url: url,
+            ok: function (data, res) {
+                total = Number(res.count || 0);
+                const list = data || [];
+                $('#orderTotal').text(total);
+                $('#filterLabel').text($('#statusTabs .hu-chip.is-active').text() || '全部');
+                if (!list.length) {
+                    $('#orderList').html('');
+                    $('#orderEmpty').show();
+                    $('#orderPager').html('');
+                    return;
+                }
+                $('#orderList').html(list.map(card).join(''));
+                renderPager();
+            },
+            fail: function () {
+                $('#orderList').html('');
+                $('#orderEmpty').show();
+            }
+        });
+    }
+
+    $(document).ready(function () {
+        load();
+
+        $('#statusTabs').on('click', '.hu-chip', function () {
+            status = String($(this).data('status') || '');
+            page = 1;
+            $(this).addClass('is-active').siblings().removeClass('is-active');
+            load();
+        });
+
+        $('#orderPager').on('click', 'button[data-page]', function () {
+            page = Number($(this).data('page'));
+            load();
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        });
+
+        $('#orderList').on('click', '[data-act]', function () {
+            const act = $(this).data('act');
+            const id = $(this).data('id');
+            if (act === 'pay') {
+                if (!confirm('确认支付本单？演示环境将直接标记为已支付')) return;
+                huApi({
+                    url: '/api/orders/' + id + '/pay', type: 'POST',
+                    data: {payMethod: 'wechat'},
+                    ok: function () { window.huToast('支付成功，花艺师开始为你配花', 'ok'); load(); }
+                });
+            } else if (act === 'cancel') {
+                if (!confirm('取消后库存将回补且不可恢复，确认取消？')) return;
+                huApi({
+                    url: '/api/orders/' + id + '/cancel', type: 'POST',
+                    data: {reason: '用户主动取消'},
+                    ok: function () { window.huToast('订单已取消', 'ok'); load(); }
+                });
+            } else if (act === 'receipt') {
+                if (!confirm('确认已收到花礼？确认后可为本次体验写评价')) return;
+                huApi({
+                    url: '/api/orders/' + id + '/confirm-receipt', type: 'POST',
+                    data: {},
+                    ok: function () { window.huToast('已确认收货，感谢你的信任', 'ok'); load(); }
+                });
+            }
+        });
+    });
+</script>
+</body>
+</html>

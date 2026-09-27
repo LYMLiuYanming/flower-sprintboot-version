@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分类编辑 - 花语轩</title>
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <style>
+        body { background: var(--ad-paper, #f6f5f1); padding: 18px 22px; }
+        .layui-form-label { width: 88px; }
+        .layui-input-block { margin-left: 118px; }
+        .dialog-foot { position: fixed; left: 0; right: 0; bottom: 0; background: #fff;
+            border-top: 1px solid #e8e3d9; padding: 12px 22px; text-align: right; }
+        .hint { color: #8a8578; font-size: 12px; margin-left: 118px; }
+    </style>
+</head>
+<body>
+<form class="layui-form" id="categoryForm" lay-filter="categoryForm">
+    <div class="layui-form-item">
+        <label class="layui-form-label">分类名称<span style="color:#b3897a">*</span></label>
+        <div class="layui-input-block">
+            <input type="text" name="name" maxlength="50" autocomplete="off" class="layui-input"
+                   lay-verify="required" lay-reqtext="请填写分类名称" placeholder="如：玫瑰花">
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">描述</label>
+        <div class="layui-input-block">
+            <input type="text" name="description" maxlength="200" autocomplete="off" class="layui-input" placeholder="一句话描述该分类">
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">图标</label>
+        <div class="layui-input-block">
+            <input type="text" name="icon" maxlength="100" autocomplete="off" class="layui-input" placeholder="Font Awesome 图标名，如 leaf">
+        </div>
+        <div class="hint">仅接受字母、数字与连字符，不要填入外部链接或脚本</div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">排序<span style="color:#b3897a">*</span></label>
+        <div class="layui-input-block">
+            <input type="number" name="sortOrder" min="0" max="9999" value="0" class="layui-input"
+                   lay-verify="required|number" lay-reqtext="请填写排序值">
+        </div>
+        <div class="hint">数字越小越靠前</div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">状态</label>
+        <div class="layui-input-block">
+            <input type="checkbox" name="isActive" checked lay-skin="switch" lay-text="启用|停用">
+        </div>
+    </div>
+    <div style="height:64px"></div>
+    <div class="dialog-foot">
+        <button type="button" class="layui-btn layui-btn-primary" id="btnCancel">取消</button>
+        <button type="submit" class="layui-btn" lay-submit lay-filter="save" id="btnSave">保存</button>
+    </div>
+</form>
+
+<script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+<script th:src="@{/jquery-3.7.1.min.js}"></script>
+<script th:inline="none">
+    layui.use(['form', 'layer'], function () {
+        var form = layui.form;
+        var layer = layui.layer;
+        var id = new URLSearchParams(location.search).get('id');
+        if (id) $('#btnSave').text('保存修改');
+
+        // iframe 弹窗内操作父页表格，关闭时统一刷新
+        function closeSelf(refresh) {
+            var index = parent.layer.getFrameIndex(window.name);
+            if (refresh) parent.layui.table.reload('categoryTable');
+            parent.layer.close(index);
+        }
+
+        if (id) {
+            $.get('/api/admin/categories/' + id, function (res) {
+                if (res.code !== 200) { layer.msg(res.msg || '分类不存在', {icon: 2}); return; }
+                form.val('categoryForm', {
+                    name: res.data.name || '',
+                    description: res.data.description || '',
+                    icon: res.data.icon || '',
+                    sortOrder: res.data.sortOrder == null ? 0 : res.data.sortOrder,
+                    isActive: !!res.data.isActive
+                });
+            });
+        }
+
+        $('#btnCancel').on('click', function () { closeSelf(false); });
+
+        form.on('submit(save)', function (data) {
+            var payload = {
+                name: $.trim(data.field.name || ''),
+                description: $.trim(data.field.description || ''),
+                icon: $.trim(data.field.icon || ''),
+                sortOrder: parseInt(data.field.sortOrder, 10) || 0,
+                isActive: data.field.isActive === 'on' || data.field.isActive === true
+            };
+            $.ajax({
+                url: id ? '/api/admin/categories/' + id : '/api/admin/categories',
+                type: id ? 'PUT' : 'POST',
+                contentType: 'application/json;charset=UTF-8',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.code === 200) {
+                        parent.layer.msg(res.msg || '保存成功', {icon: 1});
+                        closeSelf(true);
+                    } else {
+                        layer.msg(res.msg || '保存失败', {icon: 2});
+                    }
+                },
+                error: function () { layer.msg('网络异常，请稍后重试', {icon: 2}); }
+            });
+            return false;
+        });
+    });
+</script>
+</body>
+</html>

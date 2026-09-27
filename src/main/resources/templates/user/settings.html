@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>账号设置 · 花语轩</title>
+    <style>
+        /* 页面专属样式：公共令牌与组件均来自 theme.css */
+        .hu-settings { display: flex; flex-direction: column; gap: 24px; }
+        .hu-field__req { color: var(--hu-clay); margin-left: 3px; }
+        .hu-form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; }
+        .hu-set-hint { font-size: 12px; color: var(--hu-muted); margin-top: 6px; line-height: 1.7; }
+        .hu-panel__body > .hu-divider { margin: 26px 0; }
+
+        /* 身份摘要 pill 卡 */
+        .hu-pill-row { display: flex; gap: 12px; flex-wrap: wrap; }
+        .hu-pillcard {
+            display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+            border: 1px solid var(--hu-line); border-radius: var(--hu-radius); background: var(--hu-surface-alt);
+        }
+        .hu-pillcard__k { font-size: 12px; letter-spacing: .06em; color: var(--hu-muted); font-weight: 500; }
+
+        /* 偏好开关行 */
+        .hu-setrow {
+            position: relative; display: flex; align-items: flex-start; gap: 15px;
+            padding: 18px 0; border-bottom: 1px solid var(--hu-line); cursor: pointer;
+        }
+        .hu-setrow:first-child { padding-top: 0; }
+        .hu-setrow--last, .hu-setrow:last-of-type { border-bottom: 0; padding-bottom: 0; }
+        .hu-setrow__input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .hu-switch {
+            position: relative; width: 42px; height: 24px; border-radius: var(--hu-radius-pill);
+            background: var(--hu-line-strong); flex-shrink: 0; margin-top: 2px;
+            transition: background-color .25s var(--hu-ease);
+        }
+        .hu-switch::after {
+            content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%;
+            background: #fff; box-shadow: var(--hu-shadow-sm); transition: transform .25s var(--hu-ease);
+        }
+        .hu-setrow__input:checked + .hu-switch { background: var(--hu-accent); }
+        .hu-setrow__input:checked + .hu-switch::after { transform: translateX(18px); }
+        .hu-setrow__input:focus-visible + .hu-switch { box-shadow: 0 0 0 4px rgba(15, 123, 99, .16); }
+        .hu-setrow:hover .hu-switch { background: #c7ced8; }
+        .hu-setrow:hover .hu-setrow__input:checked + .hu-switch { background: var(--hu-accent-deep); }
+        .hu-setrow__text strong { display: block; font-size: 14.5px; font-weight: 600; letter-spacing: -.01em; color: var(--hu-ink); }
+        .hu-setrow__text em { display: block; font-style: normal; font-size: 13px; color: var(--hu-muted); margin-top: 4px; line-height: 1.75; }
+
+        .hu-btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
+        .hu-set-note { margin-top: 24px; }
+        .hu-set-note code {
+            font-size: 12px; background: var(--hu-surface-alt); border: 1px solid var(--hu-line);
+            border-radius: 6px; padding: 1px 6px; color: var(--hu-ink-soft);
+        }
+        .hu-settings .num { font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<div class="hu-pagehead">
+    <div class="hu-container hu-pagehead__row">
+        <div>
+            <div class="hu-crumb"><a href="/index">首页</a> / <a href="/user/profile">个人中心</a> / <span>账号设置</span></div>
+            <h1>账号设置</h1>
+            <p class="hu-pagehead__sub">登录安全、通知偏好与账户数据入口，姓名手机号等资料请在个人资料中维护</p>
+        </div>
+        <div class="hu-pagehead__aside">
+            <span class="hu-muted" style="font-size:13px">登录账号</span>
+            <div style="font-size:18px;font-weight:600;letter-spacing:-.01em;margin-top:2px" id="heroUser">—</div>
+        </div>
+    </div>
+</div>
+
+<div class="hu-container">
+    <div class="hu-account">
+        <!-- 左侧账户栏 -->
+        <aside>
+            <div class="hu-panel hu-idcard">
+                <div class="hu-idcard__avatar" id="avatar"><i class="fa fa-user"></i></div>
+                <div style="min-width:0">
+                    <div class="hu-idcard__name" id="sideName" th:text="${loginUser?.fullName ?: '用户'}">用户名</div>
+                    <div class="hu-idcard__meta" id="sidePhone" th:text="${loginUser?.phone}">手机号</div>
+                </div>
+            </div>
+            <div class="hu-panel hu-panel--pad hu-side-sticky">
+                <h3 class="hu-side-title">账户导航</h3>
+                <ul class="hu-navtabs">
+                    <li><a href="/user/profile"><i class="fa fa-user"></i>个人资料</a></li>
+                    <li><a href="/user/orders"><i class="fa fa-list-alt"></i>我的订单</a></li>
+                    <li><a href="/user/coupons"><i class="fa fa-ticket"></i>我的优惠券</a></li>
+                    <li><a href="/user/addresses"><i class="fa fa-map-marker"></i>收货地址</a></li>
+                    <li><a href="/user/settings" class="is-active"><i class="fa fa-cog"></i>账号设置</a></li>
+                    <li><a href="/cart"><i class="fa fa-shopping-bag"></i>购物车</a></li>
+                    <li><a href="/auth/logout" style="color:var(--hu-clay)"><i class="fa fa-sign-out" style="color:var(--hu-clay)"></i>退出登录</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <!-- 右侧内容 -->
+        <div class="hu-settings">
+
+            <!-- 1 登录与安全 -->
+            <div class="hu-panel">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2>登录与安全</h2>
+                        <p>账号身份信息与口令管理，建议每 90 天更换一次密码</p>
+                    </div>
+                    <span class="hu-pill hu-pill--muted" id="metaType">—</span>
+                </div>
+                <div class="hu-panel__body">
+                    <div class="hu-pill-row">
+                        <div class="hu-pillcard"><span class="hu-pillcard__k">账户类型</span><span class="hu-pill hu-pill--muted" id="pillUserType">—</span></div>
+                        <div class="hu-pillcard"><span class="hu-pillcard__k">会员等级</span><span class="hu-pill hu-pill--muted" id="pillLevel">—</span></div>
+                        <div class="hu-pillcard"><span class="hu-pillcard__k">账户状态</span><span class="hu-pill hu-pill--muted" id="pillStatus">—</span></div>
+                    </div>
+
+                    <hr class="hu-divider">
+
+                    <div class="hu-form-grid">
+                        <div class="hu-field">
+                            <label for="username">登录用户名</label>
+                            <input type="text" id="username" class="hu-input hu-input--readonly" readonly>
+                            <div class="hu-set-hint">登录账号，创建后不可修改</div>
+                        </div>
+                        <div class="hu-field">
+                            <label for="lastLogin">最近登录时间</label>
+                            <input type="text" id="lastLogin" class="hu-input hu-input--readonly" readonly>
+                            <div class="hu-set-hint" id="createdHint">—</div>
+                        </div>
+                    </div>
+
+                    <hr class="hu-divider">
+
+                    <h3 class="hu-subhead">修改密码</h3>
+                    <p class="hu-muted" style="font-size:13px;margin:-8px 0 22px">
+                        密码长度 8-32 位，需同时包含字母与数字；修改成功后当前会话将退出，其他设备也需重新登录。
+                    </p>
+                    <form id="passwordForm" novalidate>
+                        <div class="hu-form-grid">
+                            <div class="hu-field">
+                                <label for="oldPassword">原密码<span class="hu-field__req">*</span></label>
+                                <input type="password" id="oldPassword" class="hu-input" placeholder="请输入当前密码" autocomplete="current-password">
+                                <div class="hu-field__err"></div>
+                            </div>
+                            <div class="hu-field"></div>
+                            <div class="hu-field">
+                                <label for="newPassword">新密码<span class="hu-field__req">*</span></label>
+                                <input type="password" id="newPassword" class="hu-input" placeholder="8-32 位，含字母与数字" autocomplete="new-password">
+                                <div class="hu-field__err"></div>
+                            </div>
+                            <div class="hu-field">
+                                <label for="confirmPassword">确认新密码<span class="hu-field__req">*</span></label>
+                                <input type="password" id="confirmPassword" class="hu-input" placeholder="再次输入新密码" autocomplete="new-password">
+                                <div class="hu-field__err"></div>
+                            </div>
+                        </div>
+                        <div class="hu-form-actions">
+                            <button type="submit" class="hu-btn hu-btn--solid" id="btnSavePwd"><i class="fa fa-lock"></i>修改密码</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 2 通知与偏好 -->
+            <div class="hu-panel">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2>通知与偏好</h2>
+                        <p>选择希望接收的提醒类型，随时可以关闭</p>
+                    </div>
+                    <span class="hu-pill hu-pill--muted">本地保存</span>
+                </div>
+                <div class="hu-panel__body">
+                    <label class="hu-setrow">
+                        <input type="checkbox" class="hu-setrow__input" data-pref="orderSms">
+                        <span class="hu-switch"></span>
+                        <span class="hu-setrow__text">
+                            <strong>订单状态变更短信</strong>
+                            <em>下单、发货、签收等关键节点发送短信提醒，配送类订单建议保持开启。</em>
+                        </span>
+                    </label>
+                    <label class="hu-setrow">
+                        <input type="checkbox" class="hu-setrow__input" data-pref="promoEmail">
+                        <span class="hu-switch"></span>
+                        <span class="hu-setrow__text">
+                            <strong>新品与优惠邮件</strong>
+                            <em>每周推送新花礼与会员专享活动，频率约每周一至两次。</em>
+                        </span>
+                    </label>
+                    <label class="hu-setrow">
+                        <input type="checkbox" class="hu-setrow__input" data-pref="deliveryTip">
+                        <span class="hu-switch"></span>
+                        <span class="hu-setrow__text">
+                            <strong>配送提醒</strong>
+                            <em>骑手取送与预计送达时间提示，避免错过指定送达时段。</em>
+                        </span>
+                    </label>
+
+                    <div class="hu-pdp-note hu-set-note">
+                        <i class="fa fa-database"></i>
+                        <span>以上偏好仅保存在当前浏览器（localStorage 键名 <code>hu.user.settings</code>），暂无服务端同步接口，更换设备后需重新设置。<span id="prefSavedAt">尚未保存</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3 账户数据 -->
+            <div class="hu-panel">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2>账户数据</h2>
+                        <p>订单、收藏与地址的常用入口，或退出当前账号</p>
+                    </div>
+                </div>
+                <div class="hu-panel__body">
+                    <div class="hu-btn-row">
+                        <a href="/user/orders" class="hu-btn hu-btn--ghost hu-btn--sm"><i class="fa fa-list-alt"></i>我的订单</a>
+                        <a href="/user/favorites" class="hu-btn hu-btn--ghost hu-btn--sm"><i class="fa fa-heart-o"></i>我的收藏</a>
+                        <a href="/user/addresses" class="hu-btn hu-btn--ghost hu-btn--sm"><i class="fa fa-map-marker"></i>收货地址</a>
+                        <a href="/user/profile" class="hu-btn hu-btn--ghost hu-btn--sm"><i class="fa fa-user"></i>个人资料</a>
+                        <a href="/auth/logout" class="hu-btn hu-btn--ghost hu-btn--sm" style="color:var(--hu-clay)"><i class="fa fa-sign-out" style="color:var(--hu-clay)"></i>退出登录</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4 关于 -->
+            <div class="hu-panel">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2>关于</h2>
+                        <p>平台信息与客服联系方式</p>
+                    </div>
+                </div>
+                <div class="hu-panel__body">
+                    <dl class="hu-specs">
+                        <div><dt>系统名称</dt><dd>花语轩 HUAYUXUAN 鲜花商城</dd></div>
+                        <div><dt>当前版本</dt><dd class="num">0.0.1</dd></div>
+                        <div><dt>服务时间</dt><dd>每日 8:00 – 22:00</dd></div>
+                        <div><dt>客服电话</dt><dd class="num">400-888-9999</dd></div>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<script th:inline="javascript">
+    var PROFILE_API = '/auth/api/user/profile';
+    var PASSWORD_API = '/auth/api/user/password';
+    var PREF_KEY = 'hu.user.settings';
+    var ME_NAME = /*[[${loginUser?.fullName ?: ''}]]*/ '';
+
+    var memberLevels = {'ordinary': '普通会员', 'vip': 'VIP 会员'};
+    var statusMap = {'active': ['正常', 'hu-pill--ok'], 'inactive': ['已禁用', 'hu-pill--warn'], 'locked': ['已锁定', 'hu-pill--warn']};
+    var defaultPrefs = {orderSms: true, promoEmail: false, deliveryTip: true};
+
+    function fmtTime(value) {
+        return value ? new Date(value).toLocaleString('zh-CN', {hour12: false}) : '暂未记录';
+    }
+
+    /** 字段级错误提示：与服务端 UserDtos.PasswordRequest 规则一致 */
+    function setErr($field, message) {
+        var $wrap = $field.closest('.hu-field');
+        $wrap.toggleClass('has-err', !!message);
+        $wrap.find('.hu-field__err').first().text(message || '');
+        return !message;
+    }
+
+    function renderUser(user) {
+        user = user || {};
+        $('#heroUser').text(user.username || '—');
+        $('#username').val(user.username || '');
+        $('#lastLogin').val(fmtTime(user.lastLoginTime));
+        $('#createdHint').text('注册时间 ' + fmtTime(user.createdAt));
+
+        $('#pillUserType').text(user.userType === 'admin' ? '管理员' : '进店顾客')
+            .attr('class', 'hu-pill ' + (user.userType === 'admin' ? 'hu-pill--ok' : 'hu-pill--muted'));
+        var level = memberLevels[user.memberLevel] || user.memberLevel || '普通会员';
+        $('#pillLevel').text(level).attr('class', 'hu-pill ' + (user.memberLevel === 'vip' ? 'hu-pill--ok' : 'hu-pill--muted'));
+        var st = statusMap[user.status] || [user.status || '未知', 'hu-pill--muted'];
+        $('#pillStatus').text(st[0]).attr('class', 'hu-pill ' + st[1]);
+        $('#metaType').text(level).attr('class', 'hu-pill ' + (user.memberLevel === 'vip' ? 'hu-pill--ok' : 'hu-pill--muted'));
+
+        $('#sideName').text(user.fullName || user.username || '用户');
+        $('#sidePhone').text(user.phone || '');
+        if (user.fullName || user.username) {
+            $('#avatar').html($('<span>').text((user.fullName || user.username).charAt(0)));
+        }
+    }
+
+    /* ---------- 通知偏好：localStorage 本地持久化 ---------- */
+    function readPrefs() {
+        var saved = {};
+        try {
+            saved = JSON.parse(localStorage.getItem(PREF_KEY) || '{}') || {};
+        } catch (err) {
+            saved = {};
+        }
+        return {
+            orderSms: saved.orderSms === undefined ? defaultPrefs.orderSms : !!saved.orderSms,
+            promoEmail: saved.promoEmail === undefined ? defaultPrefs.promoEmail : !!saved.promoEmail,
+            deliveryTip: saved.deliveryTip === undefined ? defaultPrefs.deliveryTip : !!saved.deliveryTip,
+            savedAt: saved.savedAt || ''
+        };
+    }
+
+    function writePrefs(prefs) {
+        try {
+            localStorage.setItem(PREF_KEY, JSON.stringify(prefs));
+            return true;
+        } catch (err) {
+            window.huToast('浏览器禁用了本地存储，偏好无法保存', 'err');
+            return false;
+        }
+    }
+
+    function renderPrefTime(savedAt) {
+        $('#prefSavedAt').text(savedAt ? '　最后保存：' + new Date(savedAt).toLocaleString('zh-CN', {hour12: false}) : '　使用默认设置，尚未保存');
+    }
+
+    function initPrefs() {
+        var prefs = readPrefs();
+        $('[data-pref]').each(function () {
+            $(this).prop('checked', !!prefs[String($(this).data('pref'))]);
+        });
+        renderPrefTime(prefs.savedAt);
+    }
+
+    function validatePassword() {
+        var pwd = $('#newPassword').val();
+        var ok = true;
+        ok = setErr($('#oldPassword'), $('#oldPassword').val() ? '' : '请填写原密码') && ok;
+        ok = setErr($('#newPassword'), /^(?=.*[A-Za-z])(?=.*\d).{8,32}$/.test(pwd) ? '' : '新密码需为 8-32 位且同时包含字母和数字') && ok;
+        ok = setErr($('#confirmPassword'), $('#confirmPassword').val() === pwd ? '' : '两次输入的密码不一致') && ok;
+        return ok;
+    }
+
+    $(document).ready(function () {
+        if (ME_NAME) $('#avatar').html($('<span>').text(ME_NAME.charAt(0)));
+        huApi({url: PROFILE_API, ok: renderUser});
+        initPrefs();
+
+        $('[data-pref]').on('change', function () {
+            var prefs = readPrefs();
+            $('[data-pref]').each(function () {
+                prefs[String($(this).data('pref'))] = $(this).is(':checked');
+            });
+            prefs.savedAt = new Date().toISOString();
+            if (writePrefs(prefs)) {
+                renderPrefTime(prefs.savedAt);
+                window.huToast('偏好已保存到本机', 'ok');
+            }
+        });
+
+        $('#passwordForm').submit(function (e) {
+            e.preventDefault();
+            if (!validatePassword()) return;
+            var $btn = $('#btnSavePwd').prop('disabled', true);
+            huApi({
+                url: PASSWORD_API,
+                type: 'PUT',
+                data: {oldPassword: $('#oldPassword').val(), newPassword: $('#newPassword').val()},
+                ok: function (data, res) {
+                    window.huToast(res.msg || '密码已修改，请重新登录', 'ok');
+                    setTimeout(function () { window.location.href = '/auth/login?redirect=%2Fuser%2Fsettings'; }, 900);
+                },
+                fail: function () { $('#oldPassword').val('').trigger('focus'); },
+                always: function () { $btn.prop('disabled', false); }
+            });
+        });
+    });
+</script>
+</body>
+</html>

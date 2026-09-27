@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>购物车 · 花语轩</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<div class="hu-pagehead">
+    <div class="hu-container">
+        <div class="hu-crumb"><a href="/index">首页</a> / <span>购物车</span></div>
+        <h1>购物车</h1>
+        <p class="hu-muted" style="margin:8px 0 0;font-size:14px">确认花礼清单，随时调整数量与勾选状态</p>
+    </div>
+</div>
+
+<div class="hu-container">
+    <div id="emptyCart" class="hu-empty" style="display:none;margin:36px 0 80px">
+        <i class="fa fa-shopping-bag"></i>
+        <strong>购物车还是空的</strong>
+        <p style="margin:6px 0 22px">去挑一束今天的好心情吧</p>
+        <a href="/products" class="hu-btn hu-btn--solid">去选购花礼</a>
+    </div>
+
+    <div id="cartContent" class="hu-cart" style="display:none">
+        <div style="min-width:0">
+            <div class="hu-panel hu-toolbar" style="margin-bottom:16px">
+                <div class="hu-toolbar__left">
+                    <label class="hu-check"><input type="checkbox" id="selectAll" checked> 全选</label>
+                    <button type="button" id="removeSelected" class="hu-btn hu-btn--sm hu-btn--plain">
+                        <i class="fa fa-trash-o"></i>&nbsp;删除选中
+                    </button>
+                </div>
+                <div class="hu-toolbar__right hu-muted" style="font-size:13px">
+                    会员下单自动享 95 折 · 支持随时改数量
+                </div>
+            </div>
+
+            <div class="hu-panel">
+                <div id="cartItems" class="hu-cart__list"></div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:20px">
+                <a href="/products" class="hu-btn hu-btn--ghost hu-btn--sm"><i class="fa fa-long-arrow-left"></i>&nbsp;继续挑选</a>
+                <a href="/user/orders" class="hu-muted" style="font-size:13px">查看全部订单 <i class="fa fa-long-arrow-right"></i></a>
+            </div>
+        </div>
+
+        <aside class="hu-summary hu-panel hu-panel--pad">
+            <h3>结算摘要</h3>
+            <div class="hu-summary__row"><span>已选商品</span><span id="selectedCount">0 种</span></div>
+            <div class="hu-summary__row"><span>商品金额</span><span>¥<span id="totalAmount">0.00</span></span></div>
+            <div class="hu-summary__row" id="vipRow" style="display:none"><span>VIP 会员 95 折</span><span style="color:var(--hu-accent-deep)">−¥<span id="vipDiscount">0.00</span></span></div>
+            <div class="hu-summary__row"><span>配送费用</span><span style="color:var(--hu-accent-deep)">同城当日达 · 免运费</span></div>
+            <div class="hu-summary__row"><span>贺卡定制</span><span style="color:var(--hu-accent-deep)">免费随单</span></div>
+            <div class="hu-summary__total">
+                <span class="hu-muted">合计</span>
+                <span class="hu-price"><small>¥</small><span id="payAmount">0.00</span></span>
+            </div>
+            <div class="hu-summary__hint">
+                <span>预估可得积分</span><b id="pointsHint">0</b>
+            </div>
+            <div class="hu-summary__hint">
+                <span>结算口径</span><b>以下单页服务端核算为准</b>
+            </div>
+            <button type="button" id="checkoutBtn" class="hu-btn hu-btn--solid hu-btn--block" style="margin-top:22px">去结算</button>
+            <a href="/products" class="hu-btn hu-btn--ghost hu-btn--block" style="margin-top:12px">继续挑选花礼</a>
+        </aside>
+    </div>
+    <div style="height:64px"></div>
+</div>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<script th:inline="javascript">
+    const PH_IMAGE = /*[[@{/img/product-placeholder.svg}]]*/ '/img/product-placeholder.svg';
+    const IS_VIP = /*[[${loginUser != null and loginUser.memberLevel == 'vip'}]]*/ false;
+    const CHECKOUT_KEY = 'huCheckoutItems';
+    let items = [];
+
+    function money(v) {
+        return window.huMoney(v);
+    }
+
+    function render() {
+        if (!items.length) {
+            $('#cartContent').hide();
+            $('#emptyCart').show();
+            return;
+        }
+        $('#emptyCart').hide();
+        $('#cartContent').css('display', 'grid');
+
+        let html = '';
+        items.forEach(function (item) {
+            const p = item.product || {};
+            const stock = item.stock == null ? 0 : item.stock;
+            const unavailable = item.productActive === false || stock <= 0;
+            const lack = !unavailable && stock < item.quantity;
+            let flags = '';
+            if (unavailable) {
+                flags = '<span class="hu-pill hu-pill--muted">' + (item.productActive === false ? '已下架' : '暂时缺货') + '</span>';
+            } else if (lack) {
+                flags = '<span class="hu-pill hu-pill--warn">库存仅剩 ' + stock + ' 件，请调整数量</span>';
+            }
+            html += '<div class="hu-cart-row' + (unavailable ? ' is-unavailable' : '') + '" data-item="' + item.id + '">' +
+                '<div class="hu-cart-row__check"><label class="hu-check"><input type="checkbox" class="item-check"' +
+                (unavailable ? ' disabled' : ' checked') + '></label></div>' +
+                '<a href="/product/' + p.id + '" class="hu-cart-row__media"><img src="' + window.huEscape(p.mainImage || PH_IMAGE) + '" alt="' + window.huEscape(p.name || '') + '"></a>' +
+                '<div class="hu-cart-row__info">' +
+                '<a href="/product/' + p.id + '" class="hu-cart-row__name">' + window.huEscape(p.name || '商品已失效') + '</a>' +
+                '<div class="hu-cart-row__cat">' + window.huEscape(p.category ? p.category.name : '鲜花') + ' · ' + window.huEscape(p.unit || '束') + '</div>' +
+                (flags ? '<div class="hu-cart-row__flags">' + flags + '</div>' : '') +
+                '</div>' +
+                '<div class="hu-cart-row__unit">¥' + money(item.price) + '</div>' +
+                '<div class="hu-cart-row__qty"><div class="hu-qty">' +
+                '<button type="button" data-step="-1">−</button>' +
+                '<input type="number" value="' + item.quantity + '" min="1" max="99" inputmode="numeric">' +
+                '<button type="button" data-step="1">+</button>' +
+                '</div></div>' +
+                '<div class="hu-cart-row__sub hu-cart-row__price">¥' + money(item.subtotal) + '</div>' +
+                '<button type="button" class="hu-cart-row__del" title="移除"><i class="fa fa-trash-o"></i></button>' +
+                '</div>';
+        });
+        $('#cartItems').html(html);
+        syncSelection();
+    }
+
+    function selectedItems() {
+        return items.filter(function (item) {
+            const box = rowOf(item.id).find('.item-check');
+            return box.length && box.prop('checked');
+        });
+    }
+
+    function rowOf(itemId) {
+        return $('#cartItems .hu-cart-row[data-item="' + itemId + '"]');
+    }
+
+    function syncSelection() {
+        const picked = selectedItems();
+        let total = 0;
+        let units = 0;
+        picked.forEach(function (item) {
+            total += Number(item.subtotal) || 0;
+            units += Number(item.quantity) || 0;
+        });
+        const vip = IS_VIP ? Number((total * 0.05).toFixed(2)) : 0;
+        const pay = Math.max(total - vip, 0);
+        $('#selectedCount').text(picked.length + ' 种 · ' + units + ' 件');
+        $('#totalAmount').text(money(total));
+        $('#vipRow').toggle(vip > 0);
+        $('#vipDiscount').text(money(vip));
+        $('#payAmount').text(money(pay));
+        $('#pointsHint').text(Math.floor(pay));
+        const boxes = $('#cartItems .item-check').not(':disabled');
+        $('#selectAll').prop('checked', boxes.length > 0 && boxes.length === picked.length)
+            .prop('indeterminate', picked.length > 0 && picked.length < boxes.length);
+        $('#checkoutBtn').prop('disabled', picked.length === 0).text(picked.length ? '去结算（' + picked.length + ' 种）' : '请先勾选商品');
+    }
+
+    function load() {
+        huApi({
+            url: '/api/cart',
+            ok: function (data, res) {
+                items = (data && data.items) || [];
+                render();
+                jQuery('.hu-cart-count').text(res.itemCount || 0).toggle(!!res.itemCount);
+            }
+        });
+    }
+
+    function setQuantity(itemId, quantity) {
+        const item = items.find(function (i) { return i.id === itemId; });
+        if (!item) return;
+        const stock = item.stock == null ? 99 : item.stock;
+        let next = Math.min(Math.max(parseInt(quantity, 10) || 1, 1), Math.min(Math.max(stock, 1), 99));
+        if (next === item.quantity) {
+            render();
+            return;
+        }
+        huApi({
+            url: '/api/cart/item/' + itemId + '?quantity=' + next,
+            type: 'PUT',
+            data: {},
+            silent: true,
+            ok: function () {
+                load();
+            },
+            fail: function (res) {
+                window.huToast(res.msg || '数量更新失败', 'err');
+            }
+        });
+    }
+
+    function removeItems(ids, done) {
+        if (!ids.length) return;
+        let pending = ids.length;
+        ids.forEach(function (id) {
+            $.ajax({
+                url: '/api/cart/item/' + id,
+                type: 'DELETE',
+                complete: function () {
+                    if (--pending === 0) done();
+                }
+            });
+        });
+    }
+
+    $(function () {
+        load();
+
+        $('#selectAll').on('change', function () {
+            $('#cartItems .item-check').not(':disabled').prop('checked', $(this).prop('checked'));
+            syncSelection();
+        });
+
+        $('#cartItems').on('change', '.item-check', syncSelection)
+            .on('click', '.hu-qty button', function () {
+                const row = $(this).closest('.hu-cart-row');
+                const input = row.find('input[type=number]');
+                setQuantity(row.data('item'), parseInt(input.val(), 10) + Number($(this).data('step')));
+            })
+            .on('change', 'input[type=number]', function () {
+                setQuantity($(this).closest('.hu-cart-row').data('item'), $(this).val());
+            })
+            .on('click', '.hu-cart-row__del', function () {
+                const row = $(this).closest('.hu-cart-row');
+                if (!confirm('确定要移出购物车吗？')) return;
+                removeItems([row.data('item')], load);
+            });
+
+        $('#removeSelected').on('click', function () {
+            const ids = selectedItems().map(function (i) { return i.id; });
+            if (!ids.length) {
+                window.huToast('请先勾选要移除的商品', 'err');
+                return;
+            }
+            if (!confirm('确定要移出选中的 ' + ids.length + ' 件商品吗？')) return;
+            removeItems(ids, load);
+        });
+
+        $('#checkoutBtn').on('click', function () {
+            const picked = selectedItems();
+            if (!picked.length) {
+                window.huToast('请先勾选要结算的商品', 'err');
+                return;
+            }
+            sessionStorage.setItem(CHECKOUT_KEY, JSON.stringify(picked.map(function (i) { return i.id; })));
+            window.location.href = '/order/confirm';
+        });
+    });
+</script>
+</body>
+</html>

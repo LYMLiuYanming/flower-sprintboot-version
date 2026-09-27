@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>注册 · 花语轩</title>
+</head>
+<body>
+<div class="hu-auth">
+    <!-- 左侧品牌视觉区 -->
+    <aside class="hu-auth__aside">
+        <img src="/img/photos/cat-mixed.jpg" alt="花艺工作室">
+        <div class="hu-auth__aside-inner">
+            <div>
+                <div class="hu-eyebrow" style="color:rgba(255,255,255,.65)">HUA YU XUAN · MEMBERSHIP</div>
+                <h2>加入花语轩<br>开启专属鲜花之旅</h2>
+            </div>
+            <div>
+                <p class="quote">“成为会员，享受新品优先预览、<br>节日专属折扣与一对一花艺顾问服务。”</p>
+                <p style="color:rgba(255,255,255,.5);font-size:12px;letter-spacing:.14em;margin-top:28px">JOIN US — BLOOM WITH YOU</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 右侧注册面板 -->
+    <div class="hu-auth__panel">
+        <div class="hu-auth__box" style="max-width:520px">
+            <div class="hu-eyebrow">CREATE ACCOUNT</div>
+            <h1>创建账号</h1>
+            <p class="hu-auth__switch">已有账号？<a th:href="@{/auth/login}">返回登录</a></p>
+
+            <div id="regError" class="hu-auth__err" style="margin-top:24px;display:none"></div>
+
+            <form id="registerForm" style="margin-top:32px" novalidate>
+                <div class="hu-form-grid">
+                    <div class="hu-field" data-name="username">
+                        <label for="username">用户名 *</label>
+                        <input id="username" type="text" name="username" class="hu-input" placeholder="3-20 个字符" autocomplete="username">
+                        <div class="hu-field__err">用户名长度需为 3-20 个字符</div>
+                    </div>
+                    <div class="hu-field" data-name="fullName">
+                        <label for="fullName">真实姓名 *</label>
+                        <input id="fullName" type="text" name="fullName" class="hu-input" placeholder="请输入真实姓名" autocomplete="name">
+                        <div class="hu-field__err">请填写真实姓名</div>
+                    </div>
+                    <div class="hu-field" data-name="phone">
+                        <label for="phone">手机号 *</label>
+                        <input id="phone" type="text" name="phone" class="hu-input" placeholder="11 位手机号" autocomplete="tel">
+                        <div class="hu-field__err">请输入正确的手机号</div>
+                    </div>
+                    <div class="hu-field" data-name="email">
+                        <label for="email">邮箱（选填）</label>
+                        <input id="email" type="text" name="email" class="hu-input" placeholder="name@example.com" autocomplete="email">
+                        <div class="hu-field__err">邮箱格式不正确</div>
+                    </div>
+                    <div class="hu-field" data-name="password">
+                        <label for="password">密码 *</label>
+                        <input id="password" type="password" name="password" class="hu-input" placeholder="6-32 个字符" autocomplete="new-password">
+                        <div class="hu-field__err">密码长度需为 6-32 个字符</div>
+                    </div>
+                    <div class="hu-field" data-name="confirmPassword">
+                        <label for="confirmPassword">确认密码 *</label>
+                        <input id="confirmPassword" type="password" name="confirmPassword" class="hu-input" placeholder="再次输入密码" autocomplete="new-password">
+                        <div class="hu-field__err">两次输入的密码不一致</div>
+                    </div>
+                </div>
+
+                <div class="hu-auth__row" style="margin-top:4px">
+                    <label class="hu-check" id="agreeLabel">
+                        <input type="checkbox" id="agreement">
+                        我已阅读并同意&nbsp;<a href="javascript:;" style="color:var(--hu-accent)" onclick="event.stopPropagation()">《用户协议》</a>
+                    </label>
+                </div>
+
+                <button type="submit" class="hu-btn hu-btn--solid hu-btn--block" id="regSubmitBtn">注&nbsp;&nbsp;册</button>
+            </form>
+
+            <div class="hu-auth__divider">FRESH · QUIET · THOUGHTFUL</div>
+
+            <p style="font-size:13px;color:var(--hu-muted);text-align:center">
+                注册后即可完成登录，开始你的花礼之旅
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(function () {
+        var rules = {
+            username: function (v) { return v.length >= 3 && v.length <= 20; },
+            fullName: function (v) { return v.length > 0; },
+            phone: function (v) { return /^1[3-9]\d{9}$/.test(v); },
+            email: function (v) { return v === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); },
+            password: function (v) { return v.length >= 6 && v.length <= 32; },
+            confirmPassword: function (v) { return v === $('#password').val() && v.length > 0; }
+        };
+
+        function markField(name, ok) {
+            var $f = $('.hu-field[data-name="' + name + '"]');
+            $f.toggleClass('has-err', !ok);
+            return ok;
+        }
+
+        function validateAll() {
+            var ok = true;
+            $.each(rules, function (name, fn) {
+                var v = $.trim($('input[name="' + name + '"]').val() || '');
+                if (!markField(name, fn(v))) ok = false;
+            });
+            if (!$('#agreement').prop('checked')) {
+                window.huToast('请先阅读并同意用户协议', 'err');
+                ok = false;
+            }
+            return ok;
+        }
+
+        // 失焦即时校验
+        $('#registerForm').on('blur', 'input', function () {
+            var name = $(this).attr('name');
+            if (rules[name]) {
+                markField(name, rules[name]($.trim($(this).val() || '')));
+            }
+        });
+
+        $('#registerForm').on('submit', function (e) {
+            e.preventDefault();
+            if (!validateAll()) return false;
+
+            var data = {};
+            $.each(['username', 'fullName', 'phone', 'email', 'password', 'confirmPassword'], function (i, name) {
+                data[name] = $.trim($('input[name="' + name + '"]').val() || '');
+            });
+
+            var $btn = $('#regSubmitBtn').prop('disabled', true).css('opacity', .6);
+            $('#regError').hide();
+
+            $.ajax({
+                url: '/auth/api/register',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function (res) {
+                    if (res.code === 200) {
+                        window.huToast('注册成功，正在跳转登录...', 'ok');
+                        setTimeout(function () { window.location.href = '/auth/login'; }, 900);
+                    } else {
+                        $('#regError').text(res.msg || '注册失败').show();
+                        $btn.prop('disabled', false).css('opacity', 1);
+                    }
+                },
+                error: function () {
+                    $('#regError').text('网络异常，请稍后重试').show();
+                    $btn.prop('disabled', false).css('opacity', 1);
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>

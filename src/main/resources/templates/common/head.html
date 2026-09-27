@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head><title>head</title></head>
+<body>
+<!-- 全站前台共享资源片段：各页面 <head> 内用 th:replace="~{common/head :: resources}" 引入 -->
+<th:block th:fragment="resources">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link th:href="@{/img/favicon.svg}" rel="icon" type="image/svg+xml">
+    <link th:href="@{/img/favicon.svg}" rel="apple-touch-icon">
+    <meta name="theme-color" content="#0f7b63">
+    <meta name="description"
+          th:content="${metaDescription} ?: '花语轩 HUAYUXUAN · 当日手作鲜花花礼，同城当日送达，为每一个重要时刻增添仪式感。'">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="花语轩 HUAYUXUAN">
+    <meta property="og:title" th:content="${metaTitle} ?: '花语轩 HUAYUXUAN · 鲜花花礼在线订购'">
+    <link th:href="@{/css/fonts.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/4.7.0/css/font-awesome.min.css}" rel="stylesheet">
+    <link th:href="@{/css/theme.css}" rel="stylesheet">
+    <script th:src="@{/jquery-3.7.1.min.js}"></script>
+    <script th:src="@{/js/site.js}" defer></script>
+</th:block>
+</body>
+</html>

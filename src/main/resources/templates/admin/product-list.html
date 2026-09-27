@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商品管理 - 花语轩</title>
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
+    <style>
+        * {margin: 0;padding: 0;}
+        body {background: var(--ad-paper, #f6f5f1);}
+        .header {background: #211f1a;padding: 15px 24px;color: white;display: flex;justify-content: space-between;align-items: center;}
+        .header .logo {font-family: 'Noto Serif SC', serif;font-size: 19px;font-weight: 600;letter-spacing: .04em;}
+        .header .user-info a {color: #d8d5cc;text-decoration: none;margin-left: 15px;}
+        .header .user-info a:hover {color: #fff;}
+        .content {padding: 20px;}
+        .layui-card {border-radius: 4px;margin-bottom: 20px;}
+        .layui-card-header {font-size: 16px;font-weight: 600;background: #fff;border-bottom: 1px solid #e8e3d9;}
+        .search-bar {padding: 15px;background: #fff;border-radius: 4px;margin-bottom: 15px;border: 1px solid #e8e3d9;}
+        .btn-add {background: #6f7d5c !important;color: white !important;}
+        .btn-add:hover {background: #454f39 !important;}
+        .product-img {width: 56px;height: 56px;object-fit: cover;border-radius: 4px;cursor: zoom-in;background: #fff;}
+        .layui-table-view {border-radius: 4px;}
+        .stock-low {color: #b3897a;font-weight: 600;}
+    </style>
+</head>
+<body>
+    <div class="layui-layout layui-layout-admin">
+        <div class="layui-header header">
+            <div class="logo"><i class="fas fa-leaf"></i> 花语轩管理后台</div>
+            <div class="user-info">
+                <a href="/admin"><i class="fas fa-home"></i> 返回首页</a>
+                <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+            </div>
+        </div>
+
+        <div class="layui-body content">
+            <div class="layui-card">
+                <div class="layui-card-header"><i class="fas fa-box"></i> 商品管理</div>
+                <div class="layui-card-body">
+                    <div class="search-bar">
+                        <form class="layui-form" lay-filter="searchForm">
+                            <div class="layui-inline">
+                                <select name="categoryId" id="categorySelect" lay-search>
+                                    <option value="">全部分类</option>
+                                </select>
+                            </div>
+                            <div class="layui-inline">
+                                <input type="text" name="keyword" placeholder="搜索名称或编码" class="layui-input" style="width: 200px;">
+                            </div>
+                            <div class="layui-inline">
+                                <select name="isActive">
+                                    <option value="">全部状态</option>
+                                    <option value="true">上架</option>
+                                    <option value="false">下架</option>
+                                </select>
+                            </div>
+                            <div class="layui-inline">
+                                <button type="button" class="layui-btn" lay-submit lay-filter="search"><i class="fas fa-search"></i> 搜索</button>
+                                <button type="button" class="layui-btn layui-btn-primary" id="btnReset"><i class="fas fa-undo"></i> 重置</button>
+                                <button type="button" class="layui-btn layui-btn-normal btn-add" id="btnAdd"><i class="fas fa-plus"></i> 添加商品</button>
+                            </div>
+                        </form>
+                    </div>
+                    <table class="layui-hide" id="productTable" lay-filter="productTable"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/html" id="toolbar">
+        <div class="layui-btn-container">
+            <button class="layui-btn layui-btn-sm" lay-event="batchOn"><i class="fas fa-check"></i> 批量上架</button>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="batchOff"><i class="fas fa-times"></i> 批量下架</button>
+            <button class="layui-btn layui-btn-sm layui-btn-danger" lay-event="batchDel"><i class="fas fa-trash"></i> 批量删除</button>
+        </div>
+    </script>
+
+    <script type="text/html" id="operateBar">
+        <a class="layui-btn layui-btn-xs" lay-event="edit"><i class="fas fa-edit"></i> 编辑</a>
+        <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="stock"><i class="fas fa-boxes"></i> 库存</a>
+        <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del"><i class="fas fa-trash"></i> 删除</a>
+    </script>
+
+    <script type="text/html" id="imageBar">
+        {{# var src = d.mainImage && (d.mainImage.charAt(0)==='/' || /^https?:\/\//i.test(d.mainImage)) ? d.mainImage : '/img/placeholder.svg'; }}
+        <img src="{{src}}" class="product-img" onclick="showImage(this.src)">
+    </script>
+
+    <script type="text/html" id="priceBar">
+        <span style="color: #454f39; font-weight: bold;">¥{{huAdmin.money(d.price)}}</span>
+        {{# if(d.originalPrice && Number(d.originalPrice) > Number(d.price)){ }}
+        <del style="color: #999; font-size: 12px;">¥{{huAdmin.money(d.originalPrice)}}</del>
+        {{# } }}
+    </script>
+
+    <script type="text/html" id="stockBar">
+        {{# if(Number(d.stock) <= 10){ }}<span class="stock-low">{{d.stock}}</span>{{# } else { }}{{d.stock}}{{# } }}
+    </script>
+
+    <script type="text/html" id="statusBar">
+        <input type="checkbox" name="status" value="{{d.id}}" lay-skin="switch" lay-text="上架|下架" lay-filter="statusSwitch" {{d.isActive ? 'checked' : ''}}>
+    </script>
+
+    <script type="text/html" id="tagBar">
+        {{# if(d.isFeatured){ }}<span class="layui-badge layui-bg-orange">精选</span>{{# } }}
+        {{# if(d.isNew){ }}<span class="layui-badge layui-bg-green">新品</span>{{# } }}
+    </script>
+
+    <script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+    <script th:src="@{/jquery-3.7.1.min.js}"></script>
+    <script th:src="@{/js/admin-common.js}"></script>
+    <script th:inline="none">
+        function showImage(src) {
+            layui.layer.open({
+                type: 1,
+                title: false,
+                closeBtn: 1,
+                area: ['auto', 'auto'],
+                shadeClose: true,
+                content: '<img src="' + src + '" style="max-width:640px;max-height:80vh;display:block">'
+            });
+        }
+
+        layui.use(['table', 'form', 'layer'], function(){
+            var table = layui.table;
+            var form = layui.form;
+            var layer = layui.layer;
+            var FILTER_KEY = 'hu-admin-filter-product';
+            var state = huAdmin.listState('product');
+
+            huAdmin.request({url: '/api/admin/categories', data: {page: 1, limit: 100}, silent: true, ok: function(res){
+                var html = '<option value="">全部分类</option>';
+                (res.data || []).forEach(function(cat){
+                    html += '<option value="' + cat.id + '">' + huAdmin.esc(cat.name) + '</option>';
+                });
+                $('#categorySelect').html(html);
+                restoreFilter();
+                form.render('select');
+            }});
+
+            table.render({
+                elem: '#productTable',
+                url: '/api/admin/products',
+                page: state.pageConfig(),
+                limit: state.limit(),
+                done: state.done('/api/admin/products'),
+                toolbar: '#toolbar',
+                defaultToolbar: ['filter', 'exports'],
+                cols: [[
+                    {type: 'checkbox', fixed: 'left'},
+                    {field: 'mainImage', title: '图片', width: 100, templet: '#imageBar', align: 'center'},
+                    {field: 'name', title: '商品名称', fixed: 'left', minWidth: 190},
+                    {field: 'code', title: '编码', width: 110},
+                    {field: 'categoryName', title: '分类', width: 90, templet: function(d){ return d.categoryName || (d.category ? d.category.name : '-'); }},
+                    {field: 'price', title: '价格', width: 142, templet: '#priceBar', align: 'center'},
+                    {field: 'stock', title: '库存', width: 78, templet: '#stockBar', align: 'center'},
+                    {field: 'salesCount', title: '销量', width: 72, align: 'center'},
+                    {field: 'rating', title: '评分', width: 78, align: 'center', templet: function(d){ return d.rating == null ? '-' : Number(d.rating).toFixed(1) + ' <small style="color:#999">(' + (d.reviewCount || 0) + ')</small>'; }},
+                    {field: 'isActive', title: '状态', width: 96, templet: '#statusBar', align: 'center'},
+                    {field: 'tags', title: '标签', width: 96, templet: '#tagBar', align: 'center'},
+                    {fixed: 'right', title: '操作', toolbar: '#operateBar', width: 214}
+                ]]
+            });
+
+            /* 同 tab 内返回列表页时保留上次筛选条件与页码 */
+            function restoreFilter() {
+                var saved = sessionStorage.getItem(FILTER_KEY);
+                if (!saved) return;
+                try {
+                    var f = JSON.parse(saved);
+                    form.val('searchForm', f);
+                    table.reload('productTable', {where: buildWhere(f), page: {curr: state.pageConfig().curr || 1}});
+                } catch (e) { sessionStorage.removeItem(FILTER_KEY); state.reset(); }
+            }
+
+            function buildWhere(f) {
+                var where = {};
+                if (f.categoryId) where.categoryId = f.categoryId;
+                if (f.keyword) where.keyword = f.keyword;
+                if (f.isActive) where.isActive = f.isActive;
+                return where;
+            }
+
+            form.on('submit(search)', function(data){
+                var f = data.field;
+                sessionStorage.setItem(FILTER_KEY, JSON.stringify(f));
+                state.reset();
+                table.reload('productTable', {where: buildWhere(f), page: {curr: 1}});
+                return false;
+            });
+
+            $('#btnReset').on('click', function(){
+                sessionStorage.removeItem(FILTER_KEY);
+                state.reset();
+                form.val('searchForm', {keyword: '', categoryId: '', isActive: ''});
+                table.reload('productTable', {where: {}, page: {curr: 1}});
+            });
+
+            form.on('switch(statusSwitch)', function(obj){
+                var id = obj.value;
+                var isActive = obj.elem.checked;
+                huAdmin.request({
+                    url: '/api/admin/products/' + id + '/status?isActive=' + isActive,
+                    type: 'PATCH', silent: true,
+                    ok: function(){ layer.msg(isActive ? '商品已上架' : '商品已下架', {icon: 1}); },
+                    fail: function(){
+                        obj.elem.checked = !isActive;
+                        form.render('checkbox');
+                    }
+                });
+            });
+
+            function checkedIds(btn, callback) {
+                var rows = table.checkStatus('productTable').data;
+                if (!rows.length) { layer.msg('请先勾选记录', {icon: 7}); return; }
+                callback(rows.map(function(r){ return r.id; }), rows.length);
+            }
+
+            table.on('toolbar(productTable)', function(obj){
+                if (obj.event === 'batchOn' || obj.event === 'batchOff') {
+                    checkedIds(obj, function(ids){
+                        huAdmin.request({
+                            url: '/api/admin/products/batch-status', type: 'POST',
+                            data: {ids: ids, isActive: obj.event === 'batchOn'},
+                            ok: function(){ table.reload('productTable'); }
+                        });
+                    });
+                } else if (obj.event === 'batchDel') {
+                    checkedIds(obj, function(ids, n){
+                        layer.confirm('确定删除选中的 ' + n + ' 个商品？已产生订单的商品会自动下架归档。', {icon: 3}, function(index){
+                            layer.close(index);
+                            huAdmin.request({
+                                url: '/api/admin/products/batch-delete', type: 'POST',
+                                data: {ids: ids},
+                                ok: function(res){ layer.msg(res.msg || '已处理', {icon: 1}); table.reload('productTable'); }
+                            });
+                        });
+                    });
+                }
+            });
+
+            table.on('tool(productTable)', function(obj){
+                var data = obj.data;
+                if (obj.event === 'del'){
+                    huAdmin.confirmDelete('确定删除「' + data.name + '」？', '/api/admin/products/' + data.id, function(){
+                        obj.del();
+                    });
+                } else if (obj.event === 'edit'){
+                    layer.open({
+                        type: 2, title: '编辑商品', area: ['92%', '92%'],
+                        content: '/admin/product-edit?id=' + data.id
+                    });
+                } else if (obj.event === 'stock'){
+                    openStockDialog(data);
+                }
+            });
+
+            function openStockDialog(data) {
+                layer.open({
+                    type: 1,
+                    title: '调整库存 · ' + huAdmin.esc(data.name),
+                    area: ['420px', '260px'],
+                    content: '<div style="padding:20px 24px">' +
+                        '<div class="layui-form"><div class="layui-form-item">' +
+                        '<label class="layui-form-label">当前库存</label><div class="layui-input-block"><input class="layui-input" value="' + (data.stock == null ? 0 : data.stock) + '" readonly style="background:#f6f5f1"></div></div>' +
+                        '<div class="layui-form-item"><label class="layui-form-label">方式</label><div class="layui-input-block">' +
+                        '<select id="stockType"><option value="increase">增加</option><option value="reduce">减少</option></select></div></div>' +
+                        '<div class="layui-form-item"><label class="layui-form-label">数量</label><div class="layui-input-block"><input type="number" id="stockQty" min="1" class="layui-input" placeholder="请输入调整数量"></div></div>' +
+                        '</div></div>',
+                    success: function(){ form.render('select'); },
+                    btn: ['确定', '取消'],
+                    yes: function(index){
+                        var qty = parseInt($('#stockQty').val(), 10);
+                        if (!qty || qty < 1) { layer.msg('请输入正确的调整数量', {icon: 2}); return; }
+                        huAdmin.request({
+                            url: '/api/admin/products/' + data.id + '/stock', type: 'POST',
+                            data: {quantity: qty, type: $('#stockType').val(), remark: '后台手工调整'},
+                            ok: function(){ layer.close(index); table.reload('productTable'); }
+                        });
+                    }
+                });
+            }
+
+            $('#btnAdd').click(function(){
+                layer.open({type: 2, title: '添加商品', area: ['92%', '92%'], content: '/admin/product-edit'});
+            });
+        });
+    </script>
+</body>
+</html>

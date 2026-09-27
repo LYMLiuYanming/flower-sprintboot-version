@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="粉玫瑰花束">
+<defs>
+<linearGradient id="g-rose-pink-1" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#fbeef0"/><stop offset="100%" stop-color="#faf8f4"/>
+</linearGradient>
+<radialGradient id="g-rose-pink-1-b"><stop offset="0%" stop-color="#e2a1a8"/><stop offset="100%" stop-color="#c07a84"/></radialGradient>
+</defs>
+<rect width="400" height="400" fill="url(#g-rose-pink-1)"/>
+<circle cx="200.0" cy="150" r="132" fill="#ffffff" opacity="0.5"/>
+<path d="M140 250 L200 360 L260 250 Z" fill="#ffffff" opacity="0.88"/>
+<path d="M118 244 L200 366 L200 244 Z" fill="#fbeef0" opacity="0.95"/>
+<path d="M282 244 L200 366 L200 244 Z" fill="#fbeef0" opacity="0.75"/>
+<path d="M164 300 Q200 288 236 300" stroke="#a9906a" stroke-width="5" fill="none" stroke-linecap="round"/>
+<path d="M200 268 L109.8 172.4" stroke="#6f7d5c" stroke-width="4" opacity="0.55" stroke-linecap="round"/>
+<path d="M200 268 L130.2 148.6" stroke="#6f7d5c" stroke-width="4" opacity="0.55" stroke-linecap="round"/>
+<path d="M200 268 L162.0 132.5" stroke="#6f7d5c" stroke-width="4" opacity="0.55" stroke-linecap="round"/>
+<path d="M200 268 L200.0 126.9" stroke="#6f7d5c" stroke-width="4" opacity="0.55" stroke-linecap="round"/>
+<path d="M200 268 L238.0 132.5" stroke="#6f7d5c" stroke-width="4" opacity="0.55" stroke-linecap="round"/>
+<path d="M200 268 L269.8 148.6" stroke="#6f7d5c" stroke-width="4" opacity="0.55" stroke-linecap="round"/>
+<path d="M200 268 L290.2 172.4" stroke="#6f7d5c" stroke-width="4" opacity="0.55" stroke-linecap="round"/>
+<path d="M200 268 L200.0 169.1" stroke="#6f7d5c" stroke-width="4" opacity="0.55" stroke-linecap="round"/>
+<path d="M150 244 q-34 -6 -44 -34 q34 -6 44 34z" fill="#6f7d5c" opacity="0.75"/>
+<path d="M250 244 q34 -6 44 -34 q-34 -6 -44 34z" fill="#6f7d5c" opacity="0.6"/>
+<circle cx="109.8" cy="172.4" r="30.0" fill="url(#g-rose-pink-1-b)"/>
+<circle cx="109.8" cy="172.4" r="12.6" fill="#faf8f4" opacity="0.55"/>
+<circle cx="130.2" cy="148.6" r="30.0" fill="url(#g-rose-pink-1-b)"/>
+<circle cx="130.2" cy="148.6" r="12.6" fill="#faf8f4" opacity="0.55"/>
+<circle cx="162.0" cy="132.5" r="30.0" fill="url(#g-rose-pink-1-b)"/>
+<circle cx="162.0" cy="132.5" r="12.6" fill="#faf8f4" opacity="0.55"/>
+<circle cx="200.0" cy="126.9" r="30.0" fill="url(#g-rose-pink-1-b)"/>
+<circle cx="200.0" cy="126.9" r="12.6" fill="#faf8f4" opacity="0.55"/>
+<circle cx="238.0" cy="132.5" r="30.0" fill="url(#g-rose-pink-1-b)"/>
+<circle cx="238.0" cy="132.5" r="12.6" fill="#faf8f4" opacity="0.55"/>
+<circle cx="269.8" cy="148.6" r="30.0" fill="url(#g-rose-pink-1-b)"/>
+<circle cx="269.8" cy="148.6" r="12.6" fill="#faf8f4" opacity="0.55"/>
+<circle cx="290.2" cy="172.4" r="30.0" fill="url(#g-rose-pink-1-b)"/>
+<circle cx="290.2" cy="172.4" r="12.6" fill="#faf8f4" opacity="0.55"/>
+<circle cx="200.0" cy="169.1" r="33.6" fill="url(#g-rose-pink-1-b)"/>
+<circle cx="200.0" cy="169.1" r="14.1" fill="#faf8f4" opacity="0.55"/>
+<text x="26" y="382" font-family="Georgia, 'Noto Serif SC', serif" font-size="17" fill="#211f1a" opacity="0.7">粉玫瑰花束</text>
+<text x="26" y="34" font-family="Georgia, serif" font-size="11" letter-spacing="3" fill="#211f1a" opacity="0.35">HUA YU XUAN</text>
+</svg>

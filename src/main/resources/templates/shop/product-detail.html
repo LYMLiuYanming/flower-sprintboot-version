@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title th:text="${product != null} ? ${product.name} + ' · 花语轩' : '商品详情 · 花语轩'">商品详情 · 花语轩</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<main th:if="${product != null}" th:with="parts=${#strings.arraySplit(#numbers.formatDecimal(product.price,1,2),'.')}">
+    <!-- 面包屑 -->
+    <div class="hu-pagehead" style="padding:20px 0">
+        <div class="hu-container">
+            <div class="hu-crumb">
+                <a href="/index">首页</a> / <a href="/products">全部花礼</a>
+                <span th:if="${product.category != null}"> / <a th:href="@{/products(categoryId=${product.category.id})}" th:text="${product.category.name}">分类</a></span>
+                / <span th:text="${product.name}">商品</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="hu-container">
+        <!-- 主信息区 -->
+        <div class="hu-pdp">
+            <!-- 图册 -->
+            <div>
+                <div class="hu-pdp__gallery-main">
+                    <img id="pdpMainImg"
+                         th:src="${product.mainImage != null ? product.mainImage : '/img/product-placeholder.svg'}"
+                         th:alt="${product.name}">
+                </div>
+                <div class="hu-pdp__thumbs" th:if="${product.images != null and !#strings.isEmpty(product.images)}">
+                    <img th:each="img, st : ${#strings.arraySplit(product.images, ',')}" th:src="${img}" alt=""
+                         th:classappend="${st.first} ? 'is-active'"
+                         onclick="huPickThumb(this)">
+                </div>
+            </div>
+
+            <!-- 购买信息 -->
+            <div>
+                <div class="hu-pdp__cat" th:text="${product.category != null ? product.category.name : 'FRESH FLOWER'}">鲜花</div>
+                <h1 class="hu-pdp__title" th:text="${product.name}">商品名称</h1>
+
+                <div class="hu-product__rate" style="margin-bottom:6px">
+                    <th:block th:each="i : ${#numbers.sequence(1, 5)}">
+                        <i class="fa" th:classappend="${i > product.rating} ? 'fa-star-o' : 'fa-star'"></i>
+                    </th:block>
+                    <span th:text="${product.rating} + ' 分 · ' + ${product.reviewCount} + ' 条评价 · ' + ${product.salesCount} + ' 人已送出'">5.0</span>
+                </div>
+
+                <div class="hu-pdp__price"
+                     th:with="save=${product.originalPrice != null and product.originalPrice &gt; product.price}">
+                    <small>¥</small><th:block th:text="${parts[0]}">199</th:block><em
+                        th:if="${parts[1] != '00'}" th:text="'.' + ${parts[1]}">.00</em>
+                    <span style="font-size:14px;color:var(--hu-muted);font-weight:400"
+                          th:text="'元 / ' + ${product.unit != null ? product.unit : '束'}">元 / 束</span>
+                    <del th:if="${save}" th:text="'¥' + ${#numbers.formatDecimal(product.originalPrice,1,2)}">¥0.00</del>
+                    <span class="hu-pdp__save" th:if="${save}">
+                        <i class="fa fa-tag"></i>立省 ¥<span th:text="${#numbers.formatDecimal(product.originalPrice.subtract(product.price),1,2)}">0</span>
+                    </span>
+                </div>
+
+                <p class="hu-pdp__desc" th:text="${product.description}">商品描述…</p>
+
+                <div class="hu-pdp__metas">
+                    <span th:if="${product.stock != null}">
+                        库存 <b th:text="${product.stock}" th:style="${product.stock > 0} ? 'color:var(--hu-accent-deep)' : 'color:var(--hu-clay)'">0</b>
+                        <span th:if="${product.stock == 0}" style="color:var(--hu-clay)">（暂时缺货）</span>
+                    </span>
+                    <span th:if="${product.weight != null}" th:text="'规格 ' + ${product.weight}">-</span>
+                    <span th:if="${product.material != null}" th:text="'花材 ' + ${product.material}">-</span>
+                    <span th:if="${product.packaging != null}" th:text="'包装 ' + ${product.packaging}">-</span>
+                </div>
+
+                <!-- 领券营销位：本分类可领 + 全场通用，无可领券时整条隐藏 -->
+                <div class="hu-promo" id="pdpPromo" hidden style="margin:18px 0 0">
+                    <span class="hu-promo__label"><i class="fa fa-ticket"></i>限时领券</span>
+                    <span class="hu-promo__chips" id="pdpPromoChips"></span>
+                    <a class="hu-promo__more" href="/user/coupons">领券中心 →</a>
+                </div>
+
+                <div class="hu-pdp__actions" style="align-items:center">
+                    <div class="hu-qty">
+                        <button type="button" onclick="updateQuantity(-1)">−</button>
+                        <input type="number" id="quantity" value="1" min="1" max="99">
+                        <button type="button" onclick="updateQuantity(1)">+</button>
+                    </div>
+                    <button class="hu-btn hu-btn--solid" style="flex:1" onclick="addToCart()" id="addCartBtn"
+                            th:disabled="${product.stock != null and product.stock == 0}">
+                        <i class="fa fa-shopping-bag"></i>&nbsp;加入购物车
+                    </button>
+                    <button class="hu-btn hu-btn--ghost" style="flex:1" onclick="buyNow()">立即购买</button>
+                    <button type="button" class="hu-icon-btn" id="favBtn"
+                            th:attr="data-favorite=${product.id}" title="收藏"><i class="fa fa-heart-o"></i></button>
+                </div>
+
+                <div class="hu-usp" style="grid-template-columns:repeat(3,1fr);gap:12px;margin-top:32px">
+                    <div class="hu-mini-usp"><i class="fa fa-truck"></i>同城当日送达</div>
+                    <div class="hu-mini-usp"><i class="fa fa-leaf"></i>7 天新鲜保证</div>
+                    <div class="hu-mini-usp"><i class="fa fa-gift"></i>精美礼物包装</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 详情 / 服务 / 评价 -->
+        <div class="hu-panel" style="margin-bottom:24px">
+            <div class="hu-tabs" id="pdpTabs">
+                <button type="button" class="is-active" data-tab="detail">商品详情</button>
+                <button type="button" data-tab="service">配送与售后</button>
+                <button type="button" data-tab="review">用户评价 <span id="reviewCount">·</span></button>
+            </div>
+
+            <div class="hu-tabs__panel is-active" data-panel="detail">
+                <h3 class="hu-tabs__title">花艺师寄语</h3>
+                <div class="hu-prose">
+                    <p th:text="${product.description != null ? product.description : '当日到店鲜花，由花艺师手工搭配、雾面包装，附赠营养剂一小包。'}">描述</p>
+                    <p th:if="${product.material != null}">主花材：<span th:text="${product.material}">花材</span>。</p>
+                </div>
+                <h3 class="hu-tabs__title">规格参数</h3>
+                <dl class="hu-specs">
+                    <div><dt>所属分类</dt><dd th:text="${product.category != null ? product.category.name : '鲜花'}">鲜花</dd></div>
+                    <div><dt>商品编号</dt><dd th:text="${product.code != null ? product.code : product.id}">-</dd></div>
+                    <div><dt>规格</dt><dd th:text="${product.weight != null ? product.weight : '标准束'}">-</dd></div>
+                    <div><dt>包装</dt><dd th:text="${product.packaging != null ? product.packaging : '手提礼盒装'}">-</dd></div>
+                    <div><dt>计价单位</dt><dd th:text="${product.unit != null ? product.unit : '束'}">束</dd></div>
+                    <div><dt>当前库存</dt><dd th:text="${product.stock != null ? product.stock + ' 束可售' : '以门店当日为准'}">-</dd></div>
+                </dl>
+            </div>
+
+            <div class="hu-tabs__panel" data-panel="service">
+                <div class="hu-pdp-note"><i class="fa fa-clock-o"></i><span>当日达：城市主城区当日 21:00 前下单，当日送达；跨城订单需 1–2 个工作日备货。</span></div>
+                <div class="hu-pdp-note" style="margin-top:14px"><i class="fa fa-map-marker"></i><span>配送范围：以收货地址为中心 30 公里内可送，超出范围将由客服联系协商改期或自提。</span></div>
+                <div class="hu-pdp-note" style="margin-top:14px"><i class="fa fa-undo"></i><span>鲜花属定制品，非质量问题不支持退换；若存在花材损伤、与描述不符，请在签收后 12 小时内拍照联系客服。</span></div>
+                <div class="hu-pdp-note" style="margin-top:14px"><i class="fa fa-heart-o"></i><span>养护建议：收到后剪根 2–3 厘米，换水并放入附赠营养剂，避免阳光直射与空调出风口。</span></div>
+            </div>
+
+            <div class="hu-tabs__panel" data-panel="review">
+                <div id="reviewSummary"></div>
+                <div id="reviewList"></div>
+                <div id="reviewEmpty" class="hu-empty" style="display:none;padding:38px 0">
+                    <i class="fa fa-comment-o"></i>
+                    <strong>还没有人评价这款花礼</strong>
+                    <span style="font-size:14px">完成订单后可在「我的订单」中写下第一条评价</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 热销推荐 -->
+        <section class="hu-section" style="padding-top:8px" th:if="${relatedProducts != null and !#lists.isEmpty(relatedProducts)}">
+            <div class="hu-section-head">
+                <div>
+                    <div class="hu-eyebrow">YOU MAY ALSO LIKE</div>
+                    <h2 class="hu-display hu-display--md">搭配灵感</h2>
+                </div>
+                <a class="hu-link" href="/products">查看全部 →</a>
+            </div>
+            <div class="hu-product-grid">
+                <div class="hu-product" th:each="item : ${relatedProducts}">
+                    <a th:href="@{/product/{id}(id=${item.id})}" class="hu-product__media">
+                        <img th:src="${item.mainImage != null ? item.mainImage : '/img/product-placeholder.svg'}" th:alt="${item.name}" loading="lazy">
+                    </a>
+                    <div class="hu-product__body">
+                        <div class="hu-product__cat" th:text="${item.category != null ? item.category.name : '鲜花'}">鲜花</div>
+                        <a th:href="@{/product/{id}(id=${item.id})}" class="hu-product__name" th:text="${item.name}">商品名称</a>
+                        <div class="hu-product__foot">
+                            <div class="hu-price"><small>¥</small><span th:text="${#strings.replace(#numbers.formatDecimal(item.price,1,2), '.00', '')}">0.00</span></div>
+                            <span class="hu-muted" style="font-size:13px" th:text="'已售 ' + ${item.salesCount}">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</main>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<script th:inline="javascript">
+    var productId = /*[[${product != null ? product.id : ''}]]*/ '';
+    var productCategoryId = /*[[${product != null && product.category != null ? product.category.id : ''}]]*/ '';
+    jQuery(function () {
+        huBindCouponPromo({chipsId: 'pdpPromoChips', categoryId: productCategoryId, limit: 3});
+    });
+
+    function updateQuantity(delta) {
+        var input = document.getElementById('quantity');
+        var val = parseInt(input.value || '1', 10) + delta;
+        input.value = Math.min(99, Math.max(1, isNaN(val) ? 1 : val));
+    }
+
+    function huPickThumb(el) {
+        var main = document.getElementById('pdpMainImg');
+        main.src = el.src;
+        document.querySelectorAll('.hu-pdp__thumbs img').forEach(function (t) { t.classList.remove('is-active'); });
+        el.classList.add('is-active');
+    }
+
+    function qty() {
+        return Math.min(99, Math.max(1, parseInt(document.getElementById('quantity').value || '1', 10)));
+    }
+
+    function addToCart() {
+        huApi({
+            url: '/api/cart/add?productId=' + encodeURIComponent(productId) + '&quantity=' + qty(),
+            type: 'POST',
+            data: {},
+            ok: function (data, res) {
+                jQuery('.hu-cart-count').text(res.itemCount || 0).show();
+                window.huToast('已加入购物车', 'ok');
+            }
+        });
+    }
+
+    function buyNow() {
+        window.location.href = '/order/confirm?productId=' + productId + '&quantity=' + qty();
+    }
+
+    /* 评价列表 */
+    function starsOf(n) {
+        var s = '';
+        for (var i = 1; i <= 5; i++) s += '<i class="fa fa-star' + (i <= n ? '' : '-o') + '"></i>';
+        return s;
+    }
+
+    function loadReviews() {
+        $.getJSON('/api/products/' + productId + '/reviews?page=1&limit=10', function (res) {
+            if (res.code !== 200) return;
+            var list = res.data || [];
+            var total = Number(res.count || 0);
+            $('#reviewCount').text(total ? '(' + total + ')' : '(0)');
+            if (!list.length) {
+                $('#reviewList').html('');
+                $('#reviewEmpty').show();
+                return;
+            }
+            var avg = list.reduce(function (a, r) { return a + (r.rating || 5); }, 0) / list.length;
+            $('#reviewSummary').html(
+                '<div class="hu-scorecard">' +
+                '<div><div class="hu-scorecard__num">' + avg.toFixed(1) + '</div>' +
+                '<div class="hu-scorecard__label">' + starsOf(Math.round(avg)) + '</div></div>' +
+                '<div style="font-size:13px;color:var(--hu-muted);line-height:1.8">共 ' + total +
+                ' 条真实评价<br>评价来自已完成订单的顾客</div>' +
+                '<a href="/user/orders" class="hu-btn hu-btn--ghost hu-btn--sm" style="margin-left:auto">去评价</a>' +
+                '</div>');
+            var html = '';
+            list.forEach(function (r) {
+                var name = r.userName || '匿名顾客';
+                html += '<div class="hu-review">' +
+                    '<div class="hu-review__avatar">' + $('<i>').text(name.charAt(0)).html() + '</div>' +
+                    '<div><div class="hu-review__head"><span class="hu-review__name">' + $('<i>').text(name).html() + '</span>' +
+                    starsOf(r.rating) +
+                    '<span class="hu-review__time">' + (r.createdAt || '').replace('T', ' ').slice(0, 10) + '</span></div>' +
+                    '<div class="hu-review__text">' + $('<i>').text(r.content || '').html() + '</div></div></div>';
+            });
+            $('#reviewList').html(html);
+        });
+    }
+
+    $(document).ready(function () {
+        $('#pdpTabs').on('click', 'button', function () {
+            var tab = String($(this).data('tab'));
+            $('#pdpTabs button').each(function () {
+                $(this).toggleClass('is-active', String($(this).data('tab')) === tab);
+            });
+            $('.hu-tabs__panel').each(function () {
+                $(this).toggleClass('is-active', String($(this).data('panel')) === tab);
+            });
+        });
+
+        loadReviews();
+
+        /* 收藏：回填已收藏态，未登录时点击由 huApi 统一跳转登录 */
+        huApi({
+            url: '/api/products/' + productId,
+            silent: true,
+            ok: function (data, res) {
+                if (res.favorited === true) {
+                    $('#favBtn').addClass('is-favorited').attr('title', '取消收藏').find('i')
+                        .removeClass('fa-heart-o').addClass('fa-heart');
+                }
+            }
+        });
+    });
+</script>
+</body>
+</html>

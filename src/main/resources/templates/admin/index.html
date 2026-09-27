@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>花语轩 - 管理后台</title>
+    <link rel="icon" th:href="@{/img/favicon.svg}" type="image/svg+xml">
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
+    <style>
+        * {margin: 0;padding: 0;}
+        body {background: var(--ad-paper, #f6f5f1);font-family: 'Inter', 'Noto Sans SC', -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;}
+        .header {background: #211f1a;padding: 0 24px;color: white;display: flex;justify-content: space-between;align-items: center;height: 60px;}
+        .header .logo {font-family: 'Noto Serif SC', serif;font-size: 19px;font-weight: 600;letter-spacing: .04em;}
+        .header .logo i {color: #a9906a;margin-right: 8px;}
+        .header .user-info {display: flex;align-items: center;gap: 18px;font-size: 14px;}
+        .header .user-info a {color: #d8d5cc;text-decoration: none;transition: color .2s;}
+        .header .user-info a:hover {color: #fff;}
+        .layui-layout-admin .layui-side {top: 60px;width: 200px;}
+        .layui-layout-admin .layui-header {top: 0;}
+        .layui-layout-admin .layui-body, .layui-layout-admin .layui-footer {left: 200px;}
+        .layui-side-scroll {width: 220px;}
+
+        /* ── 看板内容区：Modern Business ── */
+        .content-body {padding: 22px 24px 28px;background: #f5f6f8;min-height: 100%;}
+        .dash-head {display: flex;align-items: flex-end;justify-content: space-between;gap: 16px;margin-bottom: 16px;}
+        .dash-head h2 {font-size: 20px;font-weight: 600;color: #101623;letter-spacing: -.01em;}
+        .dash-head p {font-size: 12.5px;color: #798394;margin-top: 5px;}
+        .dash-head__ops {display: flex;align-items: center;gap: 10px;}
+        .dash-head__ops .upd {font-size: 12px;color: #9aa3b2;font-variant-numeric: tabular-nums;}
+        .dash-btn {display: inline-flex;align-items: center;gap: 6px;height: 30px;padding: 0 13px;border: 1px solid #e0e5ec;border-radius: 8px;background: #fff;color: #39424f;font-size: 12.5px;text-decoration: none;transition: all .2s var(--hu-ease, cubic-bezier(.4,.08,.24,1));}
+        .dash-btn:hover {border-color: #0f7b63;color: #0f7b63;box-shadow: 0 6px 16px -12px rgba(15,123,99,.6);}
+        .dash-btn i {font-size: 11px;}
+
+        .stat-cards {display: grid;grid-template-columns: repeat(4, minmax(0, 1fr));gap: 14px;margin-bottom: 14px;}
+        .stat-card {position: relative;display: flex;align-items: center;gap: 14px;background: #fff;border: 1px solid #e8ebf0;border-radius: 12px;padding: 16px 18px 16px 21px;box-shadow: 0 1px 2px rgba(16,22,35,.04);overflow: hidden;transition: box-shadow .24s, transform .24s;}
+        .stat-card:hover {transform: translateY(-1px);box-shadow: 0 14px 30px -22px rgba(16,22,35,.35);}
+        .stat-card::before {content: '';position: absolute;left: 0;top: 0;bottom: 0;width: 3px;background: var(--bar, #0f7b63);}
+        .stat-card .icon {flex: none;width: 42px;height: 42px;border-radius: 11px;display: flex;align-items: center;justify-content: center;font-size: 16px;color: #fff;background: var(--bar, #0f7b63);}
+        .stat-card .info {min-width: 0;}
+        .stat-card .info h3 {font-size: 25px;line-height: 1.15;font-weight: 600;color: #101623;font-variant-numeric: tabular-nums;letter-spacing: -.02em;}
+        .stat-card .info p {font-size: 12.5px;color: #798394;margin-top: 3px;}
+        .stat-card .info em {font-style: normal;color: #a4acba;}
+        .stat-card .info em + em::before {content: '·';margin: 0 5px;}
+
+        .dash-card {background: #fff;border: 1px solid #e8ebf0;border-radius: 12px;margin-bottom: 14px;box-shadow: 0 1px 2px rgba(16,22,35,.04);}
+        .dash-card__head {display: flex;align-items: center;justify-content: space-between;gap: 12px;padding: 13px 18px;border-bottom: 1px solid #eef0f4;}
+        .dash-card__title {display: flex;align-items: center;gap: 8px;font-size: 14.5px;font-weight: 600;color: #101623;}
+        .dash-card__title i {color: #0f7b63;font-size: 13px;}
+        .dash-card__title small {font-weight: 400;color: #9aa3b2;font-size: 12px;margin-left: 2px;}
+        .dash-card__body {padding: 12px 14px 16px;}
+        .seg {display: inline-flex;gap: 2px;background: #f2f4f7;border-radius: 8px;padding: 3px;}
+        .seg button {border: 0;background: transparent;color: #798394;font-size: 12px;padding: 4px 11px;border-radius: 6px;cursor:pointer;transition: all .2s;}
+        .seg button.is-active {background: #fff;color: #0f7b63;font-weight: 600;box-shadow: 0 1px 3px rgba(16,22,35,.12);}
+        .chart {width: 100%;height: 296px;}
+        .chart--sm {height: 296px;}
+        .chart-empty {display: flex;align-items: center;justify-content: center;color: #a4acba;font-size: 13px;}
+
+        .rank {list-style: none;margin: 0;padding: 0;}
+        .rank li {display: flex;align-items: center;gap: 10px;padding: 10px 2px;border-bottom: 1px dashed #eef0f4;font-size: 13px;}
+        .rank li:last-child {border-bottom: 0;}
+        .rank .no {flex: none;width: 20px;height: 20px;line-height: 20px;text-align:center;border-radius: 6px;background: #f2f4f7;color: #798394;font-size: 11px;font-weight: 600;}
+        .rank li:nth-child(-n+3) .no {background: #e8f4f0;color: #0f7b63;}
+        .rank .name {flex: 1;min-width: 0;color: #39424f;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;}
+        .rank .name span {display: block;font-size: 11.5px;color: #a4acba;}
+        .rank .amt {flex: none;color: #101623;font-weight: 600;font-variant-numeric: tabular-nums;}
+        .rank .amt span {display: block;font-weight: 400;font-size: 11.5px;color: #a4acba;text-align: right;}
+        .rank-empty {padding: 34px 0;text-align: center;color: #a4acba;font-size: 13px;}
+
+        .pill {display: inline-block;padding: 1px 9px;border-radius: 999px;font-size: 12px;line-height: 19px;}
+        .pill.pending {background: #fff7e6;color: #c4761a;}
+        .pill.paid {background: #e9f2fb;color: #2f6fb5;}
+        .pill.processing {background: #f1ecfb;color: #6f4fb0;}
+        .pill.shipped {background: #fdeef4;color: #c1457a;}
+        .pill.delivered, .pill.completed {background: #e9f6ee;color: #2f8553;}
+        .pill.cancelled {background: #f2f3f5;color: #798394;}
+        .pill.refunded {background: #fdecec;color: #c53030;}
+
+        .dash-card .layui-table-view {margin: 0;border: 0;}
+        .dash-card .layui-table th {background: #fafbfc;color: #798394;font-weight: 500;}
+        .dash-card .layui-table-view .layui-table td {font-variant-numeric: tabular-nums;}
+
+        @media (max-width: 1180px) {
+            .stat-cards {grid-template-columns: repeat(2, minmax(0, 1fr));}
+        }
+    </style>
+</head>
+<body>
+    <div class="layui-layout layui-layout-admin">
+        <div class="layui-header header">
+            <div class="logo">
+                <i class="fas fa-leaf"></i> 花语轩管理后台
+            </div>
+            <div class="user-info">
+                <span><i class="fas fa-user-circle"></i> 管理员</span>
+                <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+            </div>
+        </div>
+
+        <div class="layui-side layui-bg-black">
+            <div class="layui-side-scroll">
+                <ul class="layui-nav layui-nav-tree" lay-filter="nav">
+                    <li class="layui-nav-item layui-this">
+                        <a href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-th"></i> 商品管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/product-list"><i class="fas fa-box"></i> 商品列表</a></dd>
+                            <dd><a href="/admin/category-list"><i class="fas fa-tags"></i> 分类管理</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-shopping-cart"></i> 订单管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/order-list"><i class="fas fa-list-alt"></i> 订单列表</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-users"></i> 用户管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/user-list"><i class="fas fa-user"></i> 用户列表</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-cog"></i> 系统设置</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/banner-list"><i class="fas fa-image"></i> 轮播图管理</a></dd>
+                            <dd><a href="/admin/notice-list"><i class="fas fa-bullhorn"></i> 公告管理</a></dd>
+                            <dd><a href="/admin/coupon-list"><i class="fas fa-ticket-alt"></i> 优惠券</a></dd>
+                            <dd><a href="/admin/audit-list"><i class="fas fa-history"></i> 操作日志</a></dd>
+                        </dl>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="layui-body">
+            <div class="content-body">
+                <div class="dash-head">
+                    <div>
+                        <h2>经营总览</h2>
+                        <p>成交口径：已支付及后续流转状态订单（已排除待支付、取消、退款）</p>
+                    </div>
+                    <div class="dash-head__ops">
+                        <span class="upd" id="dashUpdated"></span>
+                        <a class="dash-btn" href="/admin/order-list"><i class="fas fa-file-export"></i> 订单管理</a>
+                        <button type="button" class="dash-btn" id="dashRefresh"><i class="fas fa-sync-alt"></i> 刷新</button>
+                    </div>
+                </div>
+
+                <div class="stat-cards">
+                    <div class="stat-card" style="--bar:#1c4b8a">
+                        <div class="icon"><i class="fas fa-box"></i></div>
+                        <div class="info">
+                            <h3 id="productCount">0</h3>
+                            <p>商品总数</p>
+                            <p style="margin-top:2px"><em id="activeProductCount">在售 0</em><em id="categoryCount">分类 0</em></p>
+                        </div>
+                    </div>
+                    <div class="stat-card" style="--bar:#c08a33">
+                        <div class="icon"><i class="fas fa-shopping-bag"></i></div>
+                        <div class="info">
+                            <h3 id="orderCount">0</h3>
+                            <p>订单总数</p>
+                            <p style="margin-top:2px"><em id="pendingOrderCount">待付款 0</em></p>
+                        </div>
+                    </div>
+                    <div class="stat-card" style="--bar:#0f7b63">
+                        <div class="icon"><i class="fas fa-users"></i></div>
+                        <div class="info">
+                            <h3 id="userCount">0</h3>
+                            <p>用户总数</p>
+                            <p style="margin-top:2px"><em id="contentCount">轮播 0 · 公告 0</em></p>
+                        </div>
+                    </div>
+                    <div class="stat-card" style="--bar:#c15b6b">
+                        <div class="icon"><i class="fas fa-coins"></i></div>
+                        <div class="info">
+                            <h3 id="paidAmount">¥0</h3>
+                            <p>累计成交额</p>
+                            <p style="margin-top:2px"><em id="paidCount">成交 0 单</em><em id="avgAmount">客单价 ¥0.00</em></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="layui-row layui-col-space15">
+                    <div class="layui-col-md8">
+                        <div class="dash-card">
+                            <div class="dash-card__head">
+                                <div class="dash-card__title">
+                                    <i class="fas fa-chart-area"></i> 销售趋势 <small id="trendSummary"></small>
+                                </div>
+                                <div class="seg" id="trendSeg">
+                                    <button type="button" data-days="7">近 7 天</button>
+                                    <button type="button" data-days="14" class="is-active">近 14 天</button>
+                                    <button type="button" data-days="30">近 30 天</button>
+                                </div>
+                            </div>
+                            <div class="dash-card__body">
+                                <div class="chart" id="salesTrendChart"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md4">
+                        <div class="dash-card">
+                            <div class="dash-card__head">
+                                <div class="dash-card__title"><i class="fas fa-award"></i> 畅销商品 <small>按成交额</small></div>
+                            </div>
+                            <div class="dash-card__body">
+                                <div class="chart chart--sm" id="topProductsChart"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="layui-row layui-col-space15">
+                    <div class="layui-col-md8">
+                        <div class="dash-card">
+                            <div class="dash-card__head">
+                                <div class="dash-card__title"><i class="fas fa-clock"></i> 最新订单</div>
+                                <a class="dash-btn" href="/admin/order-list">查看全部</a>
+                            </div>
+                            <div class="dash-card__body">
+                                <table class="layui-hide" id="recentOrders" lay-filter="recentOrders"></table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md4">
+                        <div class="dash-card">
+                            <div class="dash-card__head">
+                                <div class="dash-card__title"><i class="fas fa-crown"></i> 消费排行 <small>累计成交 TOP 5</small></div>
+                                <a class="dash-btn" href="/admin/user-list">用户管理</a>
+                            </div>
+                            <div class="dash-card__body">
+                                <ul class="rank" id="spenderRank"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-footer">
+            © 2024 花语轩鲜花销售系统 - 版权所有
+        </div>
+    </div>
+
+    <script type="text/html" id="orderDetailBtn">
+        <a class="layui-btn layui-btn-xs layui-btn-primary" lay-event="detail"><i class="fas fa-eye"></i> 查看</a>
+    </script>
+
+    <script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+    <script th:src="@{/jquery-3.7.1.min.js}"></script>
+    <script th:src="@{/js/echarts.min.js}"></script>
+    <script th:src="@{/js/admin-common.js}"></script>
+    <script th:inline="none">
+        layui.use(['element', 'table', 'layer'], function () {
+            var table = layui.table;
+            var layer = layui.layer;
+
+            var INK = '#101623', MUTED = '#8d97a8', LINE = '#eef0f4', ACCENT = '#0f7b63', GOLD = '#c08a33';
+            var charts = {};
+            var trendDays = 14;
+
+            function num(v) { var n = Number(v); return isFinite(n) ? n : 0; }
+            function money(v, digits) {
+                return '¥' + num(v).toLocaleString('zh-CN', {minimumFractionDigits: digits === 0 ? 0 : 2, maximumFractionDigits: digits === 0 ? 0 : 2});
+            }
+            function fmtTime(v) {
+                if (!v) return '-';
+                return String(v).replace('T', ' ').slice(0, 16);
+            }
+            function empty(el, text) {
+                jQuery(el).addClass('chart-empty').text(text || '暂无数据');
+            }
+            /** 容器可能残留占位文案，重绘前先 dispose 再 init，否则 canvas 被 text() 清掉后图表就消失了 */
+            function mountChart(el) {
+                if (charts[el.id]) charts[el.id].dispose();
+                jQuery(el).removeClass('chart-empty').empty();
+                charts[el.id] = window.echarts.init(el);
+                return charts[el.id];
+            }
+            /** 图表容器可能处于 layui 隐藏列中，尺寸变化后必须显式 resize */
+            function resizeCharts() {
+                for (var k in charts) {
+                    if (charts[k] && !charts[k].isDisposed()) charts[k].resize();
+                }
+            }
+
+            /* ───── KPI ───── */
+            function loadOverview() {
+                huAdmin.request({
+                    url: '/api/admin/stats/overview', silent: true,
+                    ok: function (res) {
+                        var d = res.data || {};
+                        var paidAmount = num(d.paidAmount);
+                        var paidCount = num(d.paidOrderCount);
+                        $('#productCount').text(num(d.productCount));
+                        $('#activeProductCount').text('在售 ' + num(d.activeProductCount));
+                        $('#categoryCount').text('分类 ' + num(d.categoryCount));
+                        $('#orderCount').text(num(d.orderCount));
+                        $('#pendingOrderCount').text('待付款 ' + num(d.pendingOrderCount));
+                        $('#userCount').text(num(d.userCount));
+                        $('#contentCount').text('轮播 ' + num(d.bannerCount) + ' · 公告 ' + num(d.noticeCount));
+                        $('#paidAmount').text(money(paidAmount, 0));
+                        $('#avgAmount').text('客单价 ' + money(paidCount ? paidAmount / paidCount : 0));
+                        $('#paidCount').text('成交 ' + paidCount + ' 单');
+                        $('#dashUpdated').text('更新于 ' + new Date().toLocaleTimeString('zh-CN', {hour12: false}));
+                    },
+                    fail: function (res) { huAdmin.toast(res.msg || '统计数据加载失败', 'err'); }
+                });
+            }
+
+            /* ───── 销售趋势：面积折线 + 订单量柱，双 Y 轴 ───── */
+            function loadTrend() {
+                huAdmin.request({
+                    url: '/api/admin/stats/sales-trend', data: {days: trendDays}, silent: true,
+                    ok: function (res) { renderTrend(res.data || []); },
+                    fail: function () { empty('#salesTrendChart', '趋势数据加载失败'); }
+                });
+            }
+
+            function renderTrend(rows) {
+                if (!window.echarts) return empty('#salesTrendChart', '图表组件未加载');
+                if (!rows.length) return empty('#salesTrendChart');
+
+                var el = document.getElementById('salesTrendChart');
+                var chart = mountChart(el);
+
+                var total = 0, orders = 0;
+                var dates = [], amounts = [], counts = [];
+                for (var i = 0; i < rows.length; i++) {
+                    var r = rows[i];
+                    dates.push(String(r.date || '').slice(5));
+                    amounts.push(num(r.amount));
+                    counts.push(num(r.orders));
+                    total += num(r.amount);
+                    orders += num(r.orders);
+                }
+                $('#trendSummary').text('合计 ' + money(total, 0) + ' / ' + orders + ' 单');
+
+                chart.setOption({
+                    color: [ACCENT, '#d6e7e1'],
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: {type: 'cross', crossStyle: {color: '#c9d1dd'}, lineStyle: {color: '#c9d1dd'}},
+                        backgroundColor: 'rgba(255,255,255,.98)', borderColor: LINE, borderWidth: 1,
+                        padding: [10, 14],
+                        textStyle: {color: INK, fontSize: 12.5},
+                        extraCssText: 'box-shadow:0 12px 30px -18px rgba(16,22,35,.4);border-radius:10px;',
+                        formatter: function (params) {
+                            var html = '<div style="font-weight:600;margin-bottom:6px">' + params[0].axisValue + '</div>';
+                            for (var i = 0; i < params.length; i++) {
+                                var p = params[i];
+                                html += '<div style="display:flex;align-items:center;gap:8px;line-height:20px">'
+                                    + p.marker
+                                    + '<span style="color:' + MUTED + '">' + p.seriesName + '</span>'
+                                    + '<b style="margin-left:auto;font-variant-numeric:tabular-nums">'
+                                    + (p.seriesName === '订单量' ? p.value + ' 单' : money(p.value)) + '</b></div>';
+                            }
+                            return html;
+                        }
+                    },
+                    legend: {data: ['成交额', '订单量'], left: 0, top: 0, itemWidth: 14, itemHeight: 8, itemGap: 18, icon: 'roundRect', textStyle: {color: MUTED, fontSize: 12}},
+                    grid: {left: 6, right: 6, top: 38, bottom: 2, containLabel: true},
+                    xAxis: {
+                        type: 'category', data: dates, boundaryGap: true,
+                        axisLine: {lineStyle: {color: LINE}}, axisTick: {show: false},
+                        axisLabel: {color: MUTED, fontSize: 11.5, hideOverlap: true}
+                    },
+                    yAxis: [
+                        {type: 'value', axisLine: {show: false}, axisTick: {show: false},
+                         axisLabel: {color: MUTED, fontSize: 11.5, formatter: function (v) {return v >= 10000 ? (v / 10000) + '万' : v;}},
+                         splitLine: {lineStyle: {color: LINE, type: 'dashed'}}},
+                        {type: 'value', minInterval: 1, axisLine: {show: false}, axisTick: {show: false},
+                         axisLabel: {color: MUTED, fontSize: 11.5}, splitLine: {show: false}}
+                    ],
+                    series: [
+                        {name: '订单量', type: 'bar', yAxisIndex: 1, data: counts, barMaxWidth: 16,
+                         itemStyle: {color: '#e6efe9', borderRadius: [4, 4, 0, 0]},
+                         emphasis: {itemStyle: {color: '#cfe3db'}}},
+                        {name: '成交额', type: 'line', smooth: 0.32, symbol: 'circle', symbolSize: 6, showSymbol: false,
+                         data: amounts, lineStyle: {width: 2.4, color: ACCENT}, itemStyle: {color: ACCENT, borderColor: '#fff', borderWidth: 1.5},
+                         areaStyle: {color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                             {offset: 0, color: 'rgba(15,123,99,.22)'}, {offset: 1, color: 'rgba(15,123,99,.02)'}])},
+                         emphasis: {focus: 'series'}}
+                    ]
+                }, true);
+            }
+
+            /* ───── 畅销商品：横向柱图 ───── */
+            function loadTopProducts() {
+                huAdmin.request({
+                    url: '/api/admin/stats/top-products', data: {limit: 6}, silent: true,
+                    ok: function (res) { renderTopProducts(res.data || []); },
+                    fail: function () { empty('#topProductsChart', '畅销数据加载失败'); }
+                });
+            }
+
+            function renderTopProducts(rows) {
+                if (!window.echarts) return empty('#topProductsChart', '图表组件未加载');
+                if (!rows.length) return empty('#topProductsChart', '暂无成交商品');
+
+                var el = document.getElementById('topProductsChart');
+                /* 条数少时按行数收高，避免固定高度里柱子被拉得过散 */
+                el.style.height = Math.max(180, rows.length * 44 + 26) + 'px';
+                var chart = mountChart(el);
+
+                var items = rows.slice().reverse();
+                var names = [], amounts = [];
+                for (var i = 0; i < items.length; i++) {
+                    names.push(items[i].productName || '未命名商品');
+                    amounts.push(num(items[i].amount));
+                }
+
+                chart.setOption({
+                    tooltip: {
+                        trigger: 'axis', axisPointer: {type: 'shadow'},
+                        backgroundColor: 'rgba(255,255,255,.98)', borderColor: LINE, borderWidth: 1, padding: [10, 14],
+                        textStyle: {color: INK, fontSize: 12.5},
+                        extraCssText: 'box-shadow:0 12px 30px -18px rgba(16,22,35,.4);border-radius:10px;',
+                        formatter: function (params) {
+                            var d = items[params[0].dataIndex] || {};
+                            return '<div style="font-weight:600;margin-bottom:6px;max-width:220px;white-space:normal">' + huAdmin.esc(d.productName) + '</div>'
+                                + '<div style="color:' + MUTED + ';line-height:20px">成交额 <b style="color:' + INK + '">' + money(d.amount) + '</b></div>'
+                                + '<div style="color:' + MUTED + ';line-height:20px">销量 <b style="color:' + INK + '">' + num(d.quantity) + ' 件</b></div>';
+                        }
+                    },
+                    grid: {left: 4, right: 62, top: 8, bottom: 2, containLabel: true},
+                    xAxis: {type: 'value', axisLine: {show: false}, axisTick: {show: false},
+                            axisLabel: {show: false}, splitLine: {show: false}},
+                    yAxis: {type: 'category', data: names,
+                        axisLine: {show: false}, axisTick: {show: false},
+                        axisLabel: {color: '#39424f', fontSize: 12, width: 96, overflow: 'truncate'}},
+                    series: [{
+                        type: 'bar', barMaxWidth: 13, data: amounts,
+                        /* 横向柱图自下而上绘制，末位即成交额最高的商品，用金色突出榜首 */
+                        itemStyle: {borderRadius: [0, 6, 6, 0], color: function (p) {
+                            return new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                                {offset: 0, color: p.dataIndex === amounts.length - 1 ? '#e0b774' : '#9dc7ba'},
+                                {offset: 1, color: p.dataIndex === amounts.length - 1 ? GOLD : ACCENT}]);
+                        }},
+                        label: {show: true, position: 'right', distance: 8, color: '#39424f', fontSize: 11.5,
+                            fontWeight: 600, formatter: function (p) { return money(p.value, 0); }}
+                    }]
+                }, true);
+            }
+
+            /* ───── 消费排行 ───── */
+            function loadSpenders() {
+                huAdmin.request({
+                    url: '/api/admin/stats/top-spenders', data: {limit: 5}, silent: true,
+                    ok: function (res) {
+                        var rows = res.data || [], html = '';
+                        if (!rows.length) {
+                            $('#spenderRank').html('<li class="rank-empty">暂无消费记录</li>');
+                            return;
+                        }
+                        for (var i = 0; i < rows.length; i++) {
+                            var r = rows[i], name = r.fullName || r.username || '-';
+                            html += '<li>'
+                                + '<span class="no">' + (i + 1) + '</span>'
+                                + '<span class="name">' + huAdmin.esc(name) + '<span>' + huAdmin.esc(r.username || '') + '</span></span>'
+                                + '<span class="amt">' + money(r.amount, 0) + '<span>' + num(r.orders) + ' 单</span></span>'
+                                + '</li>';
+                        }
+                        $('#spenderRank').html(html);
+                    },
+                    fail: function () { $('#spenderRank').html('<li class="rank-empty">排行数据加载失败</li>'); }
+                });
+            }
+
+            /* ───── 最新订单 ───── */
+            function renderOrders(rows) {
+                table.render({
+                    elem: '#recentOrders',
+                    data: rows,
+                    page: false,
+                    limit: rows.length || 10,
+                    even: true,
+                    text: {none: '暂无订单'},
+                    cols: [[
+                        {field: 'orderNo', title: '订单号', width: 178, templet: function (d) {return huAdmin.esc(d.orderNo);}},
+                        {field: 'userName', title: '用户', width: 96, templet: function (d) {
+                            return huAdmin.esc(d.userName || '-') + '<br><small style="color:#a4acba">' + huAdmin.esc(d.userPhone || '') + '</small>';
+                        }},
+                        {field: 'payAmount', title: '实付', width: 100, align: 'right', templet: function (d) {return money(d.payAmount);}},
+                        {field: 'status', title: '状态', width: 86, align: 'center', templet: function (d) {
+                            return '<span class="pill ' + huAdmin.esc(d.status || '') + '">' + huAdmin.esc(d.statusLabel || d.status || '-') + '</span>';
+                        }},
+                        {field: 'createdAt', title: '下单时间', minWidth: 140, templet: function (d) {return fmtTime(d.createdAt);}},
+                        {title: '操作', width: 74, align: 'center', toolbar: '#orderDetailBtn'}
+                    ]]
+                });
+            }
+
+            function loadRecentOrders() {
+                huAdmin.request({
+                    url: '/api/admin/orders/recent', data: {limit: 8}, silent: true,
+                    ok: function (res) { renderOrders(res.data || []); },
+                    fail: function (res) { huAdmin.toast(res.msg || '最新订单加载失败', 'err'); renderOrders([]); }
+                });
+            }
+
+            table.on('tool(recentOrders)', function (obj) {
+                if (obj.event === 'detail') {
+                    layer.open({
+                        type: 2, title: '订单详情', area: ['860px', '640px'],
+                        content: '/admin/order-detail/' + obj.data.id
+                    });
+                }
+            });
+
+            jQuery('#trendSeg').on('click', 'button', function () {
+                var days = Number(this.getAttribute('data-days'));
+                if (!days || days === trendDays) return;
+                trendDays = days;
+                jQuery('#trendSeg button').removeClass('is-active');
+                jQuery(this).addClass('is-active');
+                loadTrend();
+            });
+
+            function loadAll() {
+                loadOverview();
+                loadTrend();
+                loadTopProducts();
+                loadSpenders();
+                loadRecentOrders();
+            }
+
+            jQuery('#dashRefresh').on('click', function () {
+                /* 统计接口有 60s 缓存，手动刷新时先服务端失效再重拉，否则按钮形同虚设 */
+                huAdmin.request({url: '/api/admin/stats/refresh', type: 'POST', silent: true, ok: loadAll, fail: loadAll});
+            });
+
+            var timer = null;
+            jQuery(window).on('resize', function () {
+                clearTimeout(timer);
+                timer = setTimeout(resizeCharts, 180);
+            });
+
+            loadAll();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商品编辑 - 花语轩</title>
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <style>
+        body { background: var(--ad-paper, #f6f5f1); padding: 18px 22px 78px; }
+        .layui-form-label { width: 92px; }
+        .layui-input-block { margin-left: 122px; }
+        .dialog-foot { position: fixed; left: 0; right: 0; bottom: 0; background: #fff;
+            border-top: 1px solid #e8e3d9; padding: 12px 22px; text-align: right; }
+        .sec-title { font-size: 13px; color: #6f7d5c; letter-spacing: .08em; margin: 18px 0 10px 0;
+            padding-left: 122px; border-left: 3px solid #6f7d5c; padding-left: 9px; }
+        .preview { display: inline-block; width: 92px; height: 92px; border: 1px solid #e8e3d9;
+            background-size: cover; background-position: center; vertical-align: middle; margin-left: 8px; }
+        .tip { color: #8a8578; font-size: 12px; margin-left: 122px; margin-top: 4px; }
+    </style>
+</head>
+<body>
+<form class="layui-form" id="productForm" lay-filter="productForm" autocomplete="off">
+    <div class="sec-title">基础信息</div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">商品名称<span style="color:#b3897a">*</span></label>
+        <div class="layui-input-block">
+            <input type="text" name="name" maxlength="100" class="layui-input" lay-verify="required" lay-reqtext="请填写商品名称">
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">商品编码</label>
+        <div class="layui-input-block">
+            <input type="text" name="code" maxlength="50" class="layui-input" placeholder="留空则由系统归档，如 ROSE-R11">
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">所属分类<span style="color:#b3897a">*</span></label>
+        <div class="layui-input-block">
+            <select name="categoryId" id="categorySelect" lay-verify="required" lay-reqtext="请选择商品分类">
+                <option value="">请选择分类</option>
+            </select>
+        </div>
+    </div>
+    <div class="layui-form-item layui-form-text">
+        <label class="layui-form-label">商品描述</label>
+        <div class="layui-input-block">
+            <textarea name="description" maxlength="2000" class="layui-textarea" rows="3" placeholder="一句话介绍这束花的寓意与规格"></textarea>
+        </div>
+    </div>
+
+    <div class="sec-title">价格与库存</div>
+    <div class="layui-form-item">
+        <div class="layui-inline">
+            <label class="layui-form-label">售价<span style="color:#b3897a">*</span></label>
+            <div class="layui-input-inline">
+                <input type="number" name="price" min="0.01" step="0.01" class="layui-input" lay-verify="required|number" lay-reqtext="请填写售价">
+            </div>
+        </div>
+        <div class="layui-inline">
+            <label class="layui-form-label">划线价</label>
+            <div class="layui-input-inline">
+                <input type="number" name="originalPrice" min="0" step="0.01" class="layui-input" placeholder="选填">
+            </div>
+        </div>
+        <div class="layui-inline">
+            <label class="layui-form-label">库存<span style="color:#b3897a">*</span></label>
+            <div class="layui-input-inline">
+                <input type="number" name="stock" min="0" max="999999" value="0" class="layui-input" lay-verify="required|number" lay-reqtext="请填写库存">
+            </div>
+        </div>
+    </div>
+
+    <div class="sec-title">图片</div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">主图</label>
+        <div class="layui-input-block">
+            <input type="text" name="mainImage" id="mainImage" maxlength="500" class="layui-input"
+                   placeholder="/img/products/rose-red.svg 或 https 开头的图片地址">
+            <span class="preview" id="previewMain"></span>
+            <div class="tip">仅支持站内相对路径与 http(s) 外链，禁止 javascript: / data: 协议</div>
+        </div>
+    </div>
+    <div class="layui-form-item layui-form-text">
+        <label class="layui-form-label">图集</label>
+        <div class="layui-input-block">
+            <textarea name="images" maxlength="4000" class="layui-textarea" rows="2" placeholder="多个地址以英文逗号分隔"></textarea>
+        </div>
+    </div>
+
+    <div class="sec-title">属性与标签</div>
+    <div class="layui-form-item">
+        <div class="layui-inline">
+            <label class="layui-form-label">单位</label>
+            <div class="layui-input-inline">
+                <input type="text" name="unit" maxlength="20" class="layui-input" placeholder="束">
+            </div>
+        </div>
+        <div class="layui-inline">
+            <label class="layui-form-label">枝数/规格</label>
+            <div class="layui-input-inline">
+                <input type="text" name="weight" maxlength="50" class="layui-input" placeholder="11 枝">
+            </div>
+        </div>
+        <div class="layui-inline">
+            <label class="layui-form-label">花材</label>
+            <div class="layui-input-inline">
+                <input type="text" name="material" maxlength="100" class="layui-input" placeholder="红玫瑰、尤加利">
+            </div>
+        </div>
+        <div class="layui-inline">
+            <label class="layui-form-label">包装</label>
+            <div class="layui-input-inline">
+                <input type="text" name="packaging" maxlength="100" class="layui-input" placeholder="雾面纸 + 缎带">
+            </div>
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">营销标签</label>
+        <div class="layui-input-block">
+            <input type="text" name="tags" maxlength="200" class="layui-input" placeholder="逗号分隔，如：爱情表白,情人节">
+        </div>
+    </div>
+
+    <div class="sec-title">状态</div>
+    <div class="layui-form-item">
+        <div class="layui-inline">
+            <label class="layui-form-label">上架</label>
+            <div class="layui-input-inline"><input type="checkbox" name="isActive" checked lay-skin="switch" lay-text="上架|下架"></div>
+        </div>
+        <div class="layui-inline">
+            <label class="layui-form-label">精选</label>
+            <div class="layui-input-inline"><input type="checkbox" name="isFeatured" lay-skin="switch" lay-text="是|否"></div>
+        </div>
+        <div class="layui-inline">
+            <label class="layui-form-label">新品</label>
+            <div class="layui-input-inline"><input type="checkbox" name="isNew" lay-skin="switch" lay-text="是|否"></div>
+        </div>
+    </div>
+
+    <div class="dialog-foot">
+        <button type="button" class="layui-btn layui-btn-primary" id="btnCancel">取消</button>
+        <button type="submit" class="layui-btn" lay-submit lay-filter="save" id="btnSave">保存</button>
+    </div>
+</form>
+
+<script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+<script th:src="@{/jquery-3.7.1.min.js}"></script>
+<script th:inline="none">
+    layui.use(['form', 'layer'], function () {
+        var form = layui.form;
+        var layer = layui.layer;
+        var id = new URLSearchParams(location.search).get('id');
+        if (id) $('#btnSave').text('保存修改');
+
+        function switchVal(name, target) {
+            var el = jQuery('[name="' + name + '"]');
+            return el.is(':checked') === target;
+        }
+
+        function closeSelf(refresh) {
+            var index = parent.layer.getFrameIndex(window.name);
+            if (refresh) parent.layui.table.reload('productTable');
+            parent.layer.close(index);
+        }
+
+        function safePreviewUrl(url) {
+            if (!url) return '';
+            if (url.charAt(0) === '/') return url;
+            return /^https?:\/\//i.test(url) ? url : '';
+        }
+
+        function renderPreview() {
+            $('#previewMain').css('background-image', safePreviewUrl($('#mainImage').val())
+                ? 'url(' + safePreviewUrl($('#mainImage').val()) + ')' : 'none');
+        }
+
+        $('#mainImage').on('input', renderPreview);
+        $('#btnCancel').on('click', function () { closeSelf(false); });
+
+        // 分类下拉：后台写接口路径，避免与公开只读接口混用
+        $.get('/api/admin/categories', {page: 1, limit: 100}, function (res) {
+            if (res.code !== 200) return;
+            var options = (res.data || []).map(function (c) {
+                return '<option value="' + c.id + '">' + $('<i>').text(c.name).html() + '</option>';
+            }).join('');
+            $('#categorySelect').html('<option value="">请选择分类</option>' + options);
+            form.render('select');
+            if (id && loaded) applyCategory(loaded.category && loaded.category.id);
+        });
+
+        var loaded = null;
+
+        function applyCategory(categoryId) {
+            if (!categoryId) return;
+            $('#categorySelect').val(categoryId);
+            form.render('select');
+        }
+
+        if (id) {
+            $.get('/api/admin/products/' + id, function (res) {
+                if (res.code !== 200) { layer.msg(res.msg || '商品不存在', {icon: 2}); return; }
+                loaded = res.data;
+                form.val('productForm', {
+                    name: loaded.name || '',
+                    code: loaded.code || '',
+                    description: loaded.description || '',
+                    price: loaded.price,
+                    originalPrice: loaded.originalPrice || '',
+                    stock: loaded.stock == null ? 0 : loaded.stock,
+                    mainImage: loaded.mainImage || '',
+                    images: loaded.images || '',
+                    unit: loaded.unit || '',
+                    weight: loaded.weight || '',
+                    material: loaded.material || '',
+                    packaging: loaded.packaging || '',
+                    tags: loaded.tags || '',
+                    isActive: !!loaded.isActive,
+                    isFeatured: !!loaded.isFeatured,
+                    isNew: !!loaded.isNew
+                });
+                applyCategory(loaded.category && loaded.category.id);
+                renderPreview();
+            });
+        }
+
+        form.on('submit(save)', function (data) {
+            var f = data.field;
+            var payload = {
+                name: $.trim(f.name || ''),
+                code: $.trim(f.code || ''),
+                description: $.trim(f.description || ''),
+                price: parseFloat(f.price),
+                originalPrice: f.originalPrice === '' ? null : parseFloat(f.originalPrice),
+                categoryId: f.categoryId || null,
+                stock: parseInt(f.stock, 10) || 0,
+                mainImage: $.trim(f.mainImage || ''),
+                images: $.trim(f.images || ''),
+                unit: $.trim(f.unit || ''),
+                weight: $.trim(f.weight || ''),
+                material: $.trim(f.material || ''),
+                packaging: $.trim(f.packaging || ''),
+                tags: $.trim(f.tags || ''),
+                isActive: switchVal('isActive', true),
+                isFeatured: switchVal('isFeatured', true),
+                isNew: switchVal('isNew', true)
+            };
+            $.ajax({
+                url: id ? '/api/admin/products/' + id : '/api/admin/products',
+                type: id ? 'PUT' : 'POST',
+                contentType: 'application/json;charset=UTF-8',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.code === 200) {
+                        parent.layer.msg(res.msg || '保存成功', {icon: 1});
+                        closeSelf(true);
+                    } else {
+                        layer.msg(res.msg || '保存失败', {icon: 2});
+                    }
+                },
+                error: function () { layer.msg('网络异常，请稍后重试', {icon: 2}); }
+            });
+            return false;
+        });
+    });
+</script>
+</body>
+</html>

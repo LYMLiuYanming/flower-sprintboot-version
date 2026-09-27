@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title th:text="${notice.title} + ' · 花语轩公告'">公告详情 · 花语轩</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<div class="hu-pagehead">
+    <div class="hu-container hu-pagehead__row">
+        <div>
+            <div class="hu-crumb"><a href="/index">首页</a> / <span>公告详情</span></div>
+            <h1 th:text="${notice.title}">公告标题</h1>
+            <p class="hu-pagehead__sub">
+                <span th:switch="${notice.noticeType}">
+                    <span th:case="'system'">系统公告</span>
+                    <span th:case="'activity'">活动公告</span>
+                    <span th:case="*">通用公告</span>
+                </span>
+                · <span th:text="${#strings.replace(#strings.substring(notice.createdAt.toString(), 0, 16), 'T', ' ')}">发布时间</span>
+                · 浏览 <span th:text="${notice.viewCount}">0</span> 次
+            </p>
+        </div>
+        <div class="hu-pagehead__aside">
+            <a class="hu-btn hu-btn--ghost" href="/index"><i class="fa fa-arrow-left"></i> 返回首页</a>
+        </div>
+    </div>
+</div>
+
+<div class="hu-container" style="padding-bottom: 64px">
+    <div class="hu-panel hu-panel--pad">
+        <!-- 正文由后台富文本录入，入库前已经 HtmlSanitizer 白名单清洗 -->
+        <div class="hu-prose" th:utext="${notice.content}">公告正文</div>
+    </div>
+</div>
+
+<div th:replace="~{common/footer :: footer}"></div>
+</body>
+</html>

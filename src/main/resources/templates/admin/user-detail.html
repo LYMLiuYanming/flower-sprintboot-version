@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户详情 - 花语轩管理后台</title>
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
+    <style>
+        body {background: #f1f1f1;}
+    </style>
+</head>
+<body>
+    <div class="layui-layout layui-layout-admin">
+        <div class="layui-body" style="left: 0;">
+            <div class="content-body" style="padding: 20px;">
+                <div class="layui-card">
+                    <div class="layui-card-header">
+                        <i class="fas fa-user-circle"></i> 用户详情
+                    </div>
+                    <div class="layui-card-body">
+                        <table class="layui-table" lay-skin="line">
+                            <colgroup>
+                                <col width="150">
+                                <col>
+                            </colgroup>
+                            <tbody id="userInfo">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+    <script th:src="@{/jquery-3.7.1.min.js}"></script>
+    <script th:src="@{/js/admin-common.js}"></script>
+    <script th:inline="none">
+        layui.use(['layer'], function () {
+            var id = window.location.pathname.split('/').pop();
+
+            function esc(value) {
+                return huAdmin.esc(value === null || value === undefined || value === '' ? '-' : value);
+            }
+
+            /** 后端 LocalDateTime / LocalDate 直接截断展示，避免 Date 解析带来的时区偏移 */
+            function fmtDateTime(v) {
+                if (!v) return '-';
+                return String(v).replace('T', ' ').replace(/\.\d+$/, '');
+            }
+
+            function row(label, value) {
+                return '<tr><td>' + label + '</td><td>' + value + '</td></tr>';
+            }
+
+            function render(user) {
+                var statusMap = {'active': '正常', 'inactive': '禁用', 'locked': '锁定'};
+                var memberMap = {'ordinary': '普通会员', 'vip': 'VIP会员'};
+                var genderMap = {'male': '男', 'female': '女', 'other': '其他'};
+
+                // 字段全部取自 UserView（后端已剔除 password），文本一律转义后再写入 DOM
+                $('#userInfo').html(
+                    row('用户名：', esc(user.username)) +
+                    row('姓名：', esc(user.fullName)) +
+                    row('身份：', user.userType === 'admin' ? '管理员' : '顾客') +
+                    row('手机号：', esc(user.phone)) +
+                    row('邮箱：', esc(user.email)) +
+                    row('性别：', esc(genderMap[user.gender] || '未填写')) +
+                    row('生日：', esc(user.birthday)) +
+                    row('会员等级：', esc(memberMap[user.memberLevel] || user.memberLevel)) +
+                    row('积分：', esc(user.points == null ? 0 : user.points)) +
+                    row('账号状态：', esc(statusMap[user.status] || user.status)) +
+                    row('需改密码：', user.mustChangePassword ? '是（下次登录必须修改）' : '否') +
+                    row('最后登录：', user.lastLoginTime ? fmtDateTime(user.lastLoginTime) : '从未登录') +
+                    row('注册时间：', fmtDateTime(user.createdAt))
+                );
+            }
+
+            huAdmin.request({
+                url: '/api/admin/users/' + encodeURIComponent(id),
+                silent: true,
+                ok: function (res) { render(res.data || {}); },
+                fail: function (res) {
+                    huAdmin.toast(res.msg || '用户信息加载失败', 'err');
+                    $('#userInfo').html('<tr><td colspan="2" style="text-align:center;color:#b3646a">'
+                        + esc(res.msg || '用户信息加载失败') + '</td></tr>');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

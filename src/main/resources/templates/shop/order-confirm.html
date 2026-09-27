@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>确认订单 · 花语轩</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<div class="hu-pagehead">
+    <div class="hu-container">
+        <div class="hu-crumb"><a href="/index">首页</a> / <a href="/cart">购物车</a> / <span>确认订单</span></div>
+        <h1>确认订单</h1>
+        <p class="hu-muted" style="margin:8px 0 0;font-size:14px">核对收花信息与商品清单，让心意准确抵达</p>
+    </div>
+</div>
+
+<div class="hu-container">
+    <div id="orderContent" class="hu-cart" style="display:none">
+        <div style="min-width:0;display:flex;flex-direction:column;gap:20px">
+
+            <!-- 收货信息 -->
+            <section class="hu-panel">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2><i class="fa fa-map-marker" style="color:var(--hu-accent);margin-right:9px"></i>收货信息</h2>
+                        <p>选择已保存的地址，或使用新的收花地址</p>
+                    </div>
+                    <a href="/user/addresses" class="hu-link" style="font-size:13px">管理地址 <i class="fa fa-long-arrow-right"></i></a>
+                </div>
+                <div style="padding:20px 22px">
+                    <div id="addrList" class="hu-stack"></div>
+                    <label class="hu-radio-card" id="addrNewCard" style="margin-top:12px">
+                        <input type="radio" name="addrMode" value="new" hidden>
+                        <span class="dot"></span>
+                        <i class="fa fa-plus-circle" style="color:var(--hu-accent);font-size:18px"></i>
+                        <span>使用新地址</span>
+                    </label>
+
+                    <div id="newAddrForm" style="display:none;margin-top:18px;padding-top:20px;border-top:1px dashed var(--hu-line-strong)">
+                        <div class="hu-form-grid">
+                            <div class="hu-field">
+                                <label for="receiverName">收货人 *</label>
+                                <input type="text" id="receiverName" class="hu-input" placeholder="请输入收花人姓名" maxlength="50">
+                            </div>
+                            <div class="hu-field">
+                                <label for="receiverPhone">联系电话 *</label>
+                                <input type="tel" id="receiverPhone" class="hu-input" placeholder="11 位手机号" maxlength="11">
+                            </div>
+                        </div>
+                        <div class="hu-form-grid" style="grid-template-columns:1fr 1fr 1fr">
+                            <div class="hu-field">
+                                <label for="province">省份</label>
+                                <input type="text" id="province" class="hu-input" placeholder="如 上海市" maxlength="30">
+                            </div>
+                            <div class="hu-field">
+                                <label for="city">城市</label>
+                                <input type="text" id="city" class="hu-input" placeholder="如 上海市" maxlength="30">
+                            </div>
+                            <div class="hu-field">
+                                <label for="district">区/县</label>
+                                <input type="text" id="district" class="hu-input" placeholder="如 徐汇区" maxlength="30">
+                            </div>
+                        </div>
+                        <div class="hu-field" style="margin-bottom:0">
+                            <label for="detail">详细地址 *</label>
+                            <input type="text" id="detail" class="hu-input" placeholder="街道、门牌号、楼层房间号" maxlength="255">
+                        </div>
+                        <label class="hu-check" style="margin-top:14px">
+                            <input type="checkbox" id="saveAddress" checked> 保存这次填写的地址，方便下次使用
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 商品清单 -->
+            <section class="hu-panel">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2><i class="fa fa-list-ol" style="color:var(--hu-accent);margin-right:9px"></i>商品清单</h2>
+                        <p>价格与库存由服务端实时核算</p>
+                    </div>
+                    <span class="hu-muted" style="font-size:13px">共 <b id="itemKinds">0</b> 种</span>
+                </div>
+                <div id="orderItems" class="hu-cart__list" style="padding:4px 6px"></div>
+            </section>
+
+            <!-- 优惠券 -->
+            <section class="hu-panel" id="couponPanel" style="display:none">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2><i class="fa fa-ticket" style="color:var(--hu-accent);margin-right:9px"></i>优惠券</h2>
+                        <p>可抵金额按当前清单由服务端算出，一单限用一张</p>
+                    </div>
+                    <a href="/user/coupons" class="hu-link" style="font-size:13px">领券中心 <i class="fa fa-long-arrow-right"></i></a>
+                </div>
+                <div style="padding:0 22px 22px">
+                    <div id="couponList" class="hu-stack"></div>
+                </div>
+            </section>
+
+            <!-- 支付方式 -->
+            <section class="hu-panel hu-panel--pad">
+                <h3 class="hu-side-title" style="margin-bottom:16px">支付方式</h3>
+                <div class="hu-stack" id="payMethods">
+                    <label class="hu-radio-card is-active">
+                        <input type="radio" name="payMethod" value="wechat" hidden checked>
+                        <span class="dot"></span>
+                        <i class="fa fa-wechat" style="color:#4daf29;font-size:20px"></i>
+                        <span>微信支付<i class="fa fa-check-circle" style="color:var(--hu-accent);margin-left:8px"></i></span>
+                        <em class="hu-radio-card__note">下单后可在订单详情完成支付</em>
+                    </label>
+                    <label class="hu-radio-card">
+                        <input type="radio" name="payMethod" value="alipay" hidden>
+                        <span class="dot"></span>
+                        <i class="fa fa-alipay" style="color:#1677ff;font-size:20px"></i>
+                        <span>支付宝</span>
+                    </label>
+                    <label class="hu-radio-card">
+                        <input type="radio" name="payMethod" value="balance" hidden>
+                        <span class="dot"></span>
+                        <i class="fa fa-btc" style="color:var(--hu-gold);font-size:20px"></i>
+                        <span>账户余额</span>
+                    </label>
+                    <label class="hu-radio-card">
+                        <input type="radio" name="payMethod" value="offline" hidden>
+                        <span class="dot"></span>
+                        <i class="fa fa-money" style="color:var(--hu-muted);font-size:20px"></i>
+                        <span>线下送达支付</span>
+                    </label>
+                </div>
+
+                <h3 class="hu-side-title" style="margin:26px 0 12px">配送备注</h3>
+                <textarea id="remark" class="hu-textarea" maxlength="500" placeholder="贺卡祝福语、指定送达时间、收花人不在时的处理约定等（选填）"></textarea>
+            </section>
+        </div>
+
+        <!-- 金额摘要 -->
+        <aside class="hu-summary hu-panel hu-panel--pad">
+            <h3>订单金额</h3>
+            <div class="hu-summary__row"><span>商品总价</span><span>¥<span id="itemTotal">0.00</span></span></div>
+            <div class="hu-summary__row" id="vipRow" style="display:none"><span>VIP 会员 95 折</span><span style="color:var(--hu-accent-deep)">−¥<span id="vipDiscount">0.00</span></span></div>
+            <div class="hu-summary__row" id="couponRow" style="display:none"><span>优惠券</span><span style="color:var(--hu-accent-deep)">−¥<span id="couponDiscount">0.00</span></span></div>
+            <div class="hu-summary__row"><span>配送费用</span><span style="color:var(--hu-accent-deep)">免运费</span></div>
+            <div class="hu-summary__row"><span>贺卡定制</span><span style="color:var(--hu-accent-deep)">免费</span></div>
+            <div class="hu-summary__row" id="pointsRow" style="display:none;align-items:flex-start">
+                <span style="flex:1">
+                    <label class="hu-check"><input type="checkbox" id="usePoints"> 积分抵扣</label>
+                    <em style="display:block;font-style:normal;font-size:12px;color:var(--hu-muted);margin-top:4px">
+                        可用 <b id="pointsOwned">0</b> 分，本单最多抵 ¥<span id="pointsMax">0.00</span>
+                    </em>
+                </span>
+                <span style="color:var(--hu-accent-deep)">−¥<span id="pointsDeduct">0.00</span></span>
+            </div>
+            <div class="hu-summary__total">
+                <span>应付金额</span>
+                <span class="hu-price"><small>¥</small><span id="payAmount">0.00</span></span>
+            </div>
+            <div class="hu-summary__hint"><span>本单预估可得积分</span><b id="pointsEarn">0</b></div>
+            <button type="button" id="submitOrder" class="hu-btn hu-btn--solid hu-btn--block" style="margin-top:22px">提交订单</button>
+            <p style="font-size:12px;color:var(--hu-muted);text-align:center;margin:14px 0 0">
+                提交即表示同意 <a href="/index#about" style="color:var(--hu-accent)">《花语轩配送服务协议》</a>
+            </p>
+        </aside>
+    </div>
+
+    <div id="fallback" class="hu-empty" style="margin:36px 0 80px">
+        <i class="fa fa-spinner fa-spin"></i>
+        <strong>正在准备结算信息…</strong>
+    </div>
+    <div style="height:64px"></div>
+</div>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<script th:inline="javascript">
+    const PH_IMAGE = /*[[@{/img/product-placeholder.svg}]]*/ '/img/product-placeholder.svg';
+    const CHECKOUT_KEY = 'huCheckoutItems';
+
+    let cartItems = [];      // 本次要下单的购物车行
+    let addresses = [];
+    let member = {vip: false, points: 0};
+    let couponOptions = [];  // /api/coupons/quote 返回，discount 由服务端算出
+    let couponChoice = '';   // '' 表示不使用
+
+    function money(v) {
+        return window.huMoney(v);
+    }
+
+    /** 展示口径与 PointsPolicy 对齐，最终金额仍以服务端返回为准 */
+    function calc() {
+        const goods = cartItems.reduce(function (sum, i) { return sum + (Number(i.subtotal) || 0); }, 0);
+        const vip = member.vip ? Number((goods * 0.05).toFixed(2)) : 0;
+        const chosen = couponOptions.filter(function (c) { return c.id === couponChoice; })[0];
+        const coupon = chosen && chosen.discount != null ? Number(chosen.discount) : 0;
+        const afterVip = Math.max(goods - vip - coupon, 0);
+        const maxDeduct = Math.min(Number((afterVip * 0.2).toFixed(2)), member.points / 100);
+        const deduct = ($('#usePoints').prop('checked') && maxDeduct > 0) ? maxDeduct : 0;
+        const pay = Math.max(afterVip - deduct, 0.01);
+        $('#itemTotal').text(money(goods));
+        $('#vipRow').toggle(vip > 0);
+        $('#vipDiscount').text(money(vip));
+        $('#couponRow').toggle(coupon > 0);
+        $('#couponDiscount').text(money(coupon));
+        $('#pointsRow').toggle(member.points > 0 && maxDeduct > 0);
+        $('#pointsOwned').text(member.points);
+        $('#pointsMax').text(money(maxDeduct));
+        $('#pointsDeduct').text(money(deduct));
+        $('#payAmount').text(money(pay));
+        $('#pointsEarn').text(Math.floor(pay));
+        return {goods: goods, deduct: deduct};
+    }
+
+    /** 券卡片：discount 为空表示当前清单不满足门槛，置灰不可选 */
+    function renderCoupons() {
+        if (!couponOptions.length) {
+            $('#couponPanel').hide();
+            return;
+        }
+        $('#couponPanel').show();
+        let html = '<label class="hu-radio-card' + (couponChoice === '' ? ' is-active' : '') + '">' +
+            '<input type="radio" name="coupon" value="" hidden' + (couponChoice === '' ? ' checked' : '') + '>' +
+            '<span class="dot"></span>' +
+            '<i class="fa fa-ban" style="color:var(--hu-muted);font-size:18px"></i>' +
+            '<span>不使用优惠券</span></label>';
+        couponOptions.forEach(function (c) {
+            const usable = c.discount != null;
+            html += '<label class="hu-radio-card' + (couponChoice === c.id ? ' is-active' : '') +
+                '" style="' + (usable ? '' : 'opacity:.6') + '">' +
+                '<input type="radio" name="coupon" value="' + window.huEscape(c.id) + '" hidden' +
+                (usable ? '' : ' disabled') + (couponChoice === c.id ? ' checked' : '') + '>' +
+                '<span class="dot"></span>' +
+                '<span style="flex:1;min-width:0">' +
+                '<b style="font-size:15px">' + window.huEscape(c.name) + '</b>' +
+                '<span class="hu-pill hu-pill--muted" style="margin-left:10px">' + window.huEscape(c.ruleText || '') + '</span>' +
+                '<em style="display:block;font-style:normal;font-size:12.5px;color:var(--hu-muted);margin-top:5px">' +
+                '有效期至 ' + window.huEscape(String(c.expireAt || '').slice(0, 10)) + '</em></span>' +
+                '<em class="hu-radio-card__note">' +
+                (usable ? '本单可抵 <b style="color:var(--hu-accent-deep);font-size:14px">¥' + money(c.discount) + '</b>'
+                    : '满 ' + money(c.threshold) + ' 可用') + '</em></label>';
+        });
+        $('#couponList').html(html);
+    }
+
+    function loadCoupons() {
+        couponChoice = '';
+        couponOptions = [];
+        huApi({
+            url: '/api/coupons/quote',
+            type: 'POST',
+            silent: true,
+            data: {items: cartItems.map(function (i) { return {productId: i.product.id, quantity: i.quantity}; })},
+            ok: function (data) {
+                couponOptions = (data && data.coupons) || [];
+                const best = couponOptions.filter(function (c) { return c.discount != null; })[0];
+                if (best) couponChoice = best.id;   // 服务端已按可抵金额倒序，默认选最划算的一张
+                renderCoupons();
+                calc();
+            },
+            fail: function () {
+                $('#couponPanel').hide();
+                renderCoupons();
+            }
+        });
+    }
+
+    function renderItems() {
+        let html = '';
+        cartItems.forEach(function (item) {
+            const p = item.product || {};
+            html += '<div class="hu-cart-row hu-cart-row--plain">' +
+                '<a href="/product/' + p.id + '" class="hu-cart-row__media"><img src="' + window.huEscape(p.mainImage || PH_IMAGE) + '" alt="' + window.huEscape(p.name || '') + '"></a>' +
+                '<div class="hu-cart-row__info">' +
+                '<div class="hu-cart-row__name">' + window.huEscape(p.name || '商品已失效') + '</div>' +
+                '<div class="hu-cart-row__cat">¥' + money(item.price) + ' × ' + item.quantity + ' ' + window.huEscape(p.unit || '束') + '</div>' +
+                '</div>' +
+                '<div class="hu-cart-row__sub hu-cart-row__price">¥' + money(item.subtotal) + '</div>' +
+                '</div>';
+        });
+        $('#orderItems').html(html);
+        $('#itemKinds').text(cartItems.length);
+    }
+
+    function renderAddresses() {
+        if (!addresses.length) {
+            $('#addrList').html('<p class="hu-muted" style="margin:0;font-size:14px">还没有保存的收花地址，请填写新地址</p>');
+            selectNewAddress();
+            return;
+        }
+        let html = '';
+        addresses.forEach(function (a, idx) {
+            html += '<label class="hu-radio-card' + (idx === 0 ? ' is-active' : '') + '">' +
+                '<input type="radio" name="addrMode" value="' + a.id + '" hidden' + (idx === 0 ? ' checked' : '') + '>' +
+                '<span class="dot"></span>' +
+                '<span style="flex:1;min-width:0">' +
+                '<b style="font-size:15px">' + window.huEscape(a.receiverName) + '</b>' +
+                '<span class="hu-muted" style="margin-left:10px;font-size:13px">' + window.huEscape(a.receiverPhone) + '</span>' +
+                (a.tag ? '<span class="hu-pill hu-pill--muted" style="margin-left:10px">' + window.huEscape(a.tag) + '</span>' : '') +
+                (a.isDefault ? '<span class="hu-pill hu-pill--ok" style="margin-left:8px">默认</span>' : '') +
+                '<em style="display:block;font-style:normal;font-size:13px;color:var(--hu-muted);margin-top:5px;line-height:1.6">' +
+                window.huEscape(a.fullAddress || '') + '</em></span></label>';
+        });
+        $('#addrList').html(html);
+    }
+
+    function selectNewAddress() {
+        $('#addrNewCard').addClass('is-active').find('input').prop('checked', true);
+        $('#newAddrForm').show();
+    }
+
+    function currentAddrMode() {
+        return $('input[name="addrMode"]:checked').val() || 'new';
+    }
+
+    function prefillFromAddress(a) {
+        $('#receiverName').val(a.receiverName || '');
+        $('#receiverPhone').val(a.receiverPhone || '');
+        $('#province').val(a.province || '');
+        $('#city').val(a.city || '');
+        $('#district').val(a.district || '');
+        $('#detail').val(a.detail || '');
+    }
+
+    function pickCartItems() {
+        let stored = [];
+        try {
+            stored = JSON.parse(sessionStorage.getItem(CHECKOUT_KEY) || '[]');
+        } catch (e) {
+            stored = [];
+        }
+        const usable = cartItems.filter(function (i) {
+            return i.product && i.productActive !== false && (i.stock == null || i.stock > 0);
+        });
+        const picked = usable.filter(function (i) {
+            return stored.indexOf(String(i.id)) >= 0 || stored.indexOf(i.id) >= 0;
+        });
+        cartItems = picked.length ? picked : usable;
+    }
+
+    function removeCheckedFromCart(done) {
+        const ids = cartItems.map(function (i) { return i.id; });
+        let pending = ids.length;
+        if (!pending) return done();
+        ids.forEach(function (id) {
+            $.ajax({
+                url: '/api/cart/item/' + id,
+                type: 'DELETE',
+                complete: function () {
+                    if (--pending === 0) {
+                        sessionStorage.removeItem(CHECKOUT_KEY);
+                        done();
+                    }
+                }
+            });
+        });
+    }
+
+    function submit() {
+        const mode = currentAddrMode();
+        let draft = null;
+        const payload = {
+            items: cartItems.map(function (i) {
+                return {productId: i.product.id, quantity: i.quantity};
+            }),
+            remark: $('#remark').val().trim() || null,
+            payMethod: $('input[name="payMethod"]:checked').val(),
+            clearCart: false
+        };
+        const amount = calc();
+        if (couponChoice) {
+            payload.userCouponId = couponChoice;
+        }
+        if ($('#usePoints').prop('checked') && amount.deduct > 0) {
+            payload.pointsDeduction = amount.deduct;
+        }
+        if (mode === 'new') {
+            const name = $('#receiverName').val().trim();
+            const phone = $('#receiverPhone').val().trim();
+            const detail = $('#detail').val().trim();
+            if (!name || !phone || !detail) {
+                window.huToast('请填写收货人、电话与详细地址', 'err');
+                return;
+            }
+            if (!/^1[3-9]\d{9}$/.test(phone)) {
+                window.huToast('手机号格式不正确', 'err');
+                return;
+            }
+            draft = {
+                receiverName: name,
+                receiverPhone: phone,
+                province: $('#province').val().trim(),
+                city: $('#city').val().trim(),
+                district: $('#district').val().trim(),
+                detail: detail,
+                isDefault: !addresses.length
+            };
+            const region = [draft.province, draft.city, draft.district].filter(Boolean);
+            payload.receiverName = name;
+            payload.receiverPhone = phone;
+            payload.receiverAddress = region.concat([detail]).join(' ');
+        } else {
+            payload.addressId = mode;
+        }
+
+        $('#submitOrder').prop('disabled', true).text('提交中…');
+        huApi({
+            url: '/api/orders/create',
+            type: 'POST',
+            data: payload,
+            ok: function (order) {
+                if (draft && $('#saveAddress').prop('checked')) {
+                    $.ajax({
+                        url: '/api/addresses',
+                        type: 'POST',
+                        contentType: 'application/json;charset=UTF-8',
+                        data: JSON.stringify(draft)
+                    });
+                }
+                window.huToast('订单提交成功', 'ok');
+                removeCheckedFromCart(function () {
+                    window.location.href = '/order/' + order.id;
+                });
+            },
+            fail: function () {
+                $('#submitOrder').prop('disabled', false).text('提交订单');
+            }
+        });
+    }
+
+    $(function () {
+        const ready = {cart: false, addr: false, me: false};
+        function tryFinish() {
+            if (!ready.cart || !ready.addr || !ready.me) return;
+            pickCartItems();
+            if (!cartItems.length) {
+                $('#fallback').html(
+                    '<i class="fa fa-shopping-bag"></i><strong>没有可结算的商品</strong>' +
+                    '<p style="margin:6px 0 22px">购物车已清空，或所选商品暂不可购</p>' +
+                    '<a href="/products" class="hu-btn hu-btn--solid">去选购花礼</a>');
+                return;
+            }
+            $('#fallback').hide();
+            $('#orderContent').css('display', 'grid');
+            renderItems();
+            renderAddresses();
+            calc();
+            loadCoupons();
+        }
+
+        function gate(key) {
+            ready[key] = true;
+            tryFinish();
+        }
+
+        $.getJSON('/api/cart', function (res) {
+            if (res.code === 401) { huToLogin(); return; }
+            cartItems = (res.data && res.data.items) || [];
+            gate('cart');
+        }).fail(function () { gate('cart'); });
+
+        $.getJSON('/api/addresses', function (res) {
+            if (res.code === 200 && res.data) {
+                addresses = res.data.slice().sort(function (a, b) {
+                    return (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0);
+                });
+            }
+            gate('addr');
+        }).fail(function () { gate('addr'); });
+
+        $.getJSON('/auth/api/user/profile', function (res) {
+            if (res.code === 200 && res.data) {
+                member = {vip: res.data.memberLevel === 'vip', points: res.data.points || 0};
+            }
+            gate('me');
+        }).fail(function () { gate('me'); });
+
+        $('#addrList, #addrNewCard').on('change', 'input[name="addrMode"]', function () {
+            const value = this.value;
+            $('#addrList .hu-radio-card, #addrNewCard').removeClass('is-active');
+            $(this).closest('.hu-radio-card').addClass('is-active');
+            if (value === 'new') {
+                $('#newAddrForm').show();
+                return;
+            }
+            $('#newAddrForm').slideUp(180);
+            const picked = addresses.filter(function (a) { return a.id === value; })[0];
+            if (picked) prefillFromAddress(picked);
+        });
+
+        $('#payMethods').on('change', 'input[name="payMethod"]', function () {
+            $('#payMethods .hu-radio-card').removeClass('is-active');
+            $(this).closest('.hu-radio-card').addClass('is-active');
+        });
+
+        $('#usePoints').on('change', calc);
+        $('#couponList').on('change', 'input[name="coupon"]', function () {
+            couponChoice = this.value || '';
+            $('#couponList .hu-radio-card').removeClass('is-active');
+            $(this).closest('.hu-radio-card').addClass('is-active');
+            calc();
+        });
+        $('#submitOrder').on('click', submit);
+    });
+</script>
+</body>
+</html>

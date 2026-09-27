@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>全部花礼 · 花语轩</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<!-- 页面头部 -->
+<div class="hu-pagehead">
+    <div class="hu-container hu-pagehead__row">
+        <div>
+            <div class="hu-crumb"><a href="/index">首页</a> / <span>全部花礼</span></div>
+            <h1 th:text="${keyword != null and keyword != ''} ? '搜索：' + ${keyword} : '全部花礼'">全部花礼</h1>
+            <p class="hu-pagehead__sub">每一束，都由花艺师当日手作</p>
+        </div>
+        <div class="hu-pagehead__aside">
+            <span class="hu-muted" style="font-size:13px">在售花礼</span>
+            <div class="hu-num" id="totalBadge" style="font-size:26px">—</div>
+        </div>
+    </div>
+</div>
+
+<div class="hu-container">
+    <div class="hu-layout" id="layout">
+        <!-- 分类侧栏 -->
+        <aside>
+            <div class="hu-panel hu-panel--pad hu-side-sticky">
+                <h3 class="hu-side-title">分类导航</h3>
+                <ul class="hu-catlist" id="categoryList">
+                    <li>
+                        <a href="/products" th:classappend="${selectedCategoryId == null} ? 'is-active'">
+                            <i class="fa fa-th-large"></i>全部商品
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </aside>
+
+        <!-- 商品主区 -->
+        <div>
+            <div class="hu-panel hu-toolbar">
+                <div class="hu-toolbar__left">
+                    <button type="button" class="hu-side-toggle" id="sideToggle" aria-expanded="true" aria-controls="categoryList">
+                        <i class="fa fa-angle-left"></i><span id="sideToggleText">隐藏分类</span>
+                    </button>
+                    <div class="hu-chips" id="sortChips">
+                        <button type="button" class="hu-chip" data-sort="default">推荐</button>
+                        <button type="button" class="hu-chip" data-sort="new">最新</button>
+                        <button type="button" class="hu-chip" data-sort="sales">销量</button>
+                        <button type="button" class="hu-chip" data-sort="price-asc">价格 ↑</button>
+                        <button type="button" class="hu-chip" data-sort="price-desc">价格 ↓</button>
+                        <button type="button" class="hu-chip" data-sort="rating">好评</button>
+                    </div>
+                </div>
+                <div class="hu-toolbar__right">
+                    <div class="hu-search">
+                        <i class="fa fa-search"></i>
+                        <input type="text" id="searchInput" placeholder="搜索花礼、花材或场景" autocomplete="off"
+                               role="combobox" aria-expanded="false" aria-controls="searchSuggest" aria-autocomplete="list">
+                        <div class="hu-suggest" id="searchSuggest" role="listbox"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hu-result-meta">
+                <span id="resultCount">正在载入…</span>
+                <button type="button" class="hu-chip hu-chip--ghost" id="clearFilters" style="display:none">
+                    <i class="fa fa-close"></i> 清除筛选
+                </button>
+            </div>
+
+            <div id="productGrid" class="hu-product-grid"></div>
+
+            <div id="emptyState" class="hu-empty" style="display:none">
+                <i class="fa fa-inbox"></i>
+                <strong>暂无相关花礼</strong>
+                <span style="font-size:14px">换个关键词，或看看全部在售商品</span>
+                <a href="/products" class="hu-btn hu-btn--ghost hu-btn--sm" style="margin-top:18px">查看全部商品</a>
+            </div>
+
+            <div id="pagination" class="hu-pager"></div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<script th:inline="javascript">
+    const PLACEHOLDER = /*[[@{/img/product-placeholder.svg}]]*/ '/img/product-placeholder.svg';
+    const SIDE_KEY = 'hu.products.side';
+
+    let currentPage = 1;
+    const pageSize = 12;
+    let selectedCategoryId = /*[[${selectedCategoryId}]]*/ null;
+    let keyword = /*[[${keyword != null ? keyword : ''}]]*/ '';
+    let sortBy = 'default';
+    let seq = 0;
+
+    function esc(s) {
+        return $('<i>').text(s == null ? '' : String(s)).html();
+    }
+
+    function price(v) {
+        return Number(v).toFixed(2).replace(/\.00$/, '');
+    }
+
+    /* ---------- 侧栏折叠 ---------- */
+    function applySide(collapsed, persist) {
+        $('#layout').toggleClass('is-side-collapsed', collapsed);
+        $('#sideToggle').attr('aria-expanded', String(!collapsed));
+        $('#sideToggleText').text(collapsed ? '显示分类' : '隐藏分类');
+        if (persist) localStorage.setItem(SIDE_KEY, collapsed ? 'collapsed' : 'expanded');
+    }
+
+    function bindSide() {
+        const stored = localStorage.getItem(SIDE_KEY);
+        const collapsed = stored ? stored === 'collapsed' : window.innerWidth <= 900;
+        applySide(collapsed, false);
+        $('#sideToggle').on('click', function () {
+            applySide(!$('#layout').hasClass('is-side-collapsed'), true);
+        });
+    }
+
+    /* ---------- 数据加载 ---------- */
+    function loadUrl(page) {
+        let base = selectedCategoryId
+            ? '/api/products/category/' + selectedCategoryId
+            : (keyword ? '/api/products/search' : '/api/products/active');
+        let params = 'page=' + page + '&limit=' + pageSize;
+        if (keyword) params += '&keyword=' + encodeURIComponent(keyword);
+        if (sortBy !== 'default') params += '&sort=' + sortBy;
+        return base + '?' + params;
+    }
+
+    function renderSkeletons() {
+        let html = '';
+        for (let i = 0; i < 8; i++) {
+            html += '<div class="hu-product" style="box-shadow:none">' +
+                '<div class="hu-skeleton hu-skeleton--media"></div>' +
+                '<div style="padding:18px 18px 22px">' +
+                '<div class="hu-skeleton hu-skeleton--line w40"></div>' +
+                '<div class="hu-skeleton hu-skeleton--line w60"></div>' +
+                '<div class="hu-skeleton hu-skeleton--line" style="width:80%"></div>' +
+                '</div></div>';
+        }
+        $('#productGrid').html(html);
+    }
+
+    function loadProducts() {
+        const token = ++seq;
+        renderSkeletons();
+        $('#emptyState').hide();
+        $('#resultCount').text('正在载入…');
+
+        $.getJSON(loadUrl(currentPage), function (res) {
+            if (token !== seq) return;
+            if (res.code !== 200) {
+                $('#productGrid').html('');
+                $('#resultCount').text(res.msg || '加载失败');
+                return;
+            }
+            const total = Number(res.count || 0);
+            const list = res.data || [];
+            $('#totalBadge').text(total);
+            if (!list.length) {
+                $('#productGrid').html('');
+                $('#emptyState').show();
+                $('#pagination').html('');
+                $('#resultCount').text('共 0 件花礼');
+                return;
+            }
+            $('#resultCount').html('共 <b>' + total + '</b> 件花礼，当前第 ' +
+                currentPage + ' / ' + Math.ceil(total / pageSize) + ' 页');
+            renderProducts(list);
+            renderPagination(total);
+        }).fail(function () {
+            if (token !== seq) return;
+            $('#productGrid').html('');
+            $('#emptyState').show();
+            $('#resultCount').text('网络异常，请稍后重试');
+        });
+    }
+
+    function stars(rating) {
+        const r = Math.round(Number(rating) || 5);
+        let s = '';
+        for (let i = 1; i <= 5; i++) {
+            s += '<i class="fa fa-star' + (i <= r ? '' : '-o') + '"></i>';
+        }
+        return s;
+    }
+
+    function renderProducts(products) {
+        let html = '';
+        products.forEach(function (p) {
+            let tags = '';
+            if (p.isFeatured) tags += '<span class="hu-tag hu-tag--sale">热销</span>';
+            if (p.isNew) tags += '<span class="hu-tag hu-tag--new">新品</span>';
+            const discounted = p.originalPrice && Number(p.originalPrice) > Number(p.price);
+
+            const rate = (p.reviewCount > 0)
+                ? stars(p.rating) + '<span>' + price(p.rating) + ' · ' + p.reviewCount + ' 条评价</span>'
+                : '<span class="hu-product__newrate">新品上市 · 等待第一位评价</span>';
+
+            html += '<div class="hu-product">' +
+                '<a href="/product/' + esc(p.id) + '" class="hu-product__media">' +
+                '<img src="' + esc(p.mainImage || PLACEHOLDER) + '" alt="' + esc(p.name) + '" loading="lazy" ' +
+                'onerror="this.onerror=null;this.src=\'' + PLACEHOLDER + '\'">' +
+                (tags ? '<div class="hu-product__tags">' + tags + '</div>' : '') +
+                '</a>' +
+                '<div class="hu-product__body">' +
+                '<div class="hu-product__cat">' + esc(p.categoryName || '鲜花') + '</div>' +
+                '<a href="/product/' + esc(p.id) + '" class="hu-product__name">' + esc(p.name) + '</a>' +
+                '<div class="hu-product__rate">' + rate + '</div>' +
+                '<div class="hu-product__foot">' +
+                '<div class="hu-price"><small>¥</small>' + price(p.price) +
+                (discounted ? '<del>¥' + price(p.originalPrice) + '</del>' : '') + '</div>' +
+                '<button class="hu-product__add" data-id="' + esc(p.id) + '" title="加入购物车"><i class="fa fa-shopping-bag"></i></button>' +
+                '</div></div></div>';
+        });
+        $('#productGrid').html(html);
+        $('.hu-product__add').on('click', function (e) {
+            e.preventDefault();
+            huAddToCart($(this).data('id'));
+        });
+    }
+
+    function renderPagination(total) {
+        const totalPages = Math.ceil(total / pageSize);
+        if (totalPages <= 1) {
+            $('#pagination').html('');
+            return;
+        }
+        let html = '<button ' + (currentPage === 1 ? 'disabled' : 'data-page="' + (currentPage - 1) + '"') +
+            '><i class="fa fa-chevron-left"></i></button>';
+
+        const start = Math.max(1, currentPage - 2);
+        const end = Math.min(totalPages, currentPage + 2);
+        if (start > 1) {
+            html += '<button data-page="1">1</button>';
+            if (start > 2) html += '<span class="hu-ellipsis">…</span>';
+        }
+        for (let i = start; i <= end; i++) {
+            html += '<button class="' + (i === currentPage ? 'is-active' : '') + '" data-page="' + i + '">' + i + '</button>';
+        }
+        if (end < totalPages) {
+            if (end < totalPages - 1) html += '<span class="hu-ellipsis">…</span>';
+            html += '<button data-page="' + totalPages + '">' + totalPages + '</button>';
+        }
+        html += '<button ' + (currentPage === totalPages ? 'disabled' : 'data-page="' + (currentPage + 1) + '"') +
+            '><i class="fa fa-chevron-right"></i></button>';
+
+        $('#pagination').html(html)
+            .off('click.go')
+            .on('click.go', 'button[data-page]', function () {
+                goToPage(Number($(this).data('page')));
+            });
+    }
+
+    function goToPage(page) {
+        currentPage = page;
+        loadProducts();
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+
+    /* ---------- 分类侧栏 ---------- */
+    function loadCategories() {
+        $.getJSON('/api/categories/active', function (res) {
+            if (res.code !== 200) return;
+            let html = '';
+            (res.data || []).forEach(function (cat) {
+                const active = selectedCategoryId && String(selectedCategoryId) === String(cat.id);
+                html += '<li><a href="/products?categoryId=' + esc(cat.id) + '"' +
+                    (active ? ' class="is-active"' : '') + '>' +
+                    '<i class="fa fa-' + esc(cat.icon || 'leaf') + '"></i>' + esc(cat.name) +
+                    '</a></li>';
+            });
+            $('#categoryList').append(html);
+        });
+    }
+
+    function syncFilterUi() {
+        $('#clearFilters').toggle(!!selectedCategoryId || !!keyword);
+        $('#sortChips .hu-chip').each(function () {
+            $(this).toggleClass('is-active', String($(this).data('sort')) === sortBy);
+        });
+    }
+
+    /* ---------- 搜索联想 / 历史词 ---------- */
+    const HISTORY_KEY = 'hu.search.history';
+    let suggestTimer = null;
+    let suggestItems = [];
+    let suggestIndex = -1;
+    let hotWords = null;
+
+    function historyWords() {
+        try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch (e) { return []; }
+    }
+
+    function pushHistory(word) {
+        const list = historyWords().filter(w => w !== word);
+        list.unshift(word);
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 10)));
+    }
+
+    function closeSuggest() {
+        $('#searchSuggest').removeClass('is-open').attr('aria-expanded', 'false');
+        suggestIndex = -1;
+    }
+
+    function highlight(word, match) {
+        if (!match) return esc(word);
+        const i = word.toLowerCase().indexOf(match);
+        if (i < 0) return esc(word);
+        return esc(word.slice(0, i)) + '<em>' + esc(word.slice(i, i + match.length)) + '</em>'
+            + esc(word.slice(i + match.length));
+    }
+
+    function renderSuggest(groups, match) {
+        let html = '';
+        let items = [];
+        groups.forEach(g => {
+            const words = (g.words || []).filter(Boolean);
+            if (!words.length) return;
+            html += '<div class="hu-suggest__head"><span>' + esc(g.title) + '</span>'
+                + (g.clearable ? '<button type="button" class="hu-suggest__clear" id="clearHistory">清空</button>' : '')
+                + '</div>';
+            words.forEach(w => {
+                items.push(w);
+                html += '<div class="hu-suggest__item" role="option" data-word="' + esc(w) + '">'
+                    + '<i class="fa ' + g.icon + '"></i>' + highlight(w, match) + '</div>';
+            });
+        });
+        suggestItems = items;
+        suggestIndex = -1;
+        if (!items.length) {
+            html = '<div class="hu-suggest__empty">输入花名、花材或场景关键词，如「玫瑰」「母亲节」</div>';
+        }
+        $('#searchSuggest').html(html).addClass('is-open').attr('aria-expanded', 'true');
+    }
+
+    /** 空输入：最近搜索（本机）+ 热门搜索词（服务端累计）；有输入：服务端联想 */
+    function showBlankSuggest() {
+        const history = historyWords();
+        if (hotWords) {
+            renderSuggest([{title: '最近搜索', icon: 'fa-history', words: history, clearable: true},
+                           {title: '热门搜索', icon: 'fa-fire', words: hotWords}]);
+            return;
+        }
+        $.get('/api/products/suggest', {limit: 8}, res => {
+            hotWords = res && res.code === 200 ? res.data : [];
+            if ($.trim($('#searchInput').val())) return;
+            renderSuggest([{title: '最近搜索', icon: 'fa-history', words: history, clearable: true},
+                           {title: '热门搜索', icon: 'fa-fire', words: hotWords}]);
+        });
+    }
+
+    function refreshSuggest() {
+        const q = $.trim($('#searchInput').val());
+        if (!q) {
+            showBlankSuggest();
+            return;
+        }
+        $.get('/api/products/suggest', {keyword: q, limit: 10}, res => {
+            const words = res && res.code === 200 ? res.data : [];
+            renderSuggest([{title: '为你找到', icon: 'fa-search', words: words}], q.toLowerCase());
+        });
+    }
+
+    function moveSuggest(step) {
+        if (!suggestItems.length) return;
+        suggestIndex = (suggestIndex + step + suggestItems.length) % suggestItems.length;
+        $('#searchSuggest .hu-suggest__item').removeClass('is-active')
+            .eq(suggestIndex).addClass('is-active');
+    }
+
+    function bindSuggest() {
+        $('#searchInput').on('focus', showBlankSuggest)
+            .on('input', function () {
+                clearTimeout(suggestTimer);
+                suggestTimer = setTimeout(refreshSuggest, 250);
+            })
+            .on('keydown', function (e) {
+                if (!$('#searchSuggest').hasClass('is-open') && (e.which === 38 || e.which === 40)) {
+                    showBlankSuggest();
+                    return;
+                }
+                if (e.which === 40) { e.preventDefault(); moveSuggest(1); }
+                else if (e.which === 38) { e.preventDefault(); moveSuggest(-1); }
+                else if (e.which === 27) { closeSuggest(); }
+                else if (e.which === 13 && suggestIndex >= 0) { e.preventDefault(); runSearch(suggestItems[suggestIndex]); }
+            });
+        /* 用 mousedown 而非 click：输入框 blur 会先关闭面板，click 就来不及触发 */
+        $('#searchSuggest').on('mousedown', '.hu-suggest__item', function (e) {
+            e.preventDefault();
+            runSearch(String($(this).data('word')));
+        }).on('mousedown', '#clearHistory', function (e) {
+            e.preventDefault();
+            localStorage.removeItem(HISTORY_KEY);
+            showBlankSuggest();
+        });
+        $(document).on('mousedown', function (e) {
+            if (!$(e.target).closest('.hu-search').length) closeSuggest();
+        });
+    }
+
+    function runSearch(word) {
+        keyword = $.trim(word === undefined ? $('#searchInput').val() : word);
+        $('#searchInput').val(keyword);
+        closeSuggest();
+        if (keyword) {
+            selectedCategoryId = null;
+            pushHistory(keyword);
+        }
+        syncFilterUi();
+        currentPage = 1;
+        loadProducts();
+    }
+
+    $(document).ready(function () {
+        keyword = keyword || '';
+        bindSide();
+        bindSuggest();
+        syncFilterUi();
+        if (keyword) $('#searchInput').val(keyword);
+
+        loadCategories();
+        loadProducts();
+
+        $('#sortChips').on('click', '.hu-chip', function () {
+            sortBy = String($(this).data('sort'));
+            syncFilterUi();
+            currentPage = 1;
+            loadProducts();
+        });
+
+        $('#searchInput').on('keypress', function (e) {
+            /* 方向键选中候选词时 keydown 已处理，避免二次检索 */
+            if (e.which === 13 && suggestIndex < 0) runSearch();
+        });
+
+        $('#clearFilters').on('click', function () {
+            window.location.href = '/products';
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>我的收藏 · 花语轩</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<div class="hu-pagehead">
+    <div class="hu-container hu-pagehead__row">
+        <div>
+            <div class="hu-crumb"><a href="/index">首页</a> / <a href="/user/profile">个人中心</a> / <span>我的收藏</span></div>
+            <h1>我的收藏</h1>
+            <p class="hu-pagehead__sub">心动的花礼都留在这里，随时回来带走</p>
+        </div>
+        <div class="hu-pagehead__aside">
+            <span class="hu-muted" style="font-size:13px">收藏花礼</span>
+            <span class="hu-num" id="favTotal" style="font-size:26px">—</span>
+        </div>
+    </div>
+</div>
+
+<div class="hu-container" style="padding-bottom:80px">
+    <div class="hu-result-meta" style="margin-top:30px">
+        <span id="favMeta">正在载入…</span>
+        <button type="button" class="hu-chip hu-chip--ghost" id="addAllBtn" style="display:none">
+            <i class="fa fa-shopping-bag"></i> 全部加入购物车
+        </button>
+        <a href="/products" class="hu-chip hu-chip--ghost" style="margin-left:auto">
+            <i class="fa fa-th-large"></i> 继续挑选
+        </a>
+    </div>
+
+    <div id="favGrid" class="hu-product-grid"></div>
+
+    <div id="favEmpty" class="hu-empty" style="display:none">
+        <i class="fa fa-heart-o"></i>
+        <strong>收藏夹还是空的</strong>
+        <span style="font-size:14px">逛到喜欢的花礼，点击卡片右上角的心形就能收进来</span>
+        <a href="/products" class="hu-btn hu-btn--solid hu-btn--sm" style="margin-top:18px">去挑一束</a>
+    </div>
+</div>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<script th:inline="javascript">
+    const PLACEHOLDER = /*[[@{/img/product-placeholder.svg}]]*/ '/img/product-placeholder.svg';
+    let favorites = [];
+
+    function esc(s) {
+        return $('<i>').text(s == null ? '' : String(s)).html();
+    }
+
+    function price(v) {
+        return Number(v).toFixed(2).replace(/\.00$/, '');
+    }
+
+    function renderSkeletons() {
+        let html = '';
+        for (let i = 0; i < 4; i++) {
+            html += '<div class="hu-product" style="box-shadow:none">' +
+                '<div class="hu-skeleton hu-skeleton--media"></div>' +
+                '<div style="padding:18px 18px 22px">' +
+                '<div class="hu-skeleton hu-skeleton--line" style="width:40%"></div>' +
+                '<div class="hu-skeleton hu-skeleton--line" style="width:65%"></div>' +
+                '<div class="hu-skeleton hu-skeleton--line" style="width:50%"></div>' +
+                '</div></div>';
+        }
+        $('#favGrid').html(html);
+    }
+
+    function render() {
+        favorites = favorites || [];
+        $('#favTotal').text(favorites.length);
+        if (!favorites.length) {
+            $('#favGrid').html('');
+            $('#favMeta').text('共 0 件收藏');
+            $('#addAllBtn').hide();
+            $('#favEmpty').show();
+            return;
+        }
+        const offline = favorites.filter(f => !f.product || f.product.isActive === false).length;
+        $('#favMeta').html('共 <b>' + favorites.length + '</b> 件收藏' +
+            (offline ? '，其中 ' + offline + ' 件已下架' : ''));
+        $('#addAllBtn').toggle(favorites.length > offline);
+        $('#favEmpty').hide();
+
+        let html = '';
+        favorites.forEach(function (fav) {
+            const p = fav.product || {};
+            const soldOut = p.isActive === false || (p.stock != null && p.stock <= 0);
+            let tags = '';
+            if (p.isFeatured) tags += '<span class="hu-tag hu-tag--sale">热销</span>';
+            if (soldOut) tags += '<span class="hu-tag hu-tag--new">' + (p.isActive === false ? '已下架' : '缺货') + '</span>';
+            html += '<div class="hu-product" data-product="' + esc(p.id) + '">' +
+                '<a href="/product/' + esc(p.id) + '" class="hu-product__media">' +
+                '<img src="' + esc(p.mainImage || PLACEHOLDER) + '" alt="' + esc(p.name) + '" loading="lazy" ' +
+                'onerror="this.onerror=null;this.src=\'' + PLACEHOLDER + '\'">' +
+                (tags ? '<div class="hu-product__tags">' + tags + '</div>' : '') +
+                '<button type="button" class="hu-product__fav is-favorited" data-favorite="' + esc(p.id) + '" title="取消收藏">' +
+                '<i class="fa fa-heart"></i></button>' +
+                '</a>' +
+                '<div class="hu-product__body">' +
+                '<div class="hu-product__cat">' + esc(p.categoryName || '鲜花') + '</div>' +
+                '<a href="/product/' + esc(p.id) + '" class="hu-product__name">' + esc(p.name || '商品已下架') + '</a>' +
+                '<div class="hu-product__rate"><span class="hu-muted">收藏于 ' +
+                esc((fav.createdAt || '').replace('T', ' ').slice(0, 10)) + '</span></div>' +
+                '<div class="hu-product__foot">' +
+                '<div class="hu-price"><small>¥</small>' + price(p.price || 0) + '</div>' +
+                (soldOut ? '<span class="hu-pill hu-pill--muted">暂不可购</span>'
+                    : '<button class="hu-product__add" data-add="' + esc(p.id) + '" title="加入购物车"><i class="fa fa-shopping-bag"></i></button>') +
+                '</div></div></div>';
+        });
+        $('#favGrid').html(html);
+    }
+
+    function load() {
+        renderSkeletons();
+        huApi({
+            url: '/api/favorites',
+            ok: function (data) {
+                favorites = data || [];
+                render();
+            },
+            fail: function () {
+                $('#favGrid').html('');
+                $('#favMeta').text('收藏加载失败');
+            }
+        });
+    }
+
+    $(document).ready(function () {
+        load();
+
+        $('#favGrid').on('click', '[data-add]', function (e) {
+            e.preventDefault();
+            huAddToCart($(this).data('add'));
+        });
+
+        /* 取消收藏：site.js 已绑定 toggle 行为，这里在成功后移除卡片 */
+        $('#favGrid').on('click', '[data-favorite]', function () {
+            const id = String($(this).data('favorite'));
+            setTimeout(function () {
+                favorites = favorites.filter(f => !f.product || String(f.product.id) !== id);
+                render();
+            }, 260);
+        });
+
+        $('#addAllBtn').on('click', function () {
+            const list = favorites.filter(f => f.product && f.product.isActive !== false
+                && (f.product.stock == null || f.product.stock > 0));
+            if (!list.length) return;
+            let done = 0;
+            list.forEach(function (fav) {
+                huApi({
+                    url: '/api/cart/add?productId=' + fav.product.id + '&quantity=1',
+                    type: 'POST',
+                    data: {},
+                    silent: true,
+                    ok: function (data, res) {
+                        if (++done === list.length) {
+                            $('.hu-cart-count').text(res.itemCount || 0).show();
+                            window.huToast('已加入 ' + done + ' 件花礼', 'ok');
+                            setTimeout(function () { location.href = '/cart'; }, 700);
+                        }
+                    },
+                    fail: function () {
+                        if (++done === list.length) window.huToast('部分花礼未能加入', 'err');
+                    }
+                });
+            });
+        });
+    });
+</script>
+</body>
+</html>

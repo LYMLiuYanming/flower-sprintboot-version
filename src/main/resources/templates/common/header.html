@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head><title>Header</title></head>
+<body>
+<header th:fragment="header" class="hu-nav">
+    <div class="hu-container">
+        <div class="hu-nav__inner">
+            <a href="/index" class="hu-brand">
+                <span class="hu-mark"><i class="fa fa-leaf"></i></span>
+                <span>花语轩</span>
+            </a>
+
+            <nav class="hu-menu">
+                <a href="/index">首页</a>
+                <a href="/products">全部花礼</a>
+                <a href="/products?sort=sales">畅销精选</a>
+                <a href="/products?sort=new">新品上市</a>
+                <a href="/#occasions">场景选购</a>
+            </nav>
+
+            <div class="hu-nav__actions">
+                <a href="/products" class="hu-icon-btn" title="搜索"><i class="fa fa-search"></i></a>
+
+                <!-- 未登录 -->
+                <th:block th:if="${loginUser == null}">
+                    <a href="/auth/login" class="hu-btn hu-btn--ghost hu-btn--sm" id="loginDesktop">登录</a>
+                    <a href="/auth/login" class="hu-icon-btn" title="登录" id="loginMobile"><i class="fa fa-user-o"></i></a>
+                </th:block>
+
+                <!-- 已登录：用户下拉 -->
+                <div th:if="${loginUser != null}" class="hu-user">
+                    <div class="hu-user__trigger">
+                        <span class="hu-user__avatar"><i class="fa fa-user"></i></span>
+                        <span class="hu-user__name" th:text="${loginUser.fullName}">用户</span>
+                        <i class="fa fa-angle-down" style="color:var(--hu-muted);font-size:13px"></i>
+                    </div>
+                    <div class="hu-user__menu">
+                        <a href="/user/profile"><i class="fa fa-user-circle-o"></i>个人中心</a>
+                        <a href="/user/orders"><i class="fa fa-file-text-o"></i>我的订单</a>
+                        <a href="/user/favorites"><i class="fa fa-heart-o"></i>我的收藏</a>
+                        <a href="/user/coupons"><i class="fa fa-ticket"></i>我的优惠券</a>
+                        <a href="/user/addresses"><i class="fa fa-map-marker"></i>收货地址</a>
+                        <a href="/user/settings"><i class="fa fa-cog"></i>账号设置</a>
+                        <div class="hu-sep"></div>
+                        <a href="/auth/logout"><i class="fa fa-sign-out"></i>退出登录</a>
+                    </div>
+                </div>
+
+                <a href="/cart" class="hu-icon-btn" title="购物车" style="position:relative">
+                    <i class="fa fa-shopping-bag"></i>
+                    <span class="hu-badge-dot hu-cart-count" style="display:none">0</span>
+                </a>
+
+                <button class="hu-icon-btn" id="huMenuBtn" title="菜单" aria-label="菜单" aria-controls="huMobileMenu"><i class="fa fa-bars"></i></button>
+            </div>
+        </div>
+
+        <div class="hu-mobile-menu" id="huMobileMenu">
+            <a href="/index">首页</a>
+            <a href="/products">全部花礼</a>
+            <a href="/products?sort=sales">畅销精选</a>
+            <a href="/products?sort=new">新品上市</a>
+            <a href="/cart">购物车</a>
+            <th:block th:if="${loginUser == null}">
+                <a href="/auth/login" style="color:var(--hu-accent)">登录 / 注册</a>
+            </th:block>
+            <th:block th:if="${loginUser != null}">
+                <a href="/user/profile">个人中心 · <span th:text="${loginUser.fullName}">用户</span></a>
+                <a href="/auth/logout" style="color:var(--hu-clay)">退出登录</a>
+            </th:block>
+        </div>
+    </div>
+</header>
+<!-- 桌面/移动显隐由 theme.css 的媒体查询控制；抽屉与购物车角标行为在 site.js 中统一挂载 -->
+</body>
+</html>

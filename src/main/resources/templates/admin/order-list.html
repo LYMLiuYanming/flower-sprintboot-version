@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单管理 - 花语轩管理后台</title>
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
+    <style>
+        body {background: #f1f1f1;}
+        .order-status {padding: 3px 8px;border-radius: 3px;font-size: 12px;}
+        .status-pending {background: #fff7e6;color: #fa8c16;}
+        .status-paid {background: #e6f7ff;color: #1890ff;}
+        .status-processing {background: #f9f0ff;color: #722ed1;}
+        .status-shipped {background: #fff0f6;color: #eb2f96;}
+        .status-delivered {background: #f6ffed;color: #52c41a;}
+        .status-completed {background: #f6ffed;color: #52c41a;}
+        .status-cancelled {background: #f5f5f5;color: #8c8c8c;}
+        .status-refunded {background: #fff1f0;color: #f5222d;}
+        .order-items {color: #666;font-size: 12px;}
+        .express-no {font-size: 12px;color: #555;}
+    </style>
+</head>
+<body>
+    <div class="layui-layout layui-layout-admin">
+        <div class="layui-header header" style="background: #211f1a;">
+            <div class="logo"><i class="fas fa-leaf"></i> 花语轩管理后台</div>
+            <div class="user-info">
+                <span><i class="fas fa-user-circle"></i> 管理员</span>
+                <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+            </div>
+        </div>
+
+        <div class="layui-side layui-bg-black" style="top: 60px;width: 200px;">
+            <div class="layui-side-scroll">
+                <ul class="layui-nav layui-nav-tree" lay-filter="nav">
+                    <li class="layui-nav-item">
+                        <a href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-th"></i> 商品管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/product-list"><i class="fas fa-box"></i> 商品列表</a></dd>
+                            <dd><a href="/admin/category-list"><i class="fas fa-tags"></i> 分类管理</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item layui-nav-itemed">
+                        <a href="javascript:;"><i class="fas fa-shopping-cart"></i> 订单管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/order-list"><i class="fas fa-list-alt"></i> 订单列表</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-users"></i> 用户管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/user-list"><i class="fas fa-user"></i> 用户列表</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-cog"></i> 系统设置</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/banner-list"><i class="fas fa-image"></i> 轮播图管理</a></dd>
+                            <dd><a href="/admin/notice-list"><i class="fas fa-bullhorn"></i> 公告管理</a></dd>
+                            <dd><a href="/admin/coupon-list"><i class="fas fa-ticket-alt"></i> 优惠券</a></dd>
+                            <dd><a href="/admin/audit-list"><i class="fas fa-history"></i> 操作日志</a></dd>
+                        </dl>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="layui-body" style="left: 200px;">
+            <div class="content-body" style="padding: 20px;">
+                <div class="layui-card">
+                    <div class="layui-card-header">
+                        <i class="fas fa-list-alt"></i> 订单管理
+                    </div>
+                    <div class="layui-card-body">
+                        <div class="layui-form" lay-filter="searchForm">
+                            <div class="layui-form-item">
+                                <div class="layui-inline">
+                                    <label class="layui-form-label">订单状态:</label>
+                                    <div class="layui-input-inline">
+                                        <select name="status">
+                                            <option value="">全部</option>
+                                            <option value="pending">待付款</option>
+                                            <option value="paid">已付款</option>
+                                            <option value="processing">处理中</option>
+                                            <option value="shipped">已发货</option>
+                                            <option value="delivered">已签收</option>
+                                            <option value="completed">已完成</option>
+                                            <option value="cancelled">已取消</option>
+                                            <option value="refunded">已退款</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="layui-inline">
+                                    <label class="layui-form-label">关键词:</label>
+                                    <div class="layui-input-inline">
+                                        <input type="text" name="keyword" placeholder="订单号 / 收货人 / 手机号" class="layui-input">
+                                    </div>
+                                </div>
+                                <div class="layui-inline">
+                                    <button class="layui-btn" lay-submit lay-filter="search">
+                                        <i class="fas fa-search"></i> 搜索
+                                    </button>
+                                    <button type="button" class="layui-btn layui-btn-primary" id="btnReset">
+                                        <i class="fas fa-undo"></i> 重置
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <table class="layui-hide" id="orderTable" lay-filter="orderTable"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-footer">© 2024 花语轩鲜花销售系统 - 版权所有</div>
+    </div>
+
+    <script type="text/html" id="toolbar">
+        <div class="layui-btn-container">
+            <button class="layui-btn layui-btn-sm" lay-event="refresh"><i class="fas fa-sync"></i> 刷新</button>
+            <button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="export"><i class="fas fa-file-csv"></i> 导出 CSV</button>
+        </div>
+    </script>
+
+    <script type="text/html" id="statusTpl">
+        <span class="order-status status-{{d.status}}">{{d.statusLabel || d.status}}</span>
+    </script>
+
+    <script type="text/html" id="amountTpl">
+        合计 ¥{{huAdmin.money(d.totalAmount)}}<br>
+        <small style="color:#888">实付 ¥{{huAdmin.money(d.payAmount)}}{{d.discountAmount > 0 ? '（优惠 ¥' + huAdmin.money(d.discountAmount) + '）' : ''}}</small>
+    </script>
+
+    <script type="text/html" id="itemsTpl">
+        {{# var list = d.items || []; var names = list.slice(0,2).map(function(i){ return i.productName + '×' + i.quantity; }); }}
+        <div class="order-items">{{names.join('、')}}{{list.length > 2 ? ' 等 ' + list.length + ' 种' : ''}}</div>
+    </script>
+
+    <script type="text/html" id="expressTpl">
+        {{# if(d.expressNo){ }}
+        <div class="express-no">{{d.expressCompany || '-'}}<br>{{d.expressNo}}</div>
+        {{# } else { }}<span style="color:#bbb">-</span>{{# } }}
+    </script>
+
+    <script type="text/html" id="operateTpl">
+        <a class="layui-btn layui-btn-xs" lay-event="detail"><i class="fas fa-eye"></i> 查看</a>
+        {{# if(d.status === 'paid' || d.status === 'processing'){ }}
+        <a class="layui-btn layui-btn-warm layui-btn-xs" lay-event="ship"><i class="fas fa-truck"></i> 发货</a>
+        {{# } }}
+        {{# if(d.status === 'paid'){ }}
+        <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="process"><i class="fas fa-hammer"></i> 处理</a>
+        {{# } }}
+        {{# if(d.status === 'shipped'){ }}
+        <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="delivered"><i class="fas fa-check"></i> 确认签收</a>
+        {{# } }}
+        {{# if(d.status === 'delivered'){ }}
+        <a class="layui-btn layui-btn-xs" lay-event="complete"><i class="fas fa-check-circle"></i> 完成</a>
+        {{# } }}
+        {{# if(d.status === 'pending'){ }}
+        <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="cancel"><i class="fas fa-times"></i> 取消</a>
+        {{# } else if(d.status === 'paid' || d.status === 'processing' || d.status === 'delivered'){ }}
+        <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="refund"><i class="fas fa-undo"></i> 退款</a>
+        {{# } }}
+    </script>
+
+    <script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+    <script th:src="@{/jquery-3.7.1.min.js}"></script>
+    <script th:src="@{/js/admin-common.js}"></script>
+    <script th:inline="none">
+        layui.use(['table', 'form', 'layer'], function(){
+            var table = layui.table;
+            var form = layui.form;
+            var layer = layui.layer;
+            var FILTER_KEY = 'hu-admin-filter-order';
+            var state = huAdmin.listState('order');
+
+            table.render({
+                elem: '#orderTable',
+                url: '/api/admin/orders',
+                toolbar: '#toolbar',
+                defaultToolbar: ['filter', 'print'],
+                cols: [[
+                    {field: 'orderNo', title: '订单号', width: 202, fixed: 'left'},
+                    {field: 'userName', title: '下单用户', width: 110, templet: function(d){ return huAdmin.esc(d.userName || '-') + '<br><small style="color:#999">' + huAdmin.esc(d.userPhone || '') + '</small>'; }},
+                    {field: 'receiverName', title: '收货人', width: 130, templet: function(d){ return huAdmin.esc(d.receiverName) + '<br><small style="color:#999">' + huAdmin.esc(d.receiverPhone) + '</small>'; }},
+                    {field: 'items', title: '商品', minWidth: 190, templet: '#itemsTpl'},
+                    {field: 'payAmount', title: '金额', width: 190, templet: '#amountTpl'},
+                    {field: 'status', title: '状态', width: 96, templet: '#statusTpl', align: 'center'},
+                    {field: 'payMethod', title: '支付', width: 80, align: 'center', templet: function(d){ return huAdmin.esc(d.payMethod || '-'); }},
+                    {field: 'expressNo', title: '物流', width: 130, templet: '#expressTpl'},
+                    {field: 'createdAt', title: '下单时间', width: 165, templet: function(d){ return d.createdAt ? new Date(d.createdAt).toLocaleString() : '-'; }},
+                    {title: '操作', width: 230, toolbar: '#operateTpl', fixed: 'right'}
+                ]],
+                page: state.pageConfig(),
+                limit: state.limit(),
+                limits: [10, 20, 30, 50],
+                done: state.done('/api/admin/orders')
+            });
+
+            function currentFilter() {
+                try { return JSON.parse(sessionStorage.getItem(FILTER_KEY) || '{}'); } catch (e) { return {}; }
+            }
+
+            (function restore(){
+                var f = currentFilter();
+                if (!f.status && !f.keyword) return;
+                form.val('searchForm', f);
+                table.reload('orderTable', {where: f, page: {curr: state.pageConfig().curr || 1}});
+            })();
+
+            form.on('submit(search)', function(data){
+                sessionStorage.setItem(FILTER_KEY, JSON.stringify(data.field));
+                state.reset();
+                table.reload('orderTable', {where: data.field, page: {curr: 1}});
+                return false;
+            });
+
+            $('#btnReset').on('click', function(){
+                sessionStorage.removeItem(FILTER_KEY);
+                state.reset();
+                form.val('searchForm', {status: '', keyword: ''});
+                table.reload('orderTable', {where: {status: '', keyword: ''}, page: {curr: 1}});
+            });
+
+            function transit(data, target, message) {
+                layer.confirm(message, {icon: 3, title: '请确认'}, function(index){
+                    layer.close(index);
+                    huAdmin.request({
+                        url: '/api/admin/orders/' + data.id + '/status',
+                        type: 'POST', data: {status: target},
+                        ok: function(res){ layer.msg(res.msg || '操作成功', {icon: 1}); table.reload('orderTable'); }
+                    });
+                });
+            }
+
+            /** 带原因的跃迁（取消/退款）：原因写入 cancel_reason，便于售后追溯 */
+            function transitWithReason(data, target, title, message) {
+                layer.prompt({title: title, formType: 2, placeholder: message, maxlength: 200}, function(value, index){
+                    layer.close(index);
+                    huAdmin.request({
+                        url: '/api/admin/orders/' + data.id + '/status',
+                        type: 'POST', data: {status: target, reason: value},
+                        ok: function(res){ layer.msg(res.msg || '操作成功', {icon: 1}); table.reload('orderTable'); }
+                    });
+                });
+            }
+
+            function openShipDialog(data) {
+                layer.open({
+                    type: 1,
+                    title: '发货 · ' + huAdmin.esc(data.orderNo),
+                    area: ['440px', '270px'],
+                    content: '<div style="padding:20px 24px"><div class="layui-form"><div class="layui-form-item">' +
+                        '<label class="layui-form-label">物流公司</label><div class="layui-input-block"><input id="expressCompany" class="layui-input" placeholder="如：顺丰速运"></div></div>' +
+                        '<div class="layui-form-item"><label class="layui-form-label">物流单号</label><div class="layui-input-block"><input id="expressNo" class="layui-input" placeholder="如：SF1234567890"></div></div>' +
+                        '<div style="color:#999;font-size:12px;padding-left:24px">发货后订单转为「已发货」，可在详情中查看物流信息</div>' +
+                        '</div></div>',
+                    btn: ['确认发货', '取消'],
+                    yes: function(index){
+                        var company = $.trim($('#expressCompany').val());
+                        var no = $.trim($('#expressNo').val());
+                        if (!company || !no) { layer.msg('物流公司与单号都要填写', {icon: 2}); return; }
+                        huAdmin.request({
+                            url: '/api/admin/orders/' + data.id + '/ship',
+                            type: 'POST', data: {expressCompany: company, expressNo: no},
+                            ok: function(res){ layer.close(index); layer.msg(res.msg || '发货成功', {icon: 1}); table.reload('orderTable'); }
+                        });
+                    }
+                });
+            }
+
+            table.on('toolbar(orderTable)', function(obj){
+                var f = currentFilter();
+                if (obj.event === 'refresh') table.reload('orderTable');
+                else if (obj.event === 'export') {
+                    window.location.href = '/api/admin/orders/export' +
+                        (f.status || f.keyword ? '?status=' + encodeURIComponent(f.status || '') + '&keyword=' + encodeURIComponent(f.keyword || '') : '');
+                }
+            });
+
+            table.on('tool(orderTable)', function(obj){
+                var data = obj.data;
+                if (obj.event === 'detail') {
+                    layer.open({type: 2, title: '订单详情', area: ['860px', '640px'], content: '/admin/order-detail/' + data.id});
+                } else if (obj.event === 'ship') {
+                    openShipDialog(data);
+                } else if (obj.event === 'process') {
+                    transit(data, 'processing', '将该订单标记为「处理中」（开始包花）？');
+                } else if (obj.event === 'delivered') {
+                    transit(data, 'delivered', '确认买家已签收该订单？');
+                } else if (obj.event === 'complete') {
+                    transit(data, 'completed', '完成该订单？完成后不可再变更状态。');
+                } else if (obj.event === 'cancel') {
+                    transitWithReason(data, 'cancelled', '取消原因', '请填写取消原因，库存将自动回补');
+                } else if (obj.event === 'refund') {
+                    transitWithReason(data, 'refunded', '退款原因', '请填写退款原因，库存与销量将自动回补');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

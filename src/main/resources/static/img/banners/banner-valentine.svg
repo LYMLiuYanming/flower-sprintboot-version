@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" width="1200" height="500" role="img" aria-label="情人节特惠">
+<defs>
+<linearGradient id="bg-valentine" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0%" stop-color="#f7e7e3"/><stop offset="100%" stop-color="#e2a1a8"/>
+</linearGradient>
+</defs>
+<rect width="1200" height="500" fill="url(#bg-valentine)"/>
+<g opacity="0.42"><circle cx="120" cy="90" r="58" fill="#ffffff"/><circle cx="288" cy="220" r="74" fill="#ffffff"/><circle cx="456" cy="350" r="90" fill="#ffffff"/><circle cx="624" cy="90" r="106" fill="#ffffff"/><circle cx="792" cy="220" r="58" fill="#ffffff"/><circle cx="960" cy="350" r="74" fill="#ffffff"/><circle cx="1128" cy="90" r="90" fill="#ffffff"/></g>
+<g opacity="0.9"><circle cx="960" cy="210" r="30" fill="#f7e7e3"/><circle cx="1038" cy="210" r="28" fill="#f7e7e3"/><circle cx="1116" cy="210" r="26" fill="#f7e7e3"/><circle cx="960" cy="276" r="24" fill="#f7e7e3"/><circle cx="1038" cy="276" r="22" fill="#f7e7e3"/><circle cx="1116" cy="276" r="20" fill="#f7e7e3"/><circle cx="960" cy="342" r="18" fill="#f7e7e3"/><circle cx="1038" cy="342" r="16" fill="#f7e7e3"/><circle cx="1116" cy="342" r="14" fill="#f7e7e3"/></g>
+<text x="88" y="238" font-family="Georgia, 'Noto Serif SC', serif" font-size="66" fill="#211f1a">情人节特惠</text>
+<text x="90" y="292" font-family="Georgia, 'Noto Serif SC', serif" font-size="22" letter-spacing="6" fill="#211f1a" opacity="0.62">ROMANCE IN BLOOM · 浪漫玫瑰限时直降</text>
+<rect x="88" y="318" width="132" height="3" fill="#a9906a"/>
+<text x="88" y="392" font-family="Georgia, serif" font-size="13" letter-spacing="5" fill="#211f1a" opacity="0.38">FRESH FLOWERS EVERY DAY</text>
+</svg>

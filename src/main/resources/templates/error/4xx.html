@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title th:text="${status} + ' · 页面走丢了 · 花语轩'">404 · 页面走丢了 · 花语轩</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<main class="hu-error">
+    <div class="hu-container">
+        <div class="hu-error__code" th:text="${status} ?: '404'">404</div>
+        <h1 class="hu-error__title">这一束没有找到</h1>
+        <p class="hu-error__desc">
+            页面可能已经下架、地址输错了，或者被我们改动了路径。
+            <span th:if="${path != null}" class="hu-error__path" th:text="'（' + ${path} + '）'"></span>
+        </p>
+        <div class="hu-error__actions">
+            <a href="/index" class="hu-btn hu-btn--solid"><i class="fa fa-home"></i>&nbsp;回到首页</a>
+            <a href="/products" class="hu-btn hu-btn--ghost">浏览全部花礼</a>
+            <button type="button" class="hu-btn hu-btn--plain" onclick="history.back()">返回上一页</button>
+        </div>
+        <div class="hu-error__links">
+            <span class="hu-muted" style="font-size:13px">猜你想去：</span>
+            <a href="/products?sort=sales">畅销精选</a>
+            <a href="/products?sort=new">新品上市</a>
+            <a href="/cart">购物车</a>
+            <a href="/user/orders">我的订单</a>
+        </div>
+    </div>
+</main>
+
+<div th:replace="~{common/footer :: footer}"></div>
+</body>
+</html>

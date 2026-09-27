@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>花语轩 · 用鲜花点亮每一个重要时刻</title>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+</head>
+<body class="hu-body">
+
+<div th:replace="~{common/header :: header}"></div>
+
+<!-- 公告条 -->
+<div class="hu-notice" th:if="${notices != null and !notices.isEmpty()}">
+    <div class="hu-container">
+        <i class="fa fa-bullhorn"></i>
+        <span style="white-space:nowrap;letter-spacing:.16em;font-size:12px;color:var(--hu-gold)">最新公告</span>
+        <div style="overflow:hidden;flex:1">
+            <marquee scrollamount="4" style="display:inline-block;width:100%">
+                <th:block th:each="n,st : ${notices}">
+                    <a th:href="@{/notice/{id}(id=${n.id})}" th:text="${n.isTop ? '★ ' : ''} + ${n.title}"
+                       style="margin-right:48px;color:inherit;text-decoration:none" title="查看公告详情">公告标题</a>
+                </th:block>
+            </marquee>
+        </div>
+    </div>
+</div>
+
+<main>
+    <!-- Hero -->
+    <section class="hu-hero">
+        <div class="hu-hero__media" id="heroMedia">
+            <img th:if="${banners != null and !banners.isEmpty()}" th:each="b,st : ${banners}"
+                 th:src="${b.imageUrl}" th:alt="${b.title}"
+                 th:classappend="${st.first} ? 'is-active' : ''">
+            <img th:if="${banners == null or banners.isEmpty()}"
+                 src="/img/photos/hero-rose.jpg" alt="鲜花">
+            <div class="hu-hero__veil"></div>
+        </div>
+        <div class="hu-container hu-hero__content">
+            <span class="hu-eyebrow" style="color:#fff">HUAYUXUAN · FLORIST</span>
+            <h1 class="hu-display hu-display--xl" style="color:#fff;margin:22px 0 20px;max-width:16ch">
+                用鲜花<br>传递最真挚的情感
+            </h1>
+            <p class="hu-hero__lead">精选全球 A 级花材，国际花艺大师设计，全程 0℃ 冷链保鲜，为你的每一个重要时刻增添仪式感。</p>
+            <div class="hu-hero__cta">
+                <a href="/products" class="hu-btn hu-btn--light">立即选购 <i class="fa fa-arrow-right"></i></a>
+                <a href="/#occasions" class="hu-btn" style="color:#fff;border-color:rgba(255,255,255,.4)">按场景挑选</a>
+            </div>
+        </div>
+        <div class="hu-hero__scroll"><i class="fa fa-angle-down"></i></div>
+    </section>
+
+    <!-- USP -->
+    <section class="hu-usp-band">
+        <div class="hu-container">
+            <div class="hu-usp">
+                <div class="hu-usp__item">
+                    <div class="hu-usp__icon"><i class="fa fa-truck"></i></div>
+                    <h3>同城当日达</h3>
+                    <p>18:00 前下单，当日新鲜送达，全国包邮冷链直送</p>
+                </div>
+                <div class="hu-usp__item">
+                    <div class="hu-usp__icon"><i class="fa fa-leaf"></i></div>
+                    <h3>A 级鲜切花</h3>
+                    <p>18 道工序 15 次质检，7 天新鲜保证，不满意可退换</p>
+                </div>
+                <div class="hu-usp__item">
+                    <div class="hu-usp__icon"><i class="fa fa-gift"></i></div>
+                    <h3>大师花艺设计</h3>
+                    <p>专业包装设计，多种风格可选，让送礼更体面用心</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 分类 -->
+    <section class="hu-section" style="background:var(--hu-paper)">
+        <div class="hu-container">
+            <!-- 领券营销位：/api/coupons/receivable 驱动，无可领券时整条隐藏 -->
+            <div class="hu-promo" id="homePromo" hidden>
+                <span class="hu-promo__label"><i class="fa fa-ticket"></i>限时领券</span>
+                <span class="hu-promo__chips" id="homePromoChips"></span>
+                <a class="hu-promo__more" href="/user/coupons">领券中心 →</a>
+            </div>
+            <div class="hu-section-head">
+                <div>
+                    <span class="hu-eyebrow">CATEGORIES</span>
+                    <h2 class="hu-display hu-display--lg" style="margin-top:16px">精选鲜花分类</h2>
+                    <p class="hu-sub">从玫瑰到绿植，按花材与用途为你甄选，满足每一种表达。</p>
+                </div>
+                <a href="/products" class="hu-link">查看全部 <i class="fa fa-long-arrow-right"></i></a>
+            </div>
+            <div class="hu-cat-grid" id="categoryGrid">
+                <a href="/products" class="hu-cat-tile">
+                    <img src="/img/photos/cat-mixed.jpg" alt="全部">
+                    <div class="hu-cat-tile__veil"></div>
+                    <div class="hu-cat-tile__cap"><h3>全部花礼</h3><p>浏览所有商品</p></div>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 畅销 -->
+    <section class="hu-section" style="background:var(--hu-surface)" id="products">
+        <div class="hu-container">
+            <div class="hu-section-head">
+                <div>
+                    <span class="hu-eyebrow">BEST SELLERS</span>
+                    <h2 class="hu-display hu-display--lg" style="margin-top:16px">本季畅销精选</h2>
+                    <p class="hu-sub">由花艺师精心设计的人气花束，见证万千用户的好品味。</p>
+                </div>
+                <a href="/products?sort=sales" class="hu-link">更多热销 <i class="fa fa-long-arrow-right"></i></a>
+            </div>
+            <div class="hu-product-grid" id="featuredProducts">
+                <div class="hu-empty">正在加载精选花礼…</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 场景 -->
+    <section class="hu-section" id="occasions" style="background:var(--hu-paper)">
+        <div class="hu-container">
+            <div class="hu-section-head" style="justify-content:center;text-align:center;flex-direction:column;align-items:center">
+                <span class="hu-eyebrow">MOMENTS</span>
+                <h2 class="hu-display hu-display--lg" style="margin-top:16px">按场合挑选心意</h2>
+                <p class="hu-sub" style="text-align:center">不同的场合，需要不同的鲜花来传递情感与祝福。</p>
+            </div>
+            <div class="hu-moment-grid">
+                <a href="/products?tag=爱情表白" class="hu-moment">
+                    <img src="/img/photos/hero-rose.jpg" alt="爱情">
+                    <div class="hu-moment__veil"></div>
+                    <div class="hu-moment__cap">
+                        <h3>浪漫告白</h3><p>以玫瑰诉说爱意，让心动被看见</p>
+                        <span class="hu-link" style="color:#fff;border-color:#fff">查看系列 <i class="fa fa-arrow-right"></i></span>
+                    </div>
+                </a>
+                <a href="/products?tag=感恩问候" class="hu-moment">
+                    <img src="/img/photos/hero-carnation.jpg" alt="感恩">
+                    <div class="hu-moment__veil"></div>
+                    <div class="hu-moment__cap">
+                        <h3>感恩问候</h3><p>康乃馨与百合，传递最温柔的谢意</p>
+                        <span class="hu-link" style="color:#fff;border-color:#fff">查看系列 <i class="fa fa-arrow-right"></i></span>
+                    </div>
+                </a>
+                <a href="/products?tag=商务庆典" class="hu-moment">
+                    <img src="/img/photos/moment-business.jpg" alt="商务">
+                    <div class="hu-moment__veil"></div>
+                    <div class="hu-moment__cap">
+                        <h3>商务庆典</h3><p>大气花艺布置，为重要场合增色</p>
+                        <span class="hu-link" style="color:#fff;border-color:#fff">查看系列 <i class="fa fa-arrow-right"></i></span>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 品牌故事 editorial -->
+    <section class="hu-story">
+        <div class="hu-container hu-story__inner">
+            <div class="hu-story__media">
+                <img src="/img/photos/story-florist.jpg" alt="花艺">
+            </div>
+            <div class="hu-story__text">
+                <span class="hu-eyebrow">OUR STORY</span>
+                <h2 class="hu-display hu-display--lg" style="margin:18px 0">一个关于鲜花的梦想</h2>
+                <p class="hu-lead">我们相信，一朵恰到好处的花，能说出言语无法表达的心意。从全球甄选 A 级花材，到花艺师的每一次搭配，我们用心对待每一份心意。</p>
+                <div class="hu-story__stats">
+                    <div><span class="hu-num">12,000,000+</span><span class="hu-muted">位用户的共同选择</span></div>
+                    <div><span class="hu-num">18</span><span class="hu-muted">道采后处理工序</span></div>
+                    <div><span class="hu-num">0℃</span><span class="hu-muted">全程冷链保鲜</span></div>
+                </div>
+                <a href="/products" class="hu-btn hu-btn--accent" style="margin-top:32px">探索全部花礼 <i class="fa fa-arrow-right"></i></a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 评价 -->
+    <section class="hu-section" style="background:var(--hu-surface)">
+        <div class="hu-container">
+            <div class="hu-section-head" style="justify-content:center;text-align:center;flex-direction:column;align-items:center">
+                <span class="hu-eyebrow">TESTIMONIALS</span>
+                <h2 class="hu-display hu-display--lg" style="margin-top:16px">他们这样评价</h2>
+            </div>
+            <div class="hu-quote-grid">
+                <div class="hu-quote">
+                    <div class="hu-quote__stars">★★★★★</div>
+                    <p class="hu-quote__text">"花束非常漂亮，包装精致，送达时依旧新鲜饱满。女朋友收到后特别开心，一定会回购。"</p>
+                    <div class="hu-quote__who"><span class="hu-avatar">张</span><div><h4>张先生</h4><p>购买了 · 热恋红玫瑰</p></div></div>
+                </div>
+                <div class="hu-quote">
+                    <div class="hu-quote__stars">★★★★★</div>
+                    <p class="hu-quote__text">"母亲节给妈妈订的康乃馨，配送准时，花很新鲜，客服也很有耐心，非常满意。"</p>
+                    <div class="hu-quote__who"><span class="hu-avatar">李</span><div><h4>李女士</h4><p>购买了 · 感恩康乃馨</p></div></div>
+                </div>
+                <div class="hu-quote">
+                    <div class="hu-quote__stars">★★★★★</div>
+                    <p class="hu-quote__text">"白百合品质很好，花朵饱满香气宜人，朋友开业送这个很有面子，体验很棒。"</p>
+                    <div class="hu-quote__who"><span class="hu-avatar">王</span><div><h4>王先生</h4><p>购买了 · 纯洁白百合</p></div></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 订阅 -->
+    <section class="hu-subscribe">
+        <div class="hu-container" style="text-align:center">
+            <span class="hu-eyebrow" style="color:var(--hu-gold)">NEWSLETTER</span>
+            <h2 class="hu-display hu-display--md" style="color:#fff;margin:16px 0 10px">订阅鲜花灵感与专属优惠</h2>
+            <p style="color:#a9a69d;margin:0 0 28px">第一时间获取新品、花艺搭配与会员礼遇</p>
+            <form class="hu-subscribe__form" onsubmit="huSubscribe(event)">
+                <input type="email" id="newsletterEmail" placeholder="请输入您的邮箱地址" required>
+                <button type="submit" class="hu-btn hu-btn--accent">立即订阅 <i class="fa fa-paper-plane"></i></button>
+            </form>
+        </div>
+    </section>
+</main>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<script>
+    // Hero 轮播（淡入淡出）
+    (function () {
+        var imgs = document.querySelectorAll('#heroMedia img');
+        if (imgs.length > 1) {
+            var i = 0;
+            setInterval(function () {
+                imgs[i].classList.remove('is-active');
+                i = (i + 1) % imgs.length;
+                imgs[i].classList.add('is-active');
+            }, 5000);
+        }
+    })();
+
+    // 分类
+    var CAT_PHOTOS = [
+        ['玫瑰', '/img/photos/hero-rose.jpg'],
+        ['康乃馨', '/img/photos/hero-carnation.jpg'],
+        ['百合', '/img/photos/hero-lily.jpg'],
+        ['郁金香', '/img/photos/cat-tulip.jpg'],
+        ['向日葵', '/img/photos/cat-sunflower.jpg'],
+        ['兰花', '/img/photos/moment-business.jpg'],
+        ['满天星', '/img/photos/cat-mixed.jpg']
+    ];
+
+    function catImage(name) {
+        for (var i = 0; i < CAT_PHOTOS.length; i++) {
+            if (name && name.indexOf(CAT_PHOTOS[i][0]) >= 0) return CAT_PHOTOS[i][1];
+        }
+        return '/img/photos/cat-mixed.jpg';
+    }
+
+    function loadCategories() {
+        jQuery.get('/api/categories/active', function (res) {
+            if (res.code === 200 && res.data && res.data.length) {
+                var html = '';
+                res.data.forEach(function (c) {
+                    html += '<a href="/products?categoryId=' + c.id + '" class="hu-cat-tile">' +
+                        '<img src="' + catImage(c.name) + '" alt="' + jQuery('<i>').text(c.name).html() + '" loading="lazy">' +
+                        '<div class="hu-cat-tile__veil"></div>' +
+                        '<div class="hu-cat-tile__cap"><h3>' + jQuery('<i>').text(c.name).html() + '</h3><p>' +
+                        jQuery('<i>').text(c.description || '查看详情').html() + '</p></div></a>';
+                });
+                jQuery('#categoryGrid').append(html);
+            }
+        });
+    }
+
+    // 商品卡片渲染
+    function renderProducts(products) {
+        var html = '';
+        products.forEach(function (p) {
+            var tags = '';
+            if (p.isFeatured) tags += '<span class="hu-tag hu-tag--sale">热销</span>';
+            if (p.isNew) tags += '<span class="hu-tag hu-tag--new">新品</span>';
+            var stars = '';
+            var r = Math.floor(p.rating || 5);
+            for (var i = 0; i < 5; i++) stars += '<i class="fa fa-star' + (i < r ? '' : '-o') + '"></i>';
+            html += '<div class="hu-product">' +
+                '<a href="/product/' + p.id + '" class="hu-product__media">' +
+                '<img src="' + (p.mainImage || '/img/product-placeholder.svg') + '" alt="' + p.name + '">' +
+                (tags ? '<div class="hu-product__tags">' + tags + '</div>' : '') +
+                '<button class="hu-product__fav" title="收藏"><i class="fa fa-heart-o"></i></button></a>' +
+                '<div class="hu-product__body">' +
+                '<div class="hu-product__cat">' + (p.category ? p.category.name : '鲜花') + '</div>' +
+                '<a href="/product/' + p.id + '" class="hu-product__name">' + p.name + '</a>' +
+                '<div class="hu-product__rate">' + stars + '<span>(' + (p.reviewCount || 0) + ')</span></div>' +
+                '<div class="hu-product__foot">' +
+                '<div class="hu-price"><small>¥</small>' + p.price +
+                (p.originalPrice && p.originalPrice > p.price ? '<del>¥' + p.originalPrice + '</del>' : '') + '</div>' +
+                '<button class="hu-product__add" data-id="' + p.id + '" title="加入购物车"><i class="fa fa-shopping-bag"></i></button>' +
+                '</div></div></div>';
+        });
+        jQuery('#featuredProducts').html(html);
+        jQuery('.hu-product__add').on('click', function (e) {
+            e.preventDefault();
+            huAddToCart(jQuery(this).data('id'));
+        });
+    }
+
+    function loadFeaturedProducts() {
+        jQuery.get('/api/products/featured?limit=8', function (res) {
+            if (res.code === 200 && res.data && res.data.length) {
+                renderProducts(res.data);
+            } else {
+                jQuery.get('/api/products/active?page=1&limit=8', function (r2) {
+                    if (r2.code === 200 && r2.data && r2.data.length) renderProducts(r2.data);
+                    else jQuery('#featuredProducts').html('<div class="hu-empty">暂无商品</div>');
+                });
+            }
+        });
+    }
+
+    function huSubscribe(e) {
+        e.preventDefault();
+        var email = jQuery('#newsletterEmail').val();
+        if (!email) return;
+        huToast('订阅成功，感谢关注花语轩');
+        jQuery('#newsletterEmail').val('');
+    }
+
+    jQuery(function () {
+        loadCategories();
+        loadFeaturedProducts();
+        huBindCouponPromo({chipsId: 'homePromoChips', limit: 4});
+    });
+</script>
+</body>
+</html>

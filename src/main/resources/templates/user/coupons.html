@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>优惠券 · 花语轩</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<div class="hu-pagehead">
+    <div class="hu-container hu-pagehead__row">
+        <div>
+            <div class="hu-crumb"><a href="/index">首页</a> / <a href="/user/profile">个人中心</a> / <span>优惠券</span></div>
+            <h1>优惠券</h1>
+            <p class="hu-pagehead__sub">领一张放进券包，结算时自动挑最划算的那张</p>
+        </div>
+        <div class="hu-pagehead__aside">
+            <span class="hu-muted" style="font-size:13px">可用券</span>
+            <span class="hu-num" id="usableTotal" style="font-size:26px">—</span>
+        </div>
+    </div>
+</div>
+
+<div class="hu-container" style="padding-bottom:80px">
+
+    <!-- 我的券包 -->
+    <section class="hu-panel" style="margin-top:30px">
+        <div class="hu-panel-head">
+            <div>
+                <h2><i class="fa fa-ticket" style="color:var(--hu-accent);margin-right:9px"></i>我的券包</h2>
+                <p>下单时一单限用一张，取消或退款后券会退回券包</p>
+            </div>
+            <div class="hu-chips" id="mineFilter">
+                <button type="button" class="hu-chip is-active" data-filter="all">全部</button>
+                <button type="button" class="hu-chip" data-filter="unused">未使用</button>
+                <button type="button" class="hu-chip" data-filter="used">已使用</button>
+                <button type="button" class="hu-chip" data-filter="expired">已过期</button>
+            </div>
+        </div>
+        <div style="padding:0 22px 24px">
+            <div id="mineGrid" class="hu-coupons"></div>
+            <div id="mineEmpty" class="hu-empty" style="display:none;padding:36px 0 8px">
+                <i class="fa fa-ticket"></i>
+                <strong>这里还空着</strong>
+                <span style="font-size:14px">下面的领券中心可以免费领取，下单前记得带一张</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- 领券中心 -->
+    <section class="hu-panel" style="margin-top:26px">
+        <div class="hu-panel-head">
+            <div>
+                <h2><i class="fa fa-gift" style="color:var(--hu-accent);margin-right:9px"></i>领券中心</h2>
+                <p id="centerSub">当前可领取的活动券，领取后立即入包</p>
+            </div>
+            <a href="/products" class="hu-link" style="font-size:13px">去挑花礼 <i class="fa fa-long-arrow-right"></i></a>
+        </div>
+        <div style="padding:0 22px 24px">
+            <div id="centerGrid" class="hu-coupons"></div>
+            <div id="centerEmpty" class="hu-empty" style="display:none;padding:36px 0 8px">
+                <i class="fa fa-clock-o"></i>
+                <strong>暂无可领的券</strong>
+                <span style="font-size:14px">活动开抢时会第一时间出现在这里</span>
+            </div>
+        </div>
+    </section>
+</div>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<script>
+    let mine = [];
+    let receivable = [];
+    let filter = 'all';
+
+    function esc(s) {
+        return window.huEscape(s == null ? '' : String(s));
+    }
+
+    function num(v) {
+        return Number(v || 0).toFixed(2).replace(/\.00$/, '');
+    }
+
+    /** 券面左侧大字：满减显示金额，折扣显示几折 */
+    function stub(c) {
+        if (c.type === 'discount' && c.discountRate != null) {
+            return '<div class="hu-coupon__amount">' + (Number(c.discountRate) * 10).toFixed(1).replace(/\.0$/, '') +
+                '<small>折</small></div>';
+        }
+        return '<div class="hu-coupon__amount"><small>¥</small>' + num(c.amount) + '</div>';
+    }
+
+    function ruleOf(c) {
+        return Number(c.threshold || 0) > 0 ? '满 ' + num(c.threshold) + ' 可用' : '无门槛使用';
+    }
+
+    function dateOf(v) {
+        return String(v || '').slice(0, 10);
+    }
+
+    function validText(c) {
+        if (c.expireAt) return '有效期至 ' + dateOf(c.expireAt);
+        if (c.endTime) return '领取截止 ' + dateOf(c.endTime);
+        if (c.validDays) return '领取后 ' + c.validDays + ' 天内有效';
+        return '长期有效';
+    }
+
+    function scopeText(c) {
+        return c.scope === 'category' ? '指定分类可用' : '全场花礼通用';
+    }
+
+    function card(options) {
+        return '<div class="hu-coupon' + (options.dim ? ' hu-coupon--dim' : '') + '">' +
+            '<div class="hu-coupon__stub">' + stub(options.coupon) +
+            '<div class="hu-coupon__rule">' + esc(ruleOf(options.coupon)) + '</div></div>' +
+            '<div class="hu-coupon__body">' +
+            '<div class="hu-coupon__name">' + esc(options.coupon.name) + '</div>' +
+            '<div class="hu-coupon__meta">' + esc(scopeText(options.coupon)) + ' · ' + esc(validText(options.coupon)) + '</div>' +
+            (options.note ? '<div class="hu-coupon__meta">' + esc(options.note) + '</div>' : '') +
+            '<div class="hu-coupon__foot">' +
+            '<span class="hu-coupon__code">' + esc(options.coupon.code || '') + '</span>' +
+            (options.action || '') +
+            '</div></div></div>';
+    }
+
+    function renderMine() {
+        const list = filter === 'all' ? mine : mine.filter(function (u) { return u.status === filter; });
+        const usableCount = mine.filter(function (u) { return u.status === 'unused'; }).length;
+        $('#usableTotal').text(usableCount);
+        if (!list.length) {
+            $('#mineGrid').html('');
+            $('#mineEmpty').text(mine.length ? '该状态下暂时没有券' : '券包还是空的，去下面的领券中心看看').show();
+            return;
+        }
+        $('#mineEmpty').hide();
+        $('#mineGrid').html(list.map(function (u) {
+            let action;
+            if (u.status === 'unused') {
+                action = '<a class="hu-btn hu-btn--sm hu-btn--solid" href="/products">去使用</a>';
+            } else if (u.status === 'used') {
+                action = '<span class="hu-pill hu-pill--muted">已使用 · ' + esc(dateOf(u.usedAt)) + '</span>';
+            } else {
+                action = '<span class="hu-pill hu-pill--muted">已过期</span>';
+            }
+            return card({
+                coupon: u,
+                dim: u.status !== 'unused',
+                note: '领取于 ' + dateOf(u.receivedAt) + (u.status === 'used' ? ' · 使用于 ' + dateOf(u.usedAt) : ''),
+                action: action
+            });
+        }).join(''));
+    }
+
+    function renderCenter() {
+        if (!receivable.length) {
+            $('#centerGrid').html('');
+            $('#centerEmpty').show();
+            $('#centerSub').text('当前没有可领取的活动券');
+            return;
+        }
+        $('#centerEmpty').hide();
+        $('#centerSub').text('当前可领取 ' + receivable.length + ' 张活动券，领取后立即入包');
+        $('#centerGrid').html(receivable.map(function (c) {
+            const left = c.total > 0 ? (c.total - (c.issued || 0)) : null;
+            const soldOut = left != null && left <= 0;
+            return card({
+                coupon: c,
+                dim: soldOut,
+                note: left != null ? (left > 0 ? '剩余 ' + left + ' 张可领' : '本批已领完') : '不限量发放',
+                action: soldOut ? '<span class="hu-pill hu-pill--muted">已领完</span>'
+                    : '<button type="button" class="hu-btn hu-btn--sm hu-btn--solid" data-claim="' + esc(c.id) + '">领取</button>'
+            });
+        }).join(''));
+    }
+
+    function loadMine() {
+        huApi({
+            url: '/api/coupons/mine',
+            ok: function (data) { mine = data || []; renderMine(); },
+            fail: function () { mine = []; renderMine(); }
+        });
+    }
+
+    function loadCenter() {
+        huApi({
+            url: '/api/coupons/receivable',
+            ok: function (data) { receivable = data || []; renderCenter(); },
+            fail: function () { receivable = []; renderCenter(); }
+        });
+    }
+
+    $(function () {
+        loadCenter();
+        loadMine();
+
+        $('#mineFilter').on('click', '.hu-chip', function () {
+            $('#mineFilter .hu-chip').removeClass('is-active');
+            $(this).addClass('is-active');
+            filter = $(this).data('filter');
+            renderMine();
+        });
+
+        $('#centerGrid').on('click', '[data-claim]', function () {
+            const btn = $(this).prop('disabled', true).text('领取中…');
+            huApi({
+                url: '/api/coupons/claim',
+                type: 'POST',
+                data: {couponId: String($(this).data('claim'))},
+                ok: function () {
+                    window.huToast('领取成功，已放入券包', 'ok');
+                    loadCenter();
+                    loadMine();
+                },
+                fail: function () { btn.prop('disabled', false).text('领取'); }
+            });
+        });
+    });
+</script>
+</body>
+</html>

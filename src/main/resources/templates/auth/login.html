@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>登录 · 花语轩</title>
+</head>
+<body>
+<div class="hu-auth">
+    <!-- 左侧品牌视觉区 -->
+    <aside class="hu-auth__aside">
+        <img src="/img/photos/hero-lily.jpg" alt="花艺工作室">
+        <div class="hu-auth__aside-inner">
+            <div>
+                <div class="hu-eyebrow" style="color:rgba(255,255,255,.65)">HUA YU XUAN · FLORAL ATELIER</div>
+                <h2>让每一束花<br>都恰到好处地抵达</h2>
+            </div>
+            <div>
+                <p class="quote">“花是无声的语言。我们负责挑选、修剪与搭配，<br>你只需把心意交给它。”</p>
+                <p style="color:rgba(255,255,255,.5);font-size:12px;letter-spacing:.14em;margin-top:28px">EST. 2024 — FRESH FLOWERS, EVERY DAY</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 右侧登录面板 -->
+    <div class="hu-auth__panel">
+        <div class="hu-auth__box">
+            <div class="hu-eyebrow">MEMBER LOGIN</div>
+            <h1>欢迎回来</h1>
+            <p class="hu-auth__switch">还没有账号？<a th:href="@{/auth/register}">注册成为会员</a></p>
+
+            <div th:if="${errorMsg != null and errorMsg != ''}" class="hu-auth__err" style="margin-top:24px">
+                <i class="fa fa-exclamation-circle"></i>&nbsp;<span th:text="${errorMsg}">用户名或密码错误</span>
+            </div>
+
+            <form th:action="@{/auth/login}" method="post" style="margin-top:32px">
+                <div class="hu-field">
+                    <label for="username">用户名</label>
+                    <input id="username" type="text" name="username" class="hu-input"
+                           placeholder="请输入用户名" autocomplete="username" required>
+                </div>
+                <div class="hu-field">
+                    <label for="password">密码</label>
+                    <input id="password" type="password" name="password" class="hu-input"
+                           placeholder="请输入登录密码" autocomplete="current-password" required>
+                </div>
+
+                <div class="hu-auth__row">
+                    <label class="hu-check"><input type="checkbox" name="remember"> 记住我的登录状态</label>
+                    <a href="javascript:;" style="color:var(--hu-muted);font-size:13px"
+                       onclick="window.huToast && huToast('请联系客服协助找回密码', 'ok')">忘记密码？</a>
+                </div>
+
+                <button type="submit" class="hu-btn hu-btn--solid hu-btn--block">登&nbsp;&nbsp;录</button>
+            </form>
+
+            <div class="hu-auth__divider">FLOWER FOR EVERY MOMENT</div>
+
+            <p style="font-size:13px;color:var(--hu-muted);text-align:center;line-height:1.9">
+                登录即代表你同意花语轩的
+                <a href="javascript:;" style="color:var(--hu-accent)">《服务条款》</a>与
+                <a href="javascript:;" style="color:var(--hu-accent)">《隐私政策》</a>
+            </p>
+
+            <div style="text-align:center;margin-top:36px">
+                <a th:href="@{/index}" style="font-size:13px;color:var(--hu-muted)">
+                    <i class="fa fa-arrow-left"></i>&nbsp; 先随便逛逛
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分类管理 - 花语轩</title>
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
+    <style>
+        * {margin: 0;padding: 0;}
+        body {background: var(--ad-paper, #f6f5f1);}
+        .header {background: #211f1a;padding: 15px 24px;color: white;display: flex;justify-content: space-between;align-items: center;}
+        .header .logo {font-family: 'Noto Serif SC', serif;font-size: 19px;font-weight: 600;letter-spacing: .04em;}
+        .header .user-info a {color: #d8d5cc;text-decoration: none;margin-left: 15px;}
+        .header .user-info a:hover {color: #fff;}
+        .content {padding: 20px;}
+        .layui-card {border-radius: 4px;margin-bottom: 20px;}
+        .layui-card-header {font-size: 16px;font-weight: 600;background: #fff;border-bottom: 1px solid #e8e3d9;}
+        .search-bar {padding: 15px;background: #fff;border-radius: 4px;margin-bottom: 15px;border: 1px solid #e8e3d9;}
+        .btn-add {background: #6f7d5c !important;color: white !important;}
+        .btn-add:hover {background: #454f39 !important;}
+        .cat-icon i {font-size: 16px;color: #6f7d5c;}
+    </style>
+</head>
+<body>
+    <div class="layui-layout layui-layout-admin">
+        <div class="layui-header header">
+            <div class="logo"><i class="fas fa-leaf"></i> 花语轩管理后台</div>
+            <div class="user-info">
+                <a href="/admin"><i class="fas fa-home"></i> 返回首页</a>
+                <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+            </div>
+        </div>
+
+        <div class="layui-body content">
+            <div class="layui-card">
+                <div class="layui-card-header"><i class="fas fa-tags"></i> 分类管理</div>
+                <div class="layui-card-body">
+                    <div class="search-bar">
+                        <form class="layui-form" lay-filter="searchForm">
+                            <div class="layui-inline">
+                                <input type="text" name="name" placeholder="搜索分类名称" class="layui-input" style="width: 200px;">
+                            </div>
+                            <div class="layui-inline">
+                                <button type="button" class="layui-btn" lay-submit lay-filter="search"><i class="fas fa-search"></i> 搜索</button>
+                                <button type="button" class="layui-btn layui-btn-primary" id="btnReset"><i class="fas fa-undo"></i> 重置</button>
+                                <button type="button" class="layui-btn layui-btn-normal btn-add" id="btnAdd"><i class="fas fa-plus"></i> 添加分类</button>
+                            </div>
+                        </form>
+                    </div>
+                    <table class="layui-hide" id="categoryTable" lay-filter="categoryTable"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/html" id="toolbar">
+        <div class="layui-btn-container">
+            <button class="layui-btn layui-btn-sm layui-btn-danger" lay-event="batchDel"><i class="fas fa-trash"></i> 批量删除</button>
+        </div>
+    </script>
+
+    <script type="text/html" id="operateBar">
+        <a class="layui-btn layui-btn-xs" lay-event="edit"><i class="fas fa-edit"></i> 编辑</a>
+        <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del"><i class="fas fa-trash"></i> 删除</a>
+    </script>
+
+    <script type="text/html" id="iconBar">
+        <span class="cat-icon"><i class="fa {{d.icon || 'fa-folder'}}"></i></span>
+    </script>
+
+    <script type="text/html" id="statusBar">
+        <input type="checkbox" name="status" value="{{d.id}}" lay-skin="switch" lay-text="启用|禁用" lay-filter="statusSwitch" {{d.isActive ? 'checked' : ''}}>
+    </script>
+
+    <script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+    <script th:src="@{/jquery-3.7.1.min.js}"></script>
+    <script th:src="@{/js/admin-common.js}"></script>
+    <script th:inline="none">
+        layui.use(['table', 'form', 'layer'], function(){
+            var table = layui.table;
+            var form = layui.form;
+            var layer = layui.layer;
+
+            table.render({
+                elem: '#categoryTable',
+                url: '/api/admin/categories',
+                page: true,
+                limit: 10,
+                toolbar: '#toolbar',
+                defaultToolbar: ['filter', 'exports'],
+                cols: [[
+                    {type: 'checkbox', fixed: 'left'},
+                    {field: 'name', title: '分类名称', fixed: 'left', minWidth: 140},
+                    {field: 'description', title: '描述', minWidth: 200},
+                    {field: 'icon', title: '图标', width: 70, templet: '#iconBar', align: 'center'},
+                    {field: 'sortOrder', title: '排序', width: 90, edit: 'text', align: 'center'},
+                    {field: 'isActive', title: '状态', width: 110, templet: '#statusBar', align: 'center'},
+                    {field: 'createdAt', title: '创建时间', width: 170, templet: function (d) {
+                        return d.createdAt ? new Date(d.createdAt).toLocaleString() : '-';
+                    }},
+                    {fixed: 'right', title: '操作', toolbar: '#operateBar', width: 148}
+                ]]
+            });
+
+            form.on('submit(search)', function(data){
+                table.reload('categoryTable', {
+                    where: {name: data.field.name || ''},
+                    page: {curr: 1}
+                });
+                return false;
+            });
+
+            $('#btnReset').on('click', function(){
+                form.val('searchForm', {name: ''});
+                table.reload('categoryTable', {where: {name: ''}, page: {curr: 1}});
+            });
+
+            form.on('switch(statusSwitch)', function(obj){
+                var id = obj.value;
+                var isActive = obj.elem.checked;
+                huAdmin.request({
+                    url: '/api/admin/categories/' + id + '/status?isActive=' + isActive,
+                    type: 'PATCH', silent: true,
+                    ok: function(){ layer.msg('状态已更新', {icon: 1}); },
+                    fail: function(){
+                        obj.elem.checked = !isActive;
+                        form.render('checkbox');
+                    }
+                });
+            });
+
+            /* 排序列直接编辑，保存失败时回滚表格 */
+            table.on('edit(categoryTable)', function(obj){
+                var value = parseInt(obj.value, 10);
+                if (isNaN(value) || value < 0) {
+                    layer.msg('排序需要是非负整数', {icon: 2});
+                    table.reload('categoryTable');
+                    return;
+                }
+                huAdmin.request({
+                    url: '/api/admin/categories/' + obj.data.id + '/sort?sortOrder=' + value,
+                    type: 'PATCH', silent: true,
+                    ok: function(){ layer.msg('排序已更新', {icon: 1}); table.reload('categoryTable'); },
+                    fail: function(){ table.reload('categoryTable'); }
+                });
+            });
+
+            table.on('tool(categoryTable)', function(obj){
+                if (obj.event === 'del'){
+                    huAdmin.confirmDelete('确定删除分类「' + obj.data.name + '」？分类下若仍有商品将无法删除。',
+                        '/api/admin/categories/' + obj.data.id, function(){ obj.del(); });
+                } else if (obj.event === 'edit'){
+                    layer.open({
+                        type: 2, title: '编辑分类', area: ['560px', '480px'],
+                        content: '/admin/category-edit?id=' + obj.data.id
+                    });
+                }
+            });
+
+            table.on('toolbar(categoryTable)', function(obj){
+                if (obj.event !== 'batchDel') return;
+                var rows = table.checkStatus('categoryTable').data;
+                if (!rows.length) { layer.msg('请先勾选记录', {icon: 7}); return; }
+                layer.confirm('确定删除选中的 ' + rows.length + ' 个分类？含商品的分类会被跳过。', {icon: 3}, function(index){
+                    layer.close(index);
+                    // 分类没有批量接口，按勾选顺序逐条删除并汇总结果
+                    var done = 0, failed = 0;
+                    rows.forEach(function(row){
+                        huAdmin.request({
+                            url: '/api/admin/categories/' + row.id, type: 'DELETE', silent: true,
+                            ok: function(){ done++; },
+                            fail: function(){ failed++; },
+                            always: function(){
+                                if (done + failed === rows.length) {
+                                    layer.msg('已删除 ' + done + ' 个' + (failed ? '，' + failed + ' 个未删除' : ''), {icon: failed ? 5 : 1});
+                                    table.reload('categoryTable');
+                                }
+                            }
+                        });
+                    });
+                });
+            });
+
+            $('#btnAdd').click(function(){
+                layer.open({type: 2, title: '添加分类', area: ['560px', '480px'], content: '/admin/category-edit'});
+            });
+        });
+    </script>
+</body>
+</html>

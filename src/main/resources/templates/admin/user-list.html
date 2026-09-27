@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理 - 花语轩管理后台</title>
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
+    <style>
+        body {background: #f1f1f1;}
+        .user-status {padding: 3px 8px;border-radius: 3px;font-size: 12px;}
+        .status-active {background: #f6ffed;color: #52c41a;}
+        .status-inactive {background: #f5f5f5;color: #8c8c8c;}
+        .status-locked {background: #fff1f0;color: #f5222d;}
+        .member-ordinary {background: #f0f0f0;color: #595959;}
+        .member-vip {background: #fff7e6;color: #fa8c16;}
+    </style>
+</head>
+<body>
+    <div class="layui-layout layui-layout-admin">
+        <div class="layui-header header" style="background: #211f1a;">
+            <div class="logo"><i class="fas fa-leaf"></i> 花语轩管理后台</div>
+            <div class="user-info">
+                <span><i class="fas fa-user-circle"></i> 管理员</span>
+                <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+            </div>
+        </div>
+
+        <div class="layui-side layui-bg-black" style="top: 60px;width: 200px;">
+            <div class="layui-side-scroll">
+                <ul class="layui-nav layui-nav-tree" lay-filter="nav">
+                    <li class="layui-nav-item">
+                        <a href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-th"></i> 商品管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/product-list"><i class="fas fa-box"></i> 商品列表</a></dd>
+                            <dd><a href="/admin/category-list"><i class="fas fa-tags"></i> 分类管理</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-shopping-cart"></i> 订单管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/order-list"><i class="fas fa-list-alt"></i> 订单列表</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item layui-nav-itemed">
+                        <a href="javascript:;"><i class="fas fa-users"></i> 用户管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/user-list"><i class="fas fa-user"></i> 用户列表</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-cog"></i> 系统设置</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/banner-list"><i class="fas fa-image"></i> 轮播图管理</a></dd>
+                            <dd><a href="/admin/notice-list"><i class="fas fa-bullhorn"></i> 公告管理</a></dd>
+                            <dd><a href="/admin/coupon-list"><i class="fas fa-ticket-alt"></i> 优惠券</a></dd>
+                            <dd><a href="/admin/audit-list"><i class="fas fa-history"></i> 操作日志</a></dd>
+                        </dl>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="layui-body" style="left: 200px;">
+            <div class="content-body" style="padding: 20px;">
+                <div class="layui-card">
+                    <div class="layui-card-header">
+                        <i class="fas fa-user"></i> 用户管理
+                    </div>
+                    <div class="layui-card-body">
+                        <div class="layui-form" lay-filter="searchForm">
+                            <div class="layui-form-item">
+                                <div class="layui-inline">
+                                    <label class="layui-form-label">关键词:</label>
+                                    <div class="layui-input-inline">
+                                        <input type="text" name="keyword" placeholder="用户名/姓名/手机/邮箱" class="layui-input">
+                                    </div>
+                                </div>
+                                <div class="layui-inline">
+                                    <label class="layui-form-label">状态:</label>
+                                    <div class="layui-input-inline">
+                                        <select name="status" lay-search="">
+                                            <option value="">全部</option>
+                                            <option value="active">正常</option>
+                                            <option value="inactive">禁用</option>
+                                            <option value="locked">锁定</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="layui-inline">
+                                    <label class="layui-form-label">身份:</label>
+                                    <div class="layui-input-inline">
+                                        <select name="userType">
+                                            <option value="">全部</option>
+                                            <option value="customer">顾客</option>
+                                            <option value="admin">管理员</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="layui-inline">
+                                    <button class="layui-btn" lay-submit lay-filter="search">
+                                        <i class="fas fa-search"></i> 搜索
+                                    </button>
+                                    <button type="button" class="layui-btn layui-btn-primary" id="btnReset">
+                                        <i class="fas fa-undo"></i> 重置
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <table class="layui-hide" id="userTable" lay-filter="userTable"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-footer">© 2024 花语轩鲜花销售系统 - 版权所有</div>
+    </div>
+
+    <script type="text/html" id="toolbar">
+        <div class="layui-btn-container">
+            <button class="layui-btn layui-btn-sm" lay-event="refresh">
+                <i class="fas fa-sync"></i> 刷新
+            </button>
+        </div>
+    </script>
+
+    <script type="text/html" id="statusTpl">
+        {{# var statusText = {active: '正常', inactive: '禁用', locked: '锁定'}[d.status] || d.status; }}
+        <span class="user-status status-{{ d.status || '' }}">{{ statusText || '-' }}</span>
+    </script>
+
+    <script type="text/html" id="memberTpl">
+        {{# var memberText = {ordinary: '普通会员', vip: 'VIP会员'}[d.memberLevel] || d.memberLevel; }}
+        <span class="user-status member-{{ d.memberLevel || '' }}">{{ memberText || '-' }}</span>
+    </script>
+
+    <script type="text/html" id="typeTpl">
+        {{# if(d.userType === 'admin'){ }}<span class="layui-badge layui-bg-orange">管理员</span>
+        {{# } else { }}<span class="layui-badge layui-bg-gray">顾客</span>{{# } }}
+    </script>
+
+    <script type="text/html" id="operateTpl">
+        <a class="layui-btn layui-btn-xs" lay-event="detail"><i class="fas fa-eye"></i> 查看</a>
+        {{# if(d.status === 'active') { }}
+        <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="disable"><i class="fas fa-ban"></i> 禁用</a>
+        {{# } else { }}
+        <a class="layui-btn layui-btn-warm layui-btn-xs" lay-event="enable"><i class="fas fa-check"></i> 启用</a>
+        {{# } }}
+        <a class="layui-btn layui-btn-xs layui-btn-primary" lay-event="resetPwd"><i class="fas fa-key"></i> 重置密码</a>
+    </script>
+
+    <script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+    <script th:src="@{/jquery-3.7.1.min.js}"></script>
+    <script th:src="@{/js/admin-common.js}"></script>
+    <script th:inline="none">
+        layui.use(['table', 'form', 'layer'], function(){
+            var table = layui.table;
+            var form = layui.form;
+            var layer = layui.layer;
+            var FILTER_KEY = 'hu-admin-filter-user';
+            var state = huAdmin.listState('user');
+
+            /** 后端 LocalDateTime 序列化为 ISO 字符串，直接截断展示，避免时区二次换算 */
+            function fmtTime(v) {
+                if (!v) return '-';
+                return String(v).replace('T', ' ').replace(/\.\d+$/, '');
+            }
+
+            table.render({
+                elem: '#userTable',
+                url: '/api/admin/users',
+                toolbar: '#toolbar',
+                defaultToolbar: ['filter', 'exports', 'print'],
+                cols: [[
+                    {field: 'username', title: '用户名', width: 130, fixed: 'left', templet: function(d) {return huAdmin.esc(d.username);}},
+                    {field: 'fullName', title: '姓名', width: 110, templet: function(d) {return huAdmin.esc(d.fullName || '-');}},
+                    {field: 'phone', title: '手机号', width: 130, templet: function(d) {return huAdmin.esc(d.phone || '-');}},
+                    {field: 'email', title: '邮箱', minWidth: 180, templet: function(d) {return huAdmin.esc(d.email || '-');}},
+                    {field: 'userType', title: '身份', width: 88, align: 'center', templet: '#typeTpl'},
+                    {field: 'memberLevel', title: '会员等级', width: 100, align: 'center', templet: '#memberTpl'},
+                    {field: 'points', title: '积分', width: 76, align: 'center', templet: function(d) {return d.points == null ? 0 : d.points;}},
+                    {field: 'status', title: '状态', width: 84, align: 'center', templet: '#statusTpl'},
+                    {field: 'lastLoginTime', title: '最后登录', width: 165, templet: function(d) {return d.lastLoginTime ? fmtTime(d.lastLoginTime) : '从未登录';}},
+                    {field: 'createdAt', title: '注册时间', width: 172, templet: function(d) {return fmtTime(d.createdAt);}},
+                    {title: '操作', width: 250, toolbar: '#operateTpl', fixed: 'right'}
+                ]],
+                page: state.pageConfig(),
+                limit: state.limit(),
+                limits: [10, 20, 30, 50],
+                done: state.done('/api/admin/users')
+            });
+
+            /** 空值不参与查询串拼接，后端按 null 处理条件 */
+            function buildWhere(f) {
+                var where = {};
+                if (f.keyword) where.keyword = $.trim(f.keyword);
+                if (f.status) where.status = f.status;
+                if (f.userType) where.userType = f.userType;
+                return where;
+            }
+
+            function currentFilter() {
+                try { return JSON.parse(sessionStorage.getItem(FILTER_KEY) || '{}'); } catch (e) { return {}; }
+            }
+
+            (function restore(){
+                var f = currentFilter();
+                if (!f.keyword && !f.status && !f.userType) return;
+                form.val('searchForm', f);
+                table.reload('userTable', {where: buildWhere(f), page: {curr: state.pageConfig().curr || 1}});
+            })();
+
+            form.on('submit(search)', function(data){
+                sessionStorage.setItem(FILTER_KEY, JSON.stringify(data.field));
+                state.reset();
+                table.reload('userTable', {where: buildWhere(data.field), page: {curr: 1}});
+                return false;
+            });
+
+            $('#btnReset').on('click', function(){
+                sessionStorage.removeItem(FILTER_KEY);
+                state.reset();
+                form.val('searchForm', {keyword: '', status: '', userType: ''});
+                table.reload('userTable', {where: {}, page: {curr: 1}});
+            });
+
+            /** 状态跃迁：接口要求 JSON 请求体，统一走 huAdmin.request */
+            function changeStatus(id, status, message) {
+                layer.confirm(message, {icon: 3, title: '请确认'}, function(index){
+                    layer.close(index);
+                    huAdmin.request({
+                        url: '/api/admin/users/' + id + '/status',
+                        type: 'POST', data: {status: status},
+                        ok: function(res){ layer.msg(res.msg || '操作成功', {icon: 1}); table.reload('userTable'); }
+                    });
+                });
+            }
+
+            /** 管理员重置密码：理由必填，初始密码留空则由后端随机生成 */
+            function openResetPwdDialog(data) {
+                layer.open({
+                    type: 1,
+                    title: '重置密码 · ' + huAdmin.esc(data.username),
+                    area: ['460px', '320px'],
+                    content: '<div style="padding:20px 24px"><div class="layui-form">' +
+                        '<div class="layui-form-item"><label class="layui-form-label">初始密码</label>' +
+                        '<div class="layui-input-block"><input id="resetPwd" type="text" autocomplete="off" class="layui-input" placeholder="留空则系统生成随机初始密码"></div></div>' +
+                        '<div class="layui-form-item"><label class="layui-form-label">重置理由</label>' +
+                        '<div class="layui-input-block"><input id="resetReason" type="text" maxlength="200" autocomplete="off" class="layui-input" placeholder="必填，便于售后追溯"></div></div>' +
+                        '<div style="color:#999;font-size:12px;padding-left:24px">重置后该用户下次登录将被强制修改密码</div>' +
+                        '</div></div>',
+                    btn: ['确认重置', '取消'],
+                    yes: function(index){
+                        var pwd = $.trim($('#resetPwd').val());
+                        var reason = $.trim($('#resetReason').val());
+                        if (pwd && (pwd.length < 8 || pwd.length > 32)) { layer.msg('初始密码长度需为 8-32 位', {icon: 2}); return; }
+                        if (!reason) { layer.msg('请填写重置理由', {icon: 2}); return; }
+                        var payload = {reason: reason};
+                        if (pwd) payload.newPassword = pwd;
+                        huAdmin.request({
+                            url: '/api/admin/users/' + data.id + '/reset-password',
+                            type: 'POST', data: payload,
+                            ok: function(res){
+                                layer.close(index);
+                                var init = (res.data && res.data.initialPassword) || '';
+                                layer.alert((res.msg || '密码已重置') +
+                                    (init ? '<div style="margin-top:8px">初始密码：<b style="font-size:15px">' + huAdmin.esc(init) + '</b></div>' : '') +
+                                    '<div style="color:#999;margin-top:8px">请线下转交该用户，并提醒其首次登录后改密</div>',
+                                    {icon: 1, title: '重置完成'});
+                            }
+                        });
+                    }
+                });
+            }
+
+            table.on('toolbar(userTable)', function(obj){
+                if(obj.event === 'refresh'){
+                    table.reload('userTable');
+                }
+            });
+
+            table.on('tool(userTable)', function(obj){
+                var data = obj.data;
+                if(obj.event === 'detail'){
+                    layer.open({
+                        type: 2,
+                        title: '用户详情',
+                        content: '/admin/user-detail/' + data.id,
+                        area: ['620px', '540px']
+                    });
+                } else if(obj.event === 'disable'){
+                    changeStatus(data.id, 'inactive', '确定要禁用「' + huAdmin.esc(data.username) + '」吗？禁用后该账号无法登录。');
+                } else if(obj.event === 'enable'){
+                    changeStatus(data.id, 'active', '确定要启用「' + huAdmin.esc(data.username) + '」吗？');
+                } else if(obj.event === 'resetPwd'){
+                    openResetPwdDialog(data);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
