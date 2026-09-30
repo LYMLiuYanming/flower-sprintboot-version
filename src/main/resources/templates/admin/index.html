@@ -7,6 +7,7 @@
     <link rel="icon" th:href="@{/img/favicon.svg}" type="image/svg+xml">
     <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/css/f-h.css}" rel="stylesheet">
     <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
     <style>
         * {margin: 0;padding: 0;}
@@ -21,69 +22,6 @@
         .layui-layout-admin .layui-header {top: 0;}
         .layui-layout-admin .layui-body, .layui-layout-admin .layui-footer {left: 200px;}
         .layui-side-scroll {width: 220px;}
-
-        /* ── 看板内容区：Modern Business ── */
-        .content-body {padding: 22px 24px 28px;background: #f5f6f8;min-height: 100%;}
-        .dash-head {display: flex;align-items: flex-end;justify-content: space-between;gap: 16px;margin-bottom: 16px;}
-        .dash-head h2 {font-size: 20px;font-weight: 600;color: #101623;letter-spacing: -.01em;}
-        .dash-head p {font-size: 12.5px;color: #798394;margin-top: 5px;}
-        .dash-head__ops {display: flex;align-items: center;gap: 10px;}
-        .dash-head__ops .upd {font-size: 12px;color: #9aa3b2;font-variant-numeric: tabular-nums;}
-        .dash-btn {display: inline-flex;align-items: center;gap: 6px;height: 30px;padding: 0 13px;border: 1px solid #e0e5ec;border-radius: 8px;background: #fff;color: #39424f;font-size: 12.5px;text-decoration: none;transition: all .2s var(--hu-ease, cubic-bezier(.4,.08,.24,1));}
-        .dash-btn:hover {border-color: #0f7b63;color: #0f7b63;box-shadow: 0 6px 16px -12px rgba(15,123,99,.6);}
-        .dash-btn i {font-size: 11px;}
-
-        .stat-cards {display: grid;grid-template-columns: repeat(4, minmax(0, 1fr));gap: 14px;margin-bottom: 14px;}
-        .stat-card {position: relative;display: flex;align-items: center;gap: 14px;background: #fff;border: 1px solid #e8ebf0;border-radius: 12px;padding: 16px 18px 16px 21px;box-shadow: 0 1px 2px rgba(16,22,35,.04);overflow: hidden;transition: box-shadow .24s, transform .24s;}
-        .stat-card:hover {transform: translateY(-1px);box-shadow: 0 14px 30px -22px rgba(16,22,35,.35);}
-        .stat-card::before {content: '';position: absolute;left: 0;top: 0;bottom: 0;width: 3px;background: var(--bar, #0f7b63);}
-        .stat-card .icon {flex: none;width: 42px;height: 42px;border-radius: 11px;display: flex;align-items: center;justify-content: center;font-size: 16px;color: #fff;background: var(--bar, #0f7b63);}
-        .stat-card .info {min-width: 0;}
-        .stat-card .info h3 {font-size: 25px;line-height: 1.15;font-weight: 600;color: #101623;font-variant-numeric: tabular-nums;letter-spacing: -.02em;}
-        .stat-card .info p {font-size: 12.5px;color: #798394;margin-top: 3px;}
-        .stat-card .info em {font-style: normal;color: #a4acba;}
-        .stat-card .info em + em::before {content: '·';margin: 0 5px;}
-
-        .dash-card {background: #fff;border: 1px solid #e8ebf0;border-radius: 12px;margin-bottom: 14px;box-shadow: 0 1px 2px rgba(16,22,35,.04);}
-        .dash-card__head {display: flex;align-items: center;justify-content: space-between;gap: 12px;padding: 13px 18px;border-bottom: 1px solid #eef0f4;}
-        .dash-card__title {display: flex;align-items: center;gap: 8px;font-size: 14.5px;font-weight: 600;color: #101623;}
-        .dash-card__title i {color: #0f7b63;font-size: 13px;}
-        .dash-card__title small {font-weight: 400;color: #9aa3b2;font-size: 12px;margin-left: 2px;}
-        .dash-card__body {padding: 12px 14px 16px;}
-        .seg {display: inline-flex;gap: 2px;background: #f2f4f7;border-radius: 8px;padding: 3px;}
-        .seg button {border: 0;background: transparent;color: #798394;font-size: 12px;padding: 4px 11px;border-radius: 6px;cursor:pointer;transition: all .2s;}
-        .seg button.is-active {background: #fff;color: #0f7b63;font-weight: 600;box-shadow: 0 1px 3px rgba(16,22,35,.12);}
-        .chart {width: 100%;height: 296px;}
-        .chart--sm {height: 296px;}
-        .chart-empty {display: flex;align-items: center;justify-content: center;color: #a4acba;font-size: 13px;}
-
-        .rank {list-style: none;margin: 0;padding: 0;}
-        .rank li {display: flex;align-items: center;gap: 10px;padding: 10px 2px;border-bottom: 1px dashed #eef0f4;font-size: 13px;}
-        .rank li:last-child {border-bottom: 0;}
-        .rank .no {flex: none;width: 20px;height: 20px;line-height: 20px;text-align:center;border-radius: 6px;background: #f2f4f7;color: #798394;font-size: 11px;font-weight: 600;}
-        .rank li:nth-child(-n+3) .no {background: #e8f4f0;color: #0f7b63;}
-        .rank .name {flex: 1;min-width: 0;color: #39424f;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;}
-        .rank .name span {display: block;font-size: 11.5px;color: #a4acba;}
-        .rank .amt {flex: none;color: #101623;font-weight: 600;font-variant-numeric: tabular-nums;}
-        .rank .amt span {display: block;font-weight: 400;font-size: 11.5px;color: #a4acba;text-align: right;}
-        .rank-empty {padding: 34px 0;text-align: center;color: #a4acba;font-size: 13px;}
-
-        .pill {display: inline-block;padding: 1px 9px;border-radius: 999px;font-size: 12px;line-height: 19px;}
-        .pill.pending {background: #fff7e6;color: #c4761a;}
-        .pill.paid {background: #e9f2fb;color: #2f6fb5;}
-        .pill.processing {background: #f1ecfb;color: #6f4fb0;}
-        .pill.shipped {background: #fdeef4;color: #c1457a;}
-        .pill.delivered, .pill.completed {background: #e9f6ee;color: #2f8553;}
-        .pill.cancelled {background: #f2f3f5;color: #798394;}
-        .pill.refunded {background: #fdecec;color: #c53030;}
-
-        .dash-card .layui-table-view {margin: 0;border: 0;}
-        .dash-card .layui-table th {background: #fafbfc;color: #798394;font-weight: 500;}
-        .dash-card .layui-table-view .layui-table td {font-variant-numeric: tabular-nums;}
-
-        @media (max-width: 1180px) {
-            .stat-cards {grid-template-columns: repeat(2, minmax(0, 1fr));}
-        }
     </style>
 </head>
 <body>
@@ -103,6 +41,9 @@
                 <ul class="layui-nav layui-nav-tree" lay-filter="nav">
                     <li class="layui-nav-item layui-this">
                         <a href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="/admin/report"><i class="fas fa-chart-pie"></i> 报表中心</a>
                     </li>
                     <li class="layui-nav-item">
                         <a href="javascript:;"><i class="fas fa-th"></i> 商品管理</a>
@@ -137,106 +78,117 @@
         </div>
 
         <div class="layui-body">
-            <div class="content-body">
-                <div class="dash-head">
+            <div class="h-content">
+                <div class="h-head">
                     <div>
                         <h2>经营总览</h2>
-                        <p>成交口径：已支付及后续流转状态订单（已排除待支付、取消、退款）</p>
+                        <p class="h-head__note">成交口径：已支付及后续流转状态订单（已排除待付款、取消、退款）</p>
                     </div>
-                    <div class="dash-head__ops">
-                        <span class="upd" id="dashUpdated"></span>
-                        <a class="dash-btn" href="/admin/order-list"><i class="fas fa-file-export"></i> 订单管理</a>
-                        <button type="button" class="dash-btn" id="dashRefresh"><i class="fas fa-sync-alt"></i> 刷新</button>
+                    <div class="h-ops">
+                        <div class="h-range">
+                            <div class="h-seg" id="rangeSeg">
+                                <button type="button" data-range="7">近 7 天</button>
+                                <button type="button" data-range="30" class="is-active">近 30 天</button>
+                                <button type="button" data-range="90">近 90 天</button>
+                                <button type="button" data-range="custom">自定义</button>
+                            </div>
+                            <span class="h-range__dates" id="rangeDates" style="display:none">
+                                <input type="text" class="h-date" id="dateFrom" placeholder="开始日期" autocomplete="off">
+                                <span style="color:#a4acba">–</span>
+                                <input type="text" class="h-date" id="dateTo" placeholder="结束日期" autocomplete="off">
+                            </span>
+                        </div>
+                        <span class="h-updated" id="dashUpdated"><i class="fas fa-clock"></i>数据加载中</span>
+                        <a class="h-btn" href="/admin/report"><i class="fas fa-chart-pie"></i> 报表中心</a>
+                        <button type="button" class="h-btn" id="dashRefresh"><i class="fas fa-sync-alt"></i> 刷新</button>
                     </div>
                 </div>
 
-                <div class="stat-cards">
-                    <div class="stat-card" style="--bar:#1c4b8a">
-                        <div class="icon"><i class="fas fa-box"></i></div>
-                        <div class="info">
-                            <h3 id="productCount">0</h3>
-                            <p>商品总数</p>
-                            <p style="margin-top:2px"><em id="activeProductCount">在售 0</em><em id="categoryCount">分类 0</em></p>
-                        </div>
-                    </div>
-                    <div class="stat-card" style="--bar:#c08a33">
-                        <div class="icon"><i class="fas fa-shopping-bag"></i></div>
-                        <div class="info">
-                            <h3 id="orderCount">0</h3>
-                            <p>订单总数</p>
-                            <p style="margin-top:2px"><em id="pendingOrderCount">待付款 0</em></p>
-                        </div>
-                    </div>
-                    <div class="stat-card" style="--bar:#0f7b63">
-                        <div class="icon"><i class="fas fa-users"></i></div>
-                        <div class="info">
-                            <h3 id="userCount">0</h3>
-                            <p>用户总数</p>
-                            <p style="margin-top:2px"><em id="contentCount">轮播 0 · 公告 0</em></p>
-                        </div>
-                    </div>
-                    <div class="stat-card" style="--bar:#c15b6b">
-                        <div class="icon"><i class="fas fa-coins"></i></div>
-                        <div class="info">
-                            <h3 id="paidAmount">¥0</h3>
-                            <p>累计成交额</p>
-                            <p style="margin-top:2px"><em id="paidCount">成交 0 单</em><em id="avgAmount">客单价 ¥0.00</em></p>
-                        </div>
-                    </div>
-                </div>
+                <div class="h-alerts" id="dashAlerts"></div>
+
+                <!-- G27 待办：可动手的事排在指标前面 -->
+                <div class="h-todos" id="todoCards"></div>
+
+                <div class="h-cards" id="kpiCards"></div>
 
                 <div class="layui-row layui-col-space15">
                     <div class="layui-col-md8">
-                        <div class="dash-card">
-                            <div class="dash-card__head">
-                                <div class="dash-card__title">
+                        <div class="h-panel">
+                            <div class="h-panel__head">
+                                <div class="h-panel__title">
                                     <i class="fas fa-chart-area"></i> 销售趋势 <small id="trendSummary"></small>
                                 </div>
-                                <div class="seg" id="trendSeg">
-                                    <button type="button" data-days="7">近 7 天</button>
-                                    <button type="button" data-days="14" class="is-active">近 14 天</button>
-                                    <button type="button" data-days="30">近 30 天</button>
+                                <div class="h-panel__tools">
+                                    <div class="h-seg" id="granSeg">
+                                        <button type="button" data-gran="day" class="is-active">按天</button>
+                                        <button type="button" data-gran="week">按周</button>
+                                        <button type="button" data-gran="month">按月</button>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="dash-card__body">
-                                <div class="chart" id="salesTrendChart"></div>
+                            <div class="h-panel__body">
+                                <div class="h-chart" id="salesTrendChart"></div>
                             </div>
+                            <div class="h-panel__foot" id="trendFoot"></div>
                         </div>
                     </div>
                     <div class="layui-col-md4">
-                        <div class="dash-card">
-                            <div class="dash-card__head">
-                                <div class="dash-card__title"><i class="fas fa-award"></i> 畅销商品 <small>按成交额</small></div>
+                        <div class="h-panel">
+                            <div class="h-panel__head">
+                                <div class="h-panel__title"><i class="fas fa-chart-pie"></i> 分类销售占比 <small>含去年同期</small></div>
                             </div>
-                            <div class="dash-card__body">
-                                <div class="chart chart--sm" id="topProductsChart"></div>
+                            <div class="h-panel__body">
+                                <div class="h-chart h-chart--sm" id="categoryChart"></div>
+                                <ul class="h-rank" id="categoryList"></ul>
                             </div>
+                            <div class="h-panel__foot" id="categoryFoot"></div>
                         </div>
                     </div>
                 </div>
 
                 <div class="layui-row layui-col-space15">
-                    <div class="layui-col-md8">
-                        <div class="dash-card">
-                            <div class="dash-card__head">
-                                <div class="dash-card__title"><i class="fas fa-clock"></i> 最新订单</div>
-                                <a class="dash-btn" href="/admin/order-list">查看全部</a>
+                    <div class="layui-col-md4">
+                        <div class="h-panel">
+                            <div class="h-panel__head">
+                                <div class="h-panel__title"><i class="fas fa-award"></i> 畅销商品 <small id="productWindow"></small></div>
+                                <a class="h-btn" href="/admin/product-list">商品管理</a>
                             </div>
-                            <div class="dash-card__body">
-                                <table class="layui-hide" id="recentOrders" lay-filter="recentOrders"></table>
+                            <div class="h-panel__body">
+                                <div class="h-chart h-chart--sm" id="topProductsChart"></div>
                             </div>
                         </div>
                     </div>
                     <div class="layui-col-md4">
-                        <div class="dash-card">
-                            <div class="dash-card__head">
-                                <div class="dash-card__title"><i class="fas fa-crown"></i> 消费排行 <small>累计成交 TOP 5</small></div>
-                                <a class="dash-btn" href="/admin/user-list">用户管理</a>
+                        <div class="h-panel">
+                            <div class="h-panel__head">
+                                <div class="h-panel__title"><i class="fas fa-map-marked-alt"></i> 地区销售榜 <small>按成交额</small></div>
+                                <a class="h-btn" href="/flower-map" target="_blank"><i class="fas fa-location-dot"></i> 地图</a>
                             </div>
-                            <div class="dash-card__body">
-                                <ul class="rank" id="spenderRank"></ul>
+                            <div class="h-panel__body">
+                                <ul class="h-rank" id="regionRank"></ul>
                             </div>
                         </div>
+                    </div>
+                    <div class="layui-col-md4">
+                        <div class="h-panel">
+                            <div class="h-panel__head">
+                                <div class="h-panel__title"><i class="fas fa-crown"></i> 消费排行 <small>累计成交 TOP 5</small></div>
+                                <a class="h-btn" href="/admin/user-list">用户管理</a>
+                            </div>
+                            <div class="h-panel__body">
+                                <ul class="h-rank" id="spenderRank"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="h-panel">
+                    <div class="h-panel__head">
+                        <div class="h-panel__title"><i class="fas fa-clock"></i> 最新订单</div>
+                        <a class="h-btn" href="/admin/order-list">查看全部</a>
+                    </div>
+                    <div class="h-panel__body">
+                        <table class="layui-hide" id="recentOrders" lay-filter="recentOrders"></table>
                     </div>
                 </div>
             </div>
@@ -255,220 +207,244 @@
     <script th:src="@{/jquery-3.7.1.min.js}"></script>
     <script th:src="@{/js/echarts.min.js}"></script>
     <script th:src="@{/js/admin-common.js}"></script>
+    <script th:src="@{/js/hu-stats.js}"></script>
     <script th:inline="none">
-        layui.use(['element', 'table', 'layer'], function () {
+        layui.use(['element', 'table', 'layer', 'laydate'], function () {
             var table = layui.table;
             var layer = layui.layer;
+            var laydate = layui.laydate;
+            var esc = huStats.esc;
+            var $ = window.jQuery;
 
-            var INK = '#101623', MUTED = '#8d97a8', LINE = '#eef0f4', ACCENT = '#0f7b63', GOLD = '#c08a33';
-            var charts = {};
-            var trendDays = 14;
+            /* H01：时间范围是本页唯一状态源，所有卡片共用它拼参数 */
+            var state = {range: '30', from: '', to: '', granularity: 'day'};
 
-            function num(v) { var n = Number(v); return isFinite(n) ? n : 0; }
-            function money(v, digits) {
-                return '¥' + num(v).toLocaleString('zh-CN', {minimumFractionDigits: digits === 0 ? 0 : 2, maximumFractionDigits: digits === 0 ? 0 : 2});
-            }
-            function fmtTime(v) {
-                if (!v) return '-';
-                return String(v).replace('T', ' ').slice(0, 16);
-            }
-            function empty(el, text) {
-                jQuery(el).addClass('chart-empty').text(text || '暂无数据');
-            }
-            /** 容器可能残留占位文案，重绘前先 dispose 再 init，否则 canvas 被 text() 清掉后图表就消失了 */
-            function mountChart(el) {
-                if (charts[el.id]) charts[el.id].dispose();
-                jQuery(el).removeClass('chart-empty').empty();
-                charts[el.id] = window.echarts.init(el);
-                return charts[el.id];
-            }
-            /** 图表容器可能处于 layui 隐藏列中，尺寸变化后必须显式 resize */
-            function resizeCharts() {
-                for (var k in charts) {
-                    if (charts[k] && !charts[k].isDisposed()) charts[k].resize();
+            function qs(extra) {
+                var q = {range: state.range, granularity: state.granularity};
+                if (state.range === 'custom') {
+                    q.from = state.from;
+                    q.to = state.to;
                 }
+                if (extra) {
+                    for (var k in extra) q[k] = extra[k];
+                }
+                return q;
             }
 
-            /* ───── KPI ───── */
-            function loadOverview() {
-                huAdmin.request({
-                    url: '/api/admin/stats/overview', silent: true,
+            function money(v, d) { return huStats.money(v, d); }
+            function num(v) { return huStats.num(v); }
+            function int(v) { return huStats.int(v); }
+
+            /* ───── G27：待办卡片（待发货 / 待审核退款 / 库存告急 / 待回复评价） ───── */
+            function todoCard(o) {
+                var pending = o.count > 0;
+                return '<a class="h-todo' + (pending ? ' is-hot' : '') + '" href="' + o.href + '" style="--bar:' + o.color + '">'
+                    + '<span class="h-todo__icon"><i class="fas ' + o.icon + '"></i></span>'
+                    + '<span class="h-todo__body">'
+                    + '<b class="h-todo__value">' + o.value + '</b>'
+                    + '<span class="h-todo__label">' + esc(o.label) + '</span>'
+                    + '<span class="h-todo__sub">' + o.sub + '</span>'
+                    + '</span><i class="fas fa-angle-right h-todo__go"></i></a>';
+            }
+
+            function todoCount(count, unavailableText) {
+                // 接口按 non_null 序列化，未启用的流程整个字段不会下发，null 与 undefined 都算「不可用」
+                if (count == null) return {value: '—', sub: unavailableText};
+                return {value: int(count), sub: count > 0 ? '点进去处理' : '当前没有待办'};
+            }
+
+            function renderTodos(t, unreplied) {
+                var ship = todoCount(t.awaitingShip, '订单数据暂不可用');
+                // 退款流程的表还没建库时后端下发 null：写「未启用」，不能写 0 让人以为今天没有退款要审
+                var refund = t.pendingRefund == null
+                    ? {value: '未启用', sub: '退款流程尚未上线'}
+                    : todoCount(t.pendingRefund, '退款数据暂不可用');
+                var stock = todoCount(t.stockAlerts, '库存数据暂不可用');
+                var review = todoCount(unreplied, '评价数据暂不可用');
+
+                $('#todoCards').html(
+                    todoCard({
+                        color: '#1c4b8a', icon: 'fa-truck-fast', label: '待发货', href: '/admin/order-list',
+                        count: t.awaitingShip, value: ship.value, sub: ship.sub
+                    }) + todoCard({
+                        color: '#c15b6b', icon: 'fa-hand-holding-dollar', label: '待审核退款', href: '/admin/order-list',
+                        count: t.pendingRefund, value: refund.value, sub: refund.sub
+                    }) + todoCard({
+                        color: '#c08a33', icon: 'fa-boxes-stacked', label: '库存告急', href: '/admin/product-list',
+                        count: t.stockAlerts, value: stock.value, sub: stock.sub
+                    }) + todoCard({
+                        color: '#6f4fb0', icon: 'fa-comment-dots', label: '待回复评价', href: '/admin/review-list',
+                        count: unreplied, value: review.value, sub: review.sub
+                    }));
+            }
+
+            function loadTodos() {
+                $('#todoCards').html('<div class="h-loading"><i class="fas fa-spinner fa-pulse"></i> 待办加载中…</div>');
+                huStats.request({
+                    url: '/api/admin/stats/todos', silent: true,
                     ok: function (res) {
-                        var d = res.data || {};
-                        var paidAmount = num(d.paidAmount);
-                        var paidCount = num(d.paidOrderCount);
-                        $('#productCount').text(num(d.productCount));
-                        $('#activeProductCount').text('在售 ' + num(d.activeProductCount));
-                        $('#categoryCount').text('分类 ' + num(d.categoryCount));
-                        $('#orderCount').text(num(d.orderCount));
-                        $('#pendingOrderCount').text('待付款 ' + num(d.pendingOrderCount));
-                        $('#userCount').text(num(d.userCount));
-                        $('#contentCount').text('轮播 ' + num(d.bannerCount) + ' · 公告 ' + num(d.noticeCount));
-                        $('#paidAmount').text(money(paidAmount, 0));
-                        $('#avgAmount').text('客单价 ' + money(paidCount ? paidAmount / paidCount : 0));
-                        $('#paidCount').text('成交 ' + paidCount + ' 单');
-                        $('#dashUpdated').text('更新于 ' + new Date().toLocaleTimeString('zh-CN', {hour12: false}));
+                        var t = res.data || {};
+                        /* 待回复评价复用评价批次已有口径，避免首页与审核台各算一套 */
+                        huStats.request({
+                            url: '/api/admin/reviews/todo', silent: true,
+                            ok: function (r) { renderTodos(t, r.data ? r.data.unreplied : null); },
+                            fail: function () { renderTodos(t, null); }
+                        });
                     },
-                    fail: function (res) { huAdmin.toast(res.msg || '统计数据加载失败', 'err'); }
+                    fail: function () { $('#todoCards').html('<div class="h-empty">待办数据加载失败，请点击右上角刷新</div>'); }
                 });
             }
 
-            /* ───── 销售趋势：面积折线 + 订单量柱，双 Y 轴 ───── */
-            function loadTrend() {
-                huAdmin.request({
-                    url: '/api/admin/stats/sales-trend', data: {days: trendDays}, silent: true,
-                    ok: function (res) { renderTrend(res.data || []); },
-                    fail: function () { empty('#salesTrendChart', '趋势数据加载失败'); }
-                });
+            /* ───── H03 + H13 + H14：KPI 与异常条 ───── */
+            function card(opts) {
+                var flagged = opts.delta && opts.delta.level && opts.delta.level !== 'flat' ? ' is-flagged' : '';
+                return '<div class="h-card' + flagged + '" style="--bar:' + opts.color + '">'
+                    + '<div class="h-card__label"><i class="fas ' + opts.icon + '"></i>' + esc(opts.label) + '</div>'
+                    + '<div class="h-card__value">' + opts.value + '</div>'
+                    + '<div class="h-card__sub">' + opts.sub + '</div>'
+                    + '</div>';
             }
 
-            function renderTrend(rows) {
-                if (!window.echarts) return empty('#salesTrendChart', '图表组件未加载');
-                if (!rows.length) return empty('#salesTrendChart');
+            function renderKpi(kpi) {
+                if (!kpi) return;
+                var html = '';
+                html += card({
+                    color: '#0f7b63', icon: fa('coins'), label: '成交额', delta: kpi.gmvDelta,
+                    value: money(kpi.gmv, 0),
+                    sub: '<b>' + int(kpi.dealOrders) + '</b> 单成交' + huStats.deltaHtml(kpi.gmvDelta, '环比')
+                });
+                html += card({
+                    color: '#c08a33', icon: fa('receipt'), label: '客单价', delta: kpi.avgDelta,
+                    value: kpi.avgOrderAmount == null ? '—' : money(kpi.avgOrderAmount),
+                    sub: '实付口径' + huStats.deltaHtml(kpi.avgDelta, '环比')
+                });
+                html += card({
+                    color: '#1c4b8a', icon: fa('filter'), label: '支付转化率', delta: kpi.convertDelta,
+                    value: num(kpi.payConvertPercent).toFixed(1) + '<em>%</em>',
+                    sub: '下单 <b>' + int(kpi.createdOrders) + '</b> 单' + huStats.deltaHtml(kpi.convertDelta, '环比')
+                });
+                html += card({
+                    color: '#6f4fb0', icon: fa('repeat'), label: '复购率', delta: kpi.repurchaseDelta,
+                    value: num(kpi.repurchasePercent).toFixed(1) + '<em>%</em>',
+                    sub: '成交用户 <b>' + int(kpi.buyers) + '</b>，复购 ' + int(kpi.repeatBuyers) + ' 人'
+                        + huStats.deltaHtml(kpi.repurchaseDelta, '环比')
+                });
+                html += card({
+                    color: '#c15b6b', icon: fa('hand-holding-dollar'), label: '退款率', delta: kpi.refundDelta,
+                    value: num(kpi.refundPercent).toFixed(1) + '<em>%</em>',
+                    sub: '退款 <b>' + int(kpi.refundOrders) + '</b> 单 / ' + money(kpi.refundAmount, 0)
+                        + huStats.deltaHtml(kpi.refundDelta, '环比')
+                });
+                html += card({
+                    color: '#798394', icon: fa('ban'), label: '取消单量',
+                    value: int(kpi.cancelOrders),
+                    sub: '占成交 <b>' + num(kpi.cancelPercent).toFixed(1) + '%</b>'
+                });
+                html += card({
+                    color: '#2f8553', icon: fa('sack-dollar'), label: '累计成交额',
+                    value: money(kpi.totalGmv, 0),
+                    sub: '全部已成交订单，不受时间范围影响'
+                });
+                html += card({
+                    color: '#a3761f', icon: fa('users'), label: '成交用户',
+                    value: int(kpi.buyers),
+                    sub: '本期人均 <b>' + (kpi.buyers ? money((kpi.gmv || 0) / kpi.buyers) : '—') + '</b>'
+                });
+                $('#kpiCards').html(html);
+            }
 
-                var el = document.getElementById('salesTrendChart');
-                var chart = mountChart(el);
+            /* 图标名拼接，模板里少写一串 fa- 前缀 */
+            function fa(name) { return 'fa-' + name; }
 
+            /* ───── H02：趋势（按天/周/月） ───── */
+            function renderTrend(rows, range) {
                 var total = 0, orders = 0;
-                var dates = [], amounts = [], counts = [];
                 for (var i = 0; i < rows.length; i++) {
-                    var r = rows[i];
-                    dates.push(String(r.date || '').slice(5));
-                    amounts.push(num(r.amount));
-                    counts.push(num(r.orders));
-                    total += num(r.amount);
-                    orders += num(r.orders);
+                    total += num(rows[i].amount);
+                    orders += num(rows[i].orders);
                 }
                 $('#trendSummary').text('合计 ' + money(total, 0) + ' / ' + orders + ' 单');
-
-                chart.setOption({
-                    color: [ACCENT, '#d6e7e1'],
-                    tooltip: {
-                        trigger: 'axis',
-                        axisPointer: {type: 'cross', crossStyle: {color: '#c9d1dd'}, lineStyle: {color: '#c9d1dd'}},
-                        backgroundColor: 'rgba(255,255,255,.98)', borderColor: LINE, borderWidth: 1,
-                        padding: [10, 14],
-                        textStyle: {color: INK, fontSize: 12.5},
-                        extraCssText: 'box-shadow:0 12px 30px -18px rgba(16,22,35,.4);border-radius:10px;',
-                        formatter: function (params) {
-                            var html = '<div style="font-weight:600;margin-bottom:6px">' + params[0].axisValue + '</div>';
-                            for (var i = 0; i < params.length; i++) {
-                                var p = params[i];
-                                html += '<div style="display:flex;align-items:center;gap:8px;line-height:20px">'
-                                    + p.marker
-                                    + '<span style="color:' + MUTED + '">' + p.seriesName + '</span>'
-                                    + '<b style="margin-left:auto;font-variant-numeric:tabular-nums">'
-                                    + (p.seriesName === '订单量' ? p.value + ' 单' : money(p.value)) + '</b></div>';
-                            }
-                            return html;
-                        }
-                    },
-                    legend: {data: ['成交额', '订单量'], left: 0, top: 0, itemWidth: 14, itemHeight: 8, itemGap: 18, icon: 'roundRect', textStyle: {color: MUTED, fontSize: 12}},
-                    grid: {left: 6, right: 6, top: 38, bottom: 2, containLabel: true},
-                    xAxis: {
-                        type: 'category', data: dates, boundaryGap: true,
-                        axisLine: {lineStyle: {color: LINE}}, axisTick: {show: false},
-                        axisLabel: {color: MUTED, fontSize: 11.5, hideOverlap: true}
-                    },
-                    yAxis: [
-                        {type: 'value', axisLine: {show: false}, axisTick: {show: false},
-                         axisLabel: {color: MUTED, fontSize: 11.5, formatter: function (v) {return v >= 10000 ? (v / 10000) + '万' : v;}},
-                         splitLine: {lineStyle: {color: LINE, type: 'dashed'}}},
-                        {type: 'value', minInterval: 1, axisLine: {show: false}, axisTick: {show: false},
-                         axisLabel: {color: MUTED, fontSize: 11.5}, splitLine: {show: false}}
-                    ],
-                    series: [
-                        {name: '订单量', type: 'bar', yAxisIndex: 1, data: counts, barMaxWidth: 16,
-                         itemStyle: {color: '#e6efe9', borderRadius: [4, 4, 0, 0]},
-                         emphasis: {itemStyle: {color: '#cfe3db'}}},
-                        {name: '成交额', type: 'line', smooth: 0.32, symbol: 'circle', symbolSize: 6, showSymbol: false,
-                         data: amounts, lineStyle: {width: 2.4, color: ACCENT}, itemStyle: {color: ACCENT, borderColor: '#fff', borderWidth: 1.5},
-                         areaStyle: {color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                             {offset: 0, color: 'rgba(15,123,99,.22)'}, {offset: 1, color: 'rgba(15,123,99,.02)'}])},
-                         emphasis: {focus: 'series'}}
-                    ]
-                }, true);
+                huStats.render.trend('salesTrendChart', rows);
+                var gran = range && range.granularity === 'week' ? '按周' : range && range.granularity === 'month' ? '按月' : '按天';
+                $('#trendFoot').html('范围 ' + esc(range ? range.label : '') + ' · ' + gran
+                    + ' · 成交额按支付时间归属（缺支付时间的成交单按下单时间归位）');
             }
 
-            /* ───── 畅销商品：横向柱图 ───── */
-            function loadTopProducts() {
-                huAdmin.request({
-                    url: '/api/admin/stats/top-products', data: {limit: 6}, silent: true,
-                    ok: function (res) { renderTopProducts(res.data || []); },
-                    fail: function () { empty('#topProductsChart', '畅销数据加载失败'); }
+            /* ───── H04：品类占比与同比 ───── */
+            function renderCategories(rows) {
+                huStats.render.pie('categoryChart', rows, {yoy: true});
+                if (!rows.length) {
+                    $('#categoryList').html('<li class="h-rank--empty">本期暂无成交记录</li>');
+                    $('#categoryFoot').text('同比＝去年同期（口径相同，缺数据时显示「—」）');
+                    return;
+                }
+                var html = '';
+                for (var i = 0; i < Math.min(rows.length, 5); i++) {
+                    var r = rows[i];
+                    var yoy = r.yoyRate == null ? '<span class="h-badge">同比 —</span>'
+                        : '<span class="h-badge ' + (r.yoyRate < 0 ? 'is-danger' : 'is-good') + '">同比 '
+                          + huStats.rateText(r.yoyRate) + '</span>';
+                    html += '<li><span class="name">' + esc(r.category) + '<span>' + int(r.units) + ' 件 / '
+                        + int(r.orders) + ' 单</span></span>'
+                        + '<span class="h-bar"><i style="width:' + Math.min(100, num(r.percent)) + '%"></i></span>'
+                        + '<span class="amt">' + money(r.amount, 0) + '<span>' + num(r.percent).toFixed(1) + '% '
+                        + yoy + '</span></span></li>';
+                }
+                $('#categoryList').html(html);
+                $('#categoryFoot').text('占比按成交商品额（含券与运费差异），同比＝去年同期');
+            }
+
+            /* ───── H05：商品销量 TopN ───── */
+            function renderProducts(rows, range) {
+                $('#productWindow').text(range ? range.label : '');
+                huStats.render.hBar('topProductsChart', rows, {
+                    labelKey: 'productName', valueKey: 'amount',
+                    tooltip: function (d) {
+                        return '<div style="color:#8d97a8;line-height:20px">销量 <b style="color:#101623">' + int(d.units) + ' 件</b></div>'
+                            + '<div style="color:#8d97a8;line-height:20px">成交额 <b style="color:#101623">' + money(d.amount) + '</b></div>'
+                            + '<div style="color:#8d97a8;line-height:20px">当前库存 <b style="color:#101623">' + int(d.stock) + '</b></div>';
+                    }
                 });
             }
 
-            function renderTopProducts(rows) {
-                if (!window.echarts) return empty('#topProductsChart', '图表组件未加载');
-                if (!rows.length) return empty('#topProductsChart', '暂无成交商品');
-
-                var el = document.getElementById('topProductsChart');
-                /* 条数少时按行数收高，避免固定高度里柱子被拉得过散 */
-                el.style.height = Math.max(180, rows.length * 44 + 26) + 'px';
-                var chart = mountChart(el);
-
-                var items = rows.slice().reverse();
-                var names = [], amounts = [];
-                for (var i = 0; i < items.length; i++) {
-                    names.push(items[i].productName || '未命名商品');
-                    amounts.push(num(items[i].amount));
+            /* ───── H06：地区销售榜（联动地图） ───── */
+            function renderRegions(rows) {
+                if (!rows.length) {
+                    $('#regionRank').html('<li class="h-rank--empty">本期暂无可定位的收货城市</li>');
+                    return;
                 }
-
-                chart.setOption({
-                    tooltip: {
-                        trigger: 'axis', axisPointer: {type: 'shadow'},
-                        backgroundColor: 'rgba(255,255,255,.98)', borderColor: LINE, borderWidth: 1, padding: [10, 14],
-                        textStyle: {color: INK, fontSize: 12.5},
-                        extraCssText: 'box-shadow:0 12px 30px -18px rgba(16,22,35,.4);border-radius:10px;',
-                        formatter: function (params) {
-                            var d = items[params[0].dataIndex] || {};
-                            return '<div style="font-weight:600;margin-bottom:6px;max-width:220px;white-space:normal">' + huAdmin.esc(d.productName) + '</div>'
-                                + '<div style="color:' + MUTED + ';line-height:20px">成交额 <b style="color:' + INK + '">' + money(d.amount) + '</b></div>'
-                                + '<div style="color:' + MUTED + ';line-height:20px">销量 <b style="color:' + INK + '">' + num(d.quantity) + ' 件</b></div>';
-                        }
-                    },
-                    grid: {left: 4, right: 62, top: 8, bottom: 2, containLabel: true},
-                    xAxis: {type: 'value', axisLine: {show: false}, axisTick: {show: false},
-                            axisLabel: {show: false}, splitLine: {show: false}},
-                    yAxis: {type: 'category', data: names,
-                        axisLine: {show: false}, axisTick: {show: false},
-                        axisLabel: {color: '#39424f', fontSize: 12, width: 96, overflow: 'truncate'}},
-                    series: [{
-                        type: 'bar', barMaxWidth: 13, data: amounts,
-                        /* 横向柱图自下而上绘制，末位即成交额最高的商品，用金色突出榜首 */
-                        itemStyle: {borderRadius: [0, 6, 6, 0], color: function (p) {
-                            return new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                                {offset: 0, color: p.dataIndex === amounts.length - 1 ? '#e0b774' : '#9dc7ba'},
-                                {offset: 1, color: p.dataIndex === amounts.length - 1 ? GOLD : ACCENT}]);
-                        }},
-                        label: {show: true, position: 'right', distance: 8, color: '#39424f', fontSize: 11.5,
-                            fontWeight: 600, formatter: function (p) { return money(p.value, 0); }}
-                    }]
-                }, true);
+                var html = '';
+                for (var i = 0; i < rows.length; i++) {
+                    var r = rows[i];
+                    html += '<li><span class="no">' + (i + 1) + '</span>'
+                        + '<span class="name">' + esc(r.city) + '<span>' + int(r.orders) + ' 单 / ' + int(r.units) + ' 枝</span></span>'
+                        + '<span class="h-bar"><i style="width:' + Math.min(100, num(r.percent)) + '%"></i></span>'
+                        + '<span class="amt">' + money(r.amount, 0) + '<span>' + num(r.percent).toFixed(1) + '%</span></span>'
+                        + '</li>';
+                }
+                $('#regionRank').html(html);
             }
 
-            /* ───── 消费排行 ───── */
+            /* ───── 消费排行（沿用旧接口） ───── */
             function loadSpenders() {
-                huAdmin.request({
+                huStats.request({
                     url: '/api/admin/stats/top-spenders', data: {limit: 5}, silent: true,
                     ok: function (res) {
-                        var rows = res.data || [], html = '';
+                        var rows = res.data || [];
                         if (!rows.length) {
-                            $('#spenderRank').html('<li class="rank-empty">暂无消费记录</li>');
+                            $('#spenderRank').html('<li class="h-rank--empty">暂无消费记录</li>');
                             return;
                         }
+                        var html = '';
                         for (var i = 0; i < rows.length; i++) {
                             var r = rows[i], name = r.fullName || r.username || '-';
-                            html += '<li>'
-                                + '<span class="no">' + (i + 1) + '</span>'
-                                + '<span class="name">' + huAdmin.esc(name) + '<span>' + huAdmin.esc(r.username || '') + '</span></span>'
-                                + '<span class="amt">' + money(r.amount, 0) + '<span>' + num(r.orders) + ' 单</span></span>'
-                                + '</li>';
+                            html += '<li><span class="no">' + (i + 1) + '</span>'
+                                + '<span class="name">' + esc(name) + '<span>' + esc(r.username || '') + '</span></span>'
+                                + '<span class="amt">' + money(r.amount, 0) + '<span>' + int(r.orders) + ' 单</span></span></li>';
                         }
                         $('#spenderRank').html(html);
                     },
-                    fail: function () { $('#spenderRank').html('<li class="rank-empty">排行数据加载失败</li>'); }
+                    fail: function () { $('#spenderRank').html('<li class="h-rank--empty">排行数据加载失败</li>'); }
                 });
             }
 
@@ -482,22 +458,31 @@
                     even: true,
                     text: {none: '暂无订单'},
                     cols: [[
-                        {field: 'orderNo', title: '订单号', width: 178, templet: function (d) {return huAdmin.esc(d.orderNo);}},
-                        {field: 'userName', title: '用户', width: 96, templet: function (d) {
-                            return huAdmin.esc(d.userName || '-') + '<br><small style="color:#a4acba">' + huAdmin.esc(d.userPhone || '') + '</small>';
+                        {field: 'orderNo', title: '订单号', width: 178, templet: function (d) {return esc(d.orderNo);}},
+                        {field: 'userName', title: '用户', width: 110, templet: function (d) {
+                            return esc(d.userName || '-') + '<br><small style="color:#a4acba">' + esc(d.userPhone || '') + '</small>';
                         }},
                         {field: 'payAmount', title: '实付', width: 100, align: 'right', templet: function (d) {return money(d.payAmount);}},
-                        {field: 'status', title: '状态', width: 86, align: 'center', templet: function (d) {
-                            return '<span class="pill ' + huAdmin.esc(d.status || '') + '">' + huAdmin.esc(d.statusLabel || d.status || '-') + '</span>';
+                        {field: 'status', title: '状态', width: 90, align: 'center', templet: function (d) {
+                            return '<span class="h-badge ' + statusBadge(d.status) + '">' + esc(d.statusLabel || d.status || '-') + '</span>';
                         }},
-                        {field: 'createdAt', title: '下单时间', minWidth: 140, templet: function (d) {return fmtTime(d.createdAt);}},
+                        {field: 'createdAt', title: '下单时间', minWidth: 140, templet: function (d) {
+                            return d.createdAt ? String(d.createdAt).replace('T', ' ').slice(0, 16) : '-';
+                        }},
                         {title: '操作', width: 74, align: 'center', toolbar: '#orderDetailBtn'}
                     ]]
                 });
             }
 
+            function statusBadge(status) {
+                if (status === 'refunded') return 'is-danger';
+                if (status === 'cancelled' || status === 'pending') return 'is-warn';
+                if (status === 'completed' || status === 'delivered') return 'is-good';
+                return 'is-info';
+            }
+
             function loadRecentOrders() {
-                huAdmin.request({
+                huStats.request({
                     url: '/api/admin/orders/recent', data: {limit: 8}, silent: true,
                     ok: function (res) { renderOrders(res.data || []); },
                     fail: function (res) { huAdmin.toast(res.msg || '最新订单加载失败', 'err'); renderOrders([]); }
@@ -513,32 +498,72 @@
                 }
             });
 
-            jQuery('#trendSeg').on('click', 'button', function () {
-                var days = Number(this.getAttribute('data-days'));
-                if (!days || days === trendDays) return;
-                trendDays = days;
-                jQuery('#trendSeg button').removeClass('is-active');
-                jQuery(this).addClass('is-active');
-                loadTrend();
-            });
+            /* ───── 一次拉齐看板首屏（H13：生成时间随缓存一起返回） ───── */
+            function loadDashboard() {
+                $('#kpiCards').html('<div class="h-loading"><i class="fas fa-spinner fa-pulse"></i> 数据加载中…</div>');
+                huStats.request({
+                    url: '/api/admin/stats/dashboard', data: qs(), silent: true,
+                    ok: function (res) {
+                        var d = res.data || {};
+                        renderKpi(d.kpi);
+                        $('#dashAlerts').html(huStats.anomalyBar(d.anomalies));
+                        renderTrend(d.trend || [], d.range);
+                        renderCategories(d.categories || []);
+                        renderProducts(d.topProducts || [], d.range);
+                        renderRegions(d.regions || []);
+                        /* ISO 串形如 2026-09-30T08:12:34，替换后取 11..16 才是 HH:mm */
+                        var time = d.generatedAt ? String(d.generatedAt).replace('T', ' ').slice(11, 16) : '';
+                        $('#dashUpdated').html('<i class="fas fa-clock"></i>数据更新于 '
+                            + (time || new Date().toTimeString().slice(0, 5)));
+                    },
+                    fail: function (res) {
+                        huAdmin.toast((res && res.msg) || '看板数据加载失败', 'err');
+                        $('#kpiCards').html('<div class="h-empty">看板数据加载失败，请稍后重试</div>');
+                    }
+                });
+            }
 
             function loadAll() {
-                loadOverview();
-                loadTrend();
-                loadTopProducts();
+                loadTodos();
+                loadDashboard();
                 loadSpenders();
                 loadRecentOrders();
             }
 
-            jQuery('#dashRefresh').on('click', function () {
-                /* 统计接口有 60s 缓存，手动刷新时先服务端失效再重拉，否则按钮形同虚设 */
-                huAdmin.request({url: '/api/admin/stats/refresh', type: 'POST', silent: true, ok: loadAll, fail: loadAll});
+            /* ───── 交互：时间范围 / 粒度 / 刷新 ───── */
+            laydate.render({elem: '#dateFrom', type: 'date', format: 'yyyy-MM-dd', change: true,
+                done: function (value) { state.from = value; if (state.range === 'custom') loadDashboard(); }});
+            laydate.render({elem: '#dateTo', type: 'date', format: 'yyyy-MM-dd', change: true,
+                done: function (value) { state.to = value; if (state.range === 'custom') loadDashboard(); }});
+
+            $('#rangeSeg').on('click', 'button', function () {
+                var range = this.getAttribute('data-range');
+                $('#rangeSeg button').removeClass('is-active');
+                jQuery(this).addClass('is-active');
+                state.range = range;
+                $('#rangeDates').toggle(range === 'custom');
+                if (range === 'custom') {
+                    if (!state.from) state.from = huStats.todayOffset(-29);
+                    if (!state.to) state.to = huStats.todayOffset(0);
+                    $('#dateFrom').val(state.from);
+                    $('#dateTo').val(state.to);
+                }
+                loadDashboard();
             });
 
-            var timer = null;
-            jQuery(window).on('resize', function () {
-                clearTimeout(timer);
-                timer = setTimeout(resizeCharts, 180);
+            $('#granSeg').on('click', 'button', function () {
+                var gran = this.getAttribute('data-gran');
+                if (gran === state.granularity) return;
+                state.granularity = gran;
+                $('#granSeg button').removeClass('is-active');
+                jQuery(this).addClass('is-active');
+                loadDashboard();
+            });
+
+            $('#dashRefresh').on('click', function () {
+                /* 统计接口有 60s 缓存，手动刷新时先服务端失效再重拉，否则按钮形同虚设 */
+                huStats.request({url: '/api/admin/stats/refresh', type: 'POST', silent: true,
+                    ok: loadAll, fail: loadAll});
             });
 
             loadAll();

@@ -38,3 +38,6 @@ logs/
 
 # AI 生图工具的原始输出目录，实际使用的是压缩后落到 static/img/photos/ 的成品
 vibe_images/
+
+# 第三方密钥与本机端口，只留在工作区（.env.example 是占位模板）
+.env

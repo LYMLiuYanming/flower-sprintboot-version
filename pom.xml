@@ -152,6 +152,20 @@
             <artifactId>caffeine</artifactId>
         </dependency>
 
+        <!--
+          F6 会话外置化：登录态从进程内存搬到 Memurai(Redis 协议, 本机 6379)。
+          目的是让 devtools 热重载不再把在线会话一起带走（此前每次 compile 重启都要重登）。
+          版本一律交给 spring-boot-starter-parent 管理，避免和 Boot 3.5.5 的传递依赖打架。
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.session</groupId>
+            <artifactId>spring-session-data-redis</artifactId>
+        </dependency>
+
         <!-- /api/** 在线文档 -->
         <dependency>
             <groupId>org.springdoc</groupId>

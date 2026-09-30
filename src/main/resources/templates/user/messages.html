@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>消息中心 · 花语轩</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<div class="hu-pagehead">
+    <div class="hu-container hu-pagehead__row">
+        <div>
+            <div class="hu-crumb"><a href="/index">首页</a> / <a href="/user/profile">个人中心</a> / <span>消息中心</span></div>
+            <h1>消息中心</h1>
+            <p class="hu-pagehead__sub">订单、工单与活动的站内通知都收在这里；哪些类目要收、什么时候别打扰你，可以在下面自己调</p>
+        </div>
+        <div class="hu-pagehead__aside">
+            <span class="hu-muted" style="font-size:13px">未读</span>
+            <span class="hu-num" id="unreadTotal" style="font-size:26px">—</span>
+            <button type="button" class="hu-btn hu-btn--sm hu-btn--ghost" id="readAllBtn">
+                <i class="fa fa-check-circle-o" aria-hidden="true"></i> 全部标为已读
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="hu-container">
+    <div class="hu-account">
+        <aside th:replace="~{common/account-nav :: accountNav('messages')}"></aside>
+        <div>
+
+    <!-- U04 消息列表 -->
+    <section class="hu-panel" style="margin-top:0">
+        <div class="hu-panel-head">
+            <div>
+                <h2><i class="fa fa-bell-o" style="color:var(--hu-accent);margin-right:9px"></i>我的消息</h2>
+                <p id="listSub">按类别筛选，未读的会排在最前面</p>
+            </div>
+            <div class="hu-chips" id="catTabs" role="tablist" aria-label="消息类别">
+                <button type="button" class="hu-chip is-active" data-cat="" aria-selected="true">全部</button>
+                <button type="button" class="hu-chip" th:each="c : ${categories}" th:attr="data-cat=${c.code}"
+                        aria-selected="false" th:text="${c.label}">类别</button>
+            </div>
+        </div>
+        <div style="padding:0 22px 22px">
+            <label class="hu-u-onlyunread">
+                <input type="checkbox" id="unreadOnly"> 只看未读
+            </label>
+            <div id="msgList" class="hu-u-msglist" aria-live="polite" aria-busy="false"></div>
+            <div id="msgEmpty" class="hu-empty" hidden>
+                <i class="fa fa-bell-o"></i>
+                <strong>这里还没有消息</strong>
+                <span class="hu-empty__desc">订单发货、工单回复、券到期提醒都会第一时间落到这一页</span>
+            </div>
+            <div id="msgPager" class="hu-pager"></div>
+        </div>
+    </section>
+
+    <!-- U08 订阅偏好：类别 × 渠道矩阵。只有站内信可开，短信/邮件显示「未开通」且服务端不外呼 -->
+    <section class="hu-panel" style="margin-top:26px">
+        <div class="hu-panel-head">
+            <div>
+                <h2><i class="fa fa-sliders" style="color:var(--hu-accent);margin-right:9px"></i>通知偏好</h2>
+                <p>关掉某个类目后，这类消息不会再出现在你的收件箱；交易与工单提醒建议保持开启</p>
+            </div>
+            <span class="hu-pill" id="prefState" hidden>已保存</span>
+        </div>
+        <div class="hu-panel__body">
+            <div class="hu-u-matrix" id="prefMatrix" aria-live="polite">
+                <div class="hu-u-matrix__head">
+                    <span>消息类别</span><span>站内信</span><span>短信</span><span>邮件</span>
+                </div>
+            </div>
+            <p class="hu-e-hint" id="prefHint">短信与邮件通道本站未开通，因此两列固定是灰的，也不会向外发出任何信息。</p>
+
+            <div class="hu-u-quiet">
+                <div class="hu-u-quiet__title">
+                    <strong>免打扰时段</strong>
+                    <span id="quietNote">默认 22:00–08:00；交易与工单消息不受此时段推迟</span>
+                </div>
+                <div class="hu-u-quiet__row">
+                    <label class="hu-check">
+                        <input type="checkbox" id="dndEnabled"> 开启免打扰
+                    </label>
+                    <label class="hu-field hu-field--tight">
+                        <span class="hu-field__label">开始</span>
+                        <input type="time" id="dndStart" class="hu-input" value="22:00" step="60">
+                    </label>
+                    <label class="hu-field hu-field--tight">
+                        <span class="hu-field__label">结束</span>
+                        <input type="time" id="dndEnd" class="hu-input" value="08:00" step="60">
+                    </label>
+                </div>
+                <p class="hu-e-hint" id="dndHint"></p>
+            </div>
+
+            <div class="hu-u-actions">
+                <button type="button" class="hu-btn hu-btn--solid" id="savePrefBtn">
+                    <i class="fa fa-save" aria-hidden="true"></i> 保存偏好
+                </button>
+                <button type="button" class="hu-btn hu-btn--ghost" id="marketingBtn">退订营销活动</button>
+            </div>
+        </div>
+    </section>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<script>
+    let category = '';
+    let page = 1;
+    const PAGE_SIZE = 10;
+    let prefSnapshot = null;
+
+    function esc(s) {
+        return window.huEscape(s == null ? '' : String(s));
+    }
+
+    function time(v) {
+        return v ? String(v).replace('T', ' ').slice(0, 16) : '';
+    }
+
+    /** 相对时间：站内信讲究「刚刚」还是「昨天」，绝对时间放在 title 里备查 */
+    function when(v) {
+        if (!v) return '—';
+        return window.huFromNow ? window.huFromNow(v) : time(v);
+    }
+
+    function loadBadge() {
+        huApi({
+            url: '/api/user/messages/unread-count',
+            silent: true,
+            ok: function (data) { $('#unreadTotal').text(data == null ? 0 : data); }
+        });
+    }
+
+    function renderMessages(list) {
+        const host = $('#msgList');
+        host.attr('aria-busy', 'false');
+        if (!list.length) {
+            host.html('');
+            $('#msgEmpty').prop('hidden', false);
+            return;
+        }
+        $('#msgEmpty').prop('hidden', true);
+        host.html(list.map(function (m) {
+            const link = m.linkUrl
+                ? '<a class="hu-u-msg__link" href="' + esc(m.linkUrl) + '">查看<i class="fa fa-long-arrow-right" aria-hidden="true"></i></a>'
+                : '';
+            return '<article class="hu-u-msg' + (m.unread ? ' is-unread' : '') + '" data-id="' + esc(m.id) + '">' +
+                '<div class="hu-u-msg__rail"><span class="hu-u-msg__dot" aria-hidden="true"></span></div>' +
+                '<div class="hu-u-msg__main">' +
+                '<div class="hu-u-msg__head">' +
+                '<span class="hu-u-msg__cat">' + esc(m.categoryLabel) + '</span>' +
+                (m.bizLabel && m.bizLabel !== m.categoryLabel
+                    ? '<span class="hu-u-msg__biz">' + esc(m.bizLabel) + '</span>' : '') +
+                '<time class="hu-u-msg__time" datetime="' + esc(m.createdAt || '') + '" title="' + esc(time(m.createdAt)) + '">' +
+                esc(when(m.createdAt)) + '</time>' +
+                '</div>' +
+                '<h3 class="hu-u-msg__title">' + esc(m.title) + '</h3>' +
+                (m.content ? '<p class="hu-u-msg__body">' + esc(m.content) + '</p>' : '') +
+                '<div class="hu-u-msg__foot">' + link +
+                (m.unread
+                    ? '<button type="button" class="hu-btn hu-btn--sm hu-btn--ghost" data-read="' + esc(m.id) + '">标为已读</button>'
+                    : '') +
+                '<button type="button" class="hu-btn hu-btn--sm hu-btn--plain" data-del="' + esc(m.id) + '">删除</button>' +
+                '</div></div></article>';
+        }).join(''));
+    }
+
+    function loadMessages(showLoading) {
+        $('#msgList').attr('aria-busy', String(!!showLoading));
+        huApi({
+            url: '/api/user/messages',
+            data: {category: category, unread: $('#unreadOnly').prop('checked'), page: page, limit: PAGE_SIZE},
+            silent: true,
+            ok: function (data, res) {
+                renderMessages(data || []);
+                const total = Number(res.count || 0);
+                $('#listSub').text(total
+                    ? '共 ' + total + ' 条' + (category ? '（' + $('#catTabs .is-active').text() + '）' : '')
+                    : '按类别筛选，未读的会排在最前面');
+                window.huPager.render('#msgPager', {
+                    page: page,
+                    pages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
+                    total: total,
+                    onGo: function (p) { page = p; loadMessages(true); }
+                });
+            },
+            fail: function () { renderMessages([]); }
+        });
+        loadBadge();
+    }
+
+    /* ---------- U08 偏好矩阵 ---------- */
+
+    function renderPreference(view) {
+        prefSnapshot = view;
+        const rows = {};
+        (view.matrix || []).forEach(function (cell) {
+            rows[cell.category] = rows[cell.category] || {};
+            rows[cell.category][cell.channel] = cell;
+        });
+        const html = ['<div class="hu-u-matrix__head"><span>消息类别</span><span>站内信</span><span>短信</span><span>邮件</span></div>'];
+        (view.categories || []).forEach(function (cat) {
+            const inbox = (rows[cat.code] || {}).inbox || {};
+            html.push('<div class="hu-u-matrix__row">' +
+                '<div class="hu-u-matrix__name"><strong>' + esc(cat.label) + '</strong>' +
+                '<span>' + esc(inbox.note || '') + '</span></div>' +
+                '<div>' + switchHtml(cat.code, 'inbox', !!inbox.enabled, true) + '</div>' +
+                '<div>' + switchHtml(cat.code, 'sms', false, false) + '</div>' +
+                '<div>' + switchHtml(cat.code, 'email', false, false) + '</div>' +
+                '</div>');
+        });
+        $('#prefMatrix').html(html.join(''));
+
+        $('#dndEnabled').prop('checked', !!view.dndEnabled);
+        $('#dndStart').val(view.dndStart || '22:00');
+        $('#dndEnd').val(view.dndEnd || '08:00');
+        $('#dndHint').text(view.dndHint || '');
+        $('#marketingBtn').text(view.marketingPaused ? '重新订阅营销活动' : '退订营销活动')
+            .attr('aria-pressed', view.marketingPaused ? 'true' : 'false');
+    }
+
+    /** 不可用的渠道渲染成 disabled 的灰开关，页面自己就说明「为什么点不动」 */
+    function switchHtml(category, channel, enabled, available) {
+        const label = category + '·' + channel;
+        return '<span class="hu-u-switch' + (available ? '' : ' is-off') + '">' +
+            '<input type="checkbox" class="hu-u-switch__input" data-category="' + esc(category) +
+            '" data-channel="' + esc(channel) + '"' + (enabled ? ' checked' : '') +
+            (available ? '' : ' disabled') + ' id="sw-' + esc(label) + '" aria-label="' +
+            esc(category + '/' + channel) + (available ? '开关' : '（通道未开通）') + '">' +
+            '<label class="hu-u-switch__track" for="sw-' + esc(label) + '"></label>' +
+            (available ? '' : '<em>未开通</em>') +
+            '</span>';
+    }
+
+    function collectPrefs() {
+        return $('.hu-u-switch__input:not([disabled])').map(function () {
+            return {category: $(this).data('category'), channel: $(this).data('channel'), enabled: this.checked};
+        }).get();
+    }
+
+    function loadPreferences() {
+        huApi({
+            url: '/api/user/messages/preferences',
+            silent: true,
+            ok: renderPreference,
+            fail: function () { $('#prefHint').text('偏好读取失败，请刷新页面重试'); }
+        });
+    }
+
+    /* ---------- 事件 ---------- */
+
+    $(function () {
+        loadMessages(true);
+        loadPreferences();
+
+        $('#catTabs').on('click', '.hu-chip', function () {
+            $('#catTabs .hu-chip').removeClass('is-active').attr('aria-selected', 'false');
+            $(this).addClass('is-active').attr('aria-selected', 'true');
+            category = String($(this).data('cat') || '');
+            page = 1;
+            loadMessages(true);
+        });
+
+        $('#unreadOnly').on('change', function () {
+            page = 1;
+            loadMessages(true);
+        });
+
+        $('#msgList').on('click', '[data-read]', function () {
+            const id = String($(this).data('read'));
+            $(this).prop('disabled', true);
+            huApi({
+                url: '/api/user/messages/' + id + '/read',
+                type: 'POST',
+                silent: true,
+                ok: function () { loadMessages(false); }
+            });
+        });
+
+        $('#msgList').on('click', '[data-del]', function () {
+            const id = String($(this).data('del'));
+            huApi({
+                url: '/api/user/messages/' + id,
+                type: 'DELETE',
+                ok: function () { loadMessages(false); }
+            });
+        });
+
+        // 点整条消息即视为已读，和多数收件箱的肌肉记忆一致
+        $('#msgList').on('click', '.hu-u-msg__main', function (event) {
+            if ($(event.target).closest('button,a').length) return;
+            const row = $(this).closest('.hu-u-msg.is-unread');
+            if (!row.length) return;
+            huApi({
+                url: '/api/user/messages/' + row.data('id') + '/read',
+                type: 'POST', silent: true,
+                ok: function () { row.removeClass('is-unread'); loadBadge(); }
+            });
+        });
+
+        $('#readAllBtn').on('click', function () {
+            const btn = $(this).prop('disabled', true);
+            huApi({
+                // 单值参数走查询串：huApi 的 POST 体会被序列化成 JSON，@RequestParam 接不到
+                url: '/api/user/messages/read-all?category=' + encodeURIComponent(category),
+                type: 'POST',
+                ok: function () { page = 1; loadMessages(false); }
+            });
+            window.setTimeout(function () { btn.prop('disabled', false); }, 900);
+        });
+
+        $('#savePrefBtn').on('click', function () {
+            const start = $('#dndStart').val();
+            const end = $('#dndEnd').val();
+            if ($('#dndEnabled').prop('checked') && start && end && start === end) {
+                window.huToast('免打扰的开始与结束不能相同，那样等于全天静音', 'err');
+                return;
+            }
+            huApi({
+                url: '/api/user/messages/preferences',
+                type: 'POST',
+                data: {
+                    prefs: collectPrefs(),
+                    dndEnabled: $('#dndEnabled').prop('checked'),
+                    dndStart: start ? start + ':00' : null,
+                    dndEnd: end ? end + ':00' : null,
+                    marketingPaused: !!(prefSnapshot && prefSnapshot.marketingPaused)
+                },
+                ok: function (data) {
+                    renderPreference(data);
+                    $('#prefState').prop('hidden', false);
+                    window.setTimeout(function () { $('#prefState').prop('hidden', true); }, 2400);
+                }
+            });
+        });
+
+        $('#marketingBtn').on('click', function () {
+            const unsubscribe = !(prefSnapshot && prefSnapshot.marketingPaused);
+            huApi({
+                url: '/api/user/messages/unsubscribe-marketing?unsubscribe=' + unsubscribe,
+                type: 'POST',
+                ok: function (data) {
+                    renderPreference(data);
+                    loadMessages(false);
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>

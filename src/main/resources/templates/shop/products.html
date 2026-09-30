@@ -36,6 +36,54 @@
                     </li>
                 </ul>
             </div>
+
+            <!-- 检索筛选：价格/库存/场景/标签一次走 /api/products/browse -->
+            <div class="hu-panel hu-panel--pad hu-side-block">
+                <h3 class="hu-side-title">价格区间</h3>
+                <div class="hu-pricefilter">
+                    <input type="number" id="minPrice" class="hu-input" min="0" step="1" placeholder="最低" inputmode="decimal" aria-label="最低价格">
+                    <span class="hu-pricefilter__dash">—</span>
+                    <input type="number" id="maxPrice" class="hu-input" min="0" step="1" placeholder="最高" inputmode="decimal" aria-label="最高价格">
+                </div>
+                <p class="hu-pricerange" id="priceRangeHint">价格区间随在售商品自动给出</p>
+                <div class="hu-chips hu-chips--tight" id="priceChips">
+                    <button type="button" class="hu-chip" data-min="" data-max="">不限</button>
+                    <button type="button" class="hu-chip" data-min="0" data-max="99">¥99 以下</button>
+                    <button type="button" class="hu-chip" data-min="99" data-max="299">¥99-299</button>
+                    <button type="button" class="hu-chip" data-min="299" data-max="599">¥299-599</button>
+                    <button type="button" class="hu-chip" data-min="599" data-max="">¥599 以上</button>
+                </div>
+
+                <h3 class="hu-side-title" style="margin-top:20px">适用场景</h3>
+                <div class="hu-chips hu-chips--tight" id="sceneChips"></div>
+
+                <h3 class="hu-side-title" style="margin-top:20px">花材标签</h3>
+                <div class="hu-chips hu-chips--tight" id="tagChips"></div>
+
+                <label class="hu-check hu-check--block" style="margin-top:16px">
+                    <input type="checkbox" id="inStockOnly"> 只看有货
+                </label>
+
+                <h3 class="hu-side-title" style="margin-top:18px">内容说明</h3>
+                <div class="hu-chips hu-chips--tight" id="fieldChips">
+                    <button type="button" class="hu-chip" data-field="flowerLanguage">已写花语</button>
+                    <button type="button" class="hu-chip" data-field="careTip">已写养护贴士</button>
+                    <button type="button" class="hu-chip" data-field="subtitle">已写副标题</button>
+                </div>
+
+                <div class="hu-field hu-field--tight" style="margin-top:12px">
+                    <label for="pageSizeSel" class="hu-muted" style="font-size:12.5px">每页显示</label>
+                    <select id="pageSizeSel" class="hu-input hu-select">
+                        <option value="12">12 件</option>
+                        <option value="24">24 件</option>
+                        <option value="48">48 件</option>
+                    </select>
+                </div>
+                <div class="hu-filterfoot">
+                    <span id="filterSummary" class="hu-muted">未设筛选</span>
+                    <button type="button" class="hu-btn hu-btn--sm hu-btn--plain" id="resetFilters">重置</button>
+                </div>
+            </div>
         </aside>
 
         <!-- 商品主区 -->
@@ -52,6 +100,7 @@
                         <button type="button" class="hu-chip" data-sort="price-asc">价格 ↑</button>
                         <button type="button" class="hu-chip" data-sort="price-desc">价格 ↓</button>
                         <button type="button" class="hu-chip" data-sort="rating">好评</button>
+                        <button type="button" class="hu-chip" data-sort="discount">折扣</button>
                     </div>
                 </div>
                 <div class="hu-toolbar__right">
@@ -80,6 +129,18 @@
                 <a href="/products" class="hu-btn hu-btn--ghost hu-btn--sm" style="margin-top:18px">查看全部商品</a>
             </div>
 
+            <!-- A10：条件命中为 0 时递上同类目热卖，而不是把「没有」甩给用户 -->
+            <section id="fallbackBlock" class="hu-fallback" style="display:none">
+                <div class="hu-fallback__head">
+                    <i class="fa fa-fire"></i>
+                    <div>
+                        <strong id="fallbackTitle">这些花礼可能合你心意</strong>
+                        <span id="fallbackReason" class="hu-muted"></span>
+                    </div>
+                </div>
+                <div class="hu-product-grid" id="fallbackGrid"></div>
+            </section>
+
             <div id="pagination" class="hu-pager"></div>
         </div>
     </div>
@@ -92,10 +153,14 @@
     const SIDE_KEY = 'hu.products.side';
 
     let currentPage = 1;
-    const pageSize = 12;
+    let pageSize = 12;
     let selectedCategoryId = /*[[${selectedCategoryId}]]*/ null;
     let keyword = /*[[${keyword != null ? keyword : ''}]]*/ '';
     let sortBy = 'default';
+    /** 服务端 totalPages：分页条按它渲染，越界收敛后与 res.page 一致 */
+    let serverTotalPages = 1;
+    /** 筛选状态：null / 空一律「不过滤」，与后端 Query 的语义一一对应 */
+    const filters = { minPrice: null, maxPrice: null, scene: null, tag: null, inStockOnly: false, fields: [] };
     let seq = 0;
 
     function esc(s) {
@@ -125,13 +190,79 @@
 
     /* ---------- 数据加载 ---------- */
     function loadUrl(page) {
-        let base = selectedCategoryId
-            ? '/api/products/category/' + selectedCategoryId
-            : (keyword ? '/api/products/search' : '/api/products/active');
-        let params = 'page=' + page + '&limit=' + pageSize;
-        if (keyword) params += '&keyword=' + encodeURIComponent(keyword);
-        if (sortBy !== 'default') params += '&sort=' + sortBy;
-        return base + '?' + params;
+        const params = ['page=' + page, 'limit=' + pageSize];
+        if (keyword) params.push('keyword=' + encodeURIComponent(keyword));
+        if (selectedCategoryId) params.push('categoryIds=' + selectedCategoryId);
+        if (filters.minPrice != null) params.push('minPrice=' + filters.minPrice);
+        if (filters.maxPrice != null) params.push('maxPrice=' + filters.maxPrice);
+        if (filters.scene) params.push('scene=' + encodeURIComponent(filters.scene));
+        if (filters.tag) params.push('tag=' + encodeURIComponent(filters.tag));
+        if (filters.inStockOnly) params.push('inStockOnly=true');
+        if (filters.fields.length) params.push('fields=' + encodeURIComponent(filters.fields.join(',')));
+        if (sortBy !== 'default') params.push('sort=' + sortBy);
+        return '/api/products/browse?' + params.join('&');
+    }
+
+    /** 筛选摘要：让用户知道结果被什么收窄了，而不是以为「就这么几束」 */
+    function paintFilterSummary() {
+        const bits = [];
+        if (filters.minPrice != null || filters.maxPrice != null) {
+            bits.push('¥' + (filters.minPrice == null ? 0 : filters.minPrice)
+                + '-' + (filters.maxPrice == null ? '不限' : filters.maxPrice));
+        }
+        if (filters.scene) bits.push(filters.scene);
+        if (filters.tag) bits.push(filters.tag);
+        if (filters.inStockOnly) bits.push('有货');
+        if (filters.fields.length) bits.push('已写' + filters.fields.map(fieldName).join('/'));
+        $('#resetFilters, #clearFilters').toggle(bits.length > 0);
+        $('#filterSummary').text(bits.length ? bits.join(' · ') : '未设筛选');
+        const min = filters.minPrice == null ? '' : String(filters.minPrice);
+        const max = filters.maxPrice == null ? '' : String(filters.maxPrice);
+        $('#priceChips .hu-chip').each(function () {
+            $(this).toggleClass('is-active',
+                String($(this).data('min') || '') === min && String($(this).data('max') || '') === max);
+        });
+        $('#sceneChips .hu-chip').each(function () {
+            $(this).toggleClass('is-active', String($(this).data('scene')) === String(filters.scene));
+        });
+        $('#tagChips .hu-chip').each(function () {
+            $(this).toggleClass('is-active', String($(this).data('tag')) === String(filters.tag));
+        });
+        $('#fieldChips .hu-chip').each(function () {
+            $(this).toggleClass('is-active', filters.fields.indexOf(String($(this).data('field'))) >= 0);
+        });
+    }
+
+    function fieldName(key) {
+        return key === 'flowerLanguage' ? '花语' : key === 'careTip' ? '养护贴士' : '副标题';
+    }
+
+    function applyFilters() {
+        currentPage = 1;
+        paintFilterSummary();
+        syncUrl();
+        loadProducts();
+    }
+
+    /** 场景与标签候选从当前结果集里长出来，不额外维护一份会漂移的字典 */
+    function paintFacets(products) {
+        const scenes = [], tags = [];
+        products.forEach(function (p) {
+            (p.suitableForList || []).forEach(function (v) { if (scenes.indexOf(v) < 0) scenes.push(v); });
+            (p.tagList || []).forEach(function (v) { if (tags.indexOf(v) < 0) tags.push(v); });
+        });
+        if (!window.__facetScenes && scenes.length) {
+            window.__facetScenes = scenes.slice(0, 8);
+            $('#sceneChips').html(window.__facetScenes.map(function (v) {
+                return '<button type="button" class="hu-chip" data-scene="' + esc(v) + '">' + esc(v) + '</button>';
+            }).join(''));
+        }
+        if (!window.__facetTags && tags.length) {
+            window.__facetTags = tags.slice(0, 10);
+            $('#tagChips').html(window.__facetTags.map(function (v) {
+                return '<button type="button" class="hu-chip" data-tag="' + esc(v) + '">' + esc(v) + '</button>';
+            }).join(''));
+        }
     }
 
     function renderSkeletons() {
@@ -152,6 +283,7 @@
         const token = ++seq;
         renderSkeletons();
         $('#emptyState').hide();
+        $('#fallbackBlock').hide();
         $('#resultCount').text('正在载入…');
 
         $.getJSON(loadUrl(currentPage), function (res) {
@@ -163,24 +295,55 @@
             }
             const total = Number(res.count || 0);
             const list = res.data || [];
+            // A07/A11：页码与总页数一律以服务端回传为准，前端不再自己 ceil 出第二种口径
+            currentPage = Number(res.page || currentPage);
+            serverTotalPages = Number(res.totalPages || 1);
+            pageSize = Number(res.pageSize || pageSize);
+            // 服务端收敛过页码时，地址栏要跟着改，否则刷新会再撞一次空白页
+            syncUrl();
+            paintPriceRange(res.priceRange);
+            paintFacets(list);
             $('#totalBadge').text(total);
             if (!list.length) {
                 $('#productGrid').html('');
-                $('#emptyState').show();
                 $('#pagination').html('');
                 $('#resultCount').text('共 0 件花礼');
+                renderFallback(res.fallback, res.fallbackReason);
+                $('#emptyState').toggle(!res.fallback || !res.fallback.length);
                 return;
             }
             $('#resultCount').html('共 <b>' + total + '</b> 件花礼，当前第 ' +
-                currentPage + ' / ' + Math.ceil(total / pageSize) + ' 页');
-            renderProducts(list);
-            renderPagination(total);
+                currentPage + ' / ' + serverTotalPages + ' 页');
+            renderProducts(list, '#productGrid');
+            renderPagination();
         }).fail(function () {
             if (token !== seq) return;
             $('#productGrid').html('');
             $('#emptyState').show();
             $('#resultCount').text('网络异常，请稍后重试');
         });
+    }
+
+    /** 价格区间提示：读服务端聚合的真实分布，而不是页面里写死的档位 */
+    function paintPriceRange(range) {
+        if (!range || range.min == null || range.max == null) {
+            $('#priceRangeHint').text('在售花礼价格待统计');
+            return;
+        }
+        $('#priceRangeHint').html('在售价格 <b>¥' + price(range.min) + ' – ¥' + price(range.max) + '</b>'
+            + '（随当前条件实时统计）');
+        $('#minPrice, #maxPrice').attr({min: 0, max: Math.ceil(Number(range.max))});
+    }
+
+    /** A10：空结果时把兜底列表铺出来，标题说明「为什么给你这些」 */
+    function renderFallback(list, reason) {
+        if (!list || !list.length) {
+            $('#fallbackBlock').hide();
+            return;
+        }
+        $('#fallbackReason').text(reason || '当前筛选条件下没有可售花礼，先推荐同类目热卖');
+        renderProducts(list, '#fallbackGrid');
+        $('#fallbackBlock').show();
     }
 
     function stars(rating) {
@@ -192,13 +355,19 @@
         return s;
     }
 
-    function renderProducts(products) {
+    function renderProducts(products, target) {
         let html = '';
         products.forEach(function (p) {
             let tags = '';
             if (p.isFeatured) tags += '<span class="hu-tag hu-tag--sale">热销</span>';
             if (p.isNew) tags += '<span class="hu-tag hu-tag--new">新品</span>';
             const discounted = p.originalPrice && Number(p.originalPrice) > Number(p.price);
+            const soldOut = p.soldOut === true || Number(p.stock) <= 0;
+            // A19：折扣文案由服务端算（含「9.5 折以上不算折扣」的口径），前端只负责贴角标
+            if (p.discountLabel) tags += '<span class="hu-tag hu-tag--sale">' + esc(p.discountLabel) + '</span>';
+            // A20：库存 ≤5 打「仅剩 N 束」，已售数量直接取真实销量
+            if (soldOut) tags += '<span class="hu-tag hu-tag--new">已售罄</span>';
+            else if (p.lowStock) tags += '<span class="hu-tag hu-tag--warn">仅剩 ' + Number(p.stock) + ' 束</span>';
 
             const rate = (p.reviewCount > 0)
                 ? stars(p.rating) + '<span>' + price(p.rating) + ' · ' + p.reviewCount + ' 条评价</span>'
@@ -213,22 +382,28 @@
                 '<div class="hu-product__body">' +
                 '<div class="hu-product__cat">' + esc(p.categoryName || '鲜花') + '</div>' +
                 '<a href="/product/' + esc(p.id) + '" class="hu-product__name">' + esc(p.name) + '</a>' +
+                (p.subtitle ? '<div class="hu-product__sub">' + esc(p.subtitle) + '</div>' : '') +
+                (p.flowerLanguage && filters.fields.indexOf('flowerLanguage') >= 0
+                    ? '<div class="hu-product__lang"><i class="fa fa-quote-left"></i>' + esc(p.flowerLanguage) + '</div>' : '') +
+                '<div class="hu-product__sold">已售 ' + Number(p.salesCount || 0) + ' 束' +
+                (soldOut ? ' · 暂时缺货' : '') + '</div>' +
                 '<div class="hu-product__rate">' + rate + '</div>' +
                 '<div class="hu-product__foot">' +
                 '<div class="hu-price"><small>¥</small>' + price(p.price) +
                 (discounted ? '<del>¥' + price(p.originalPrice) + '</del>' : '') + '</div>' +
-                '<button class="hu-product__add" data-id="' + esc(p.id) + '" title="加入购物车"><i class="fa fa-shopping-bag"></i></button>' +
+                '<button class="hu-product__add" data-id="' + esc(p.id) + '" title="加入购物车"' +
+                (soldOut ? ' disabled' : '') + '><i class="fa fa-shopping-bag"></i></button>' +
                 '</div></div></div>';
         });
-        $('#productGrid').html(html);
-        $('.hu-product__add').on('click', function (e) {
+        $(target).html(html);
+        $(target).find('.hu-product__add').on('click', function (e) {
             e.preventDefault();
             huAddToCart($(this).data('id'));
         });
     }
 
-    function renderPagination(total) {
-        const totalPages = Math.ceil(total / pageSize);
+    function renderPagination() {
+        const totalPages = serverTotalPages;
         if (totalPages <= 1) {
             $('#pagination').html('');
             return;
@@ -265,27 +440,99 @@
         window.scrollTo({top: 0, behavior: 'smooth'});
     }
 
-    /* ---------- 分类侧栏 ---------- */
+    /* ---------- 分类侧栏：瓦片 = 图标 + 名称 + 描述 + 在售款数（A24） ---------- */
     function loadCategories() {
-        $.getJSON('/api/categories/active', function (res) {
-            if (res.code !== 200) return;
-            let html = '';
-            (res.data || []).forEach(function (cat) {
-                const active = selectedCategoryId && String(selectedCategoryId) === String(cat.id);
-                html += '<li><a href="/products?categoryId=' + esc(cat.id) + '"' +
-                    (active ? ' class="is-active"' : '') + '>' +
-                    '<i class="fa fa-' + esc(cat.icon || 'leaf') + '"></i>' + esc(cat.name) +
-                    '</a></li>';
+        let counts = {};
+        // 计数取不到也要把分类渲染出来，瓦片不能因为一个附属字段失败而整块空白
+        $.ajax({url: '/api/categories/product-counts', dataType: 'json'})
+            .done(function (res) { counts = (res && res.data) || {}; })
+            .always(function () {
+                $.getJSON('/api/categories/active', function (res) {
+                    renderCategoryTiles((res && res.data) || [], counts);
+                });
             });
-            $('#categoryList').append(html);
+    }
+
+    function renderCategoryTiles(cats, counts) {
+        const byId = {};
+        cats.forEach(function (c) { byId[String(c.id)] = c; });
+        const roots = cats.filter(function (c) { return !c.parentId || !byId[String(c.parentId)]; });
+        let html = '';
+        roots.forEach(function (cat) {
+            html += catTile(cat, counts);
+            cats.filter(function (c) { return String(c.parentId) === String(cat.id); }).forEach(function (kid) {
+                const count = Number(counts[String(kid.id)] || 0);
+                const active = selectedCategoryId && String(selectedCategoryId) === String(kid.id);
+                html += '<li class="hu-catlist__sub"><a href="/products?categoryId=' + esc(kid.id) + '"' +
+                    (active ? ' class="is-active"' : '') + '>' +
+                    '<i class="fa fa-' + esc(kid.icon || 'leaf') + '"></i>' + esc(kid.name) +
+                    (count ? '<em>' + count + ' 款</em>' : '') + '</a></li>';
+            });
         });
+        $('#categoryList').append(html);
+    }
+
+    function catTile(cat, counts) {
+        const count = Number(counts[String(cat.id)] || 0);
+        const active = selectedCategoryId && String(selectedCategoryId) === String(cat.id);
+        return '<li><a class="hu-cattile' + (active ? ' is-active' : '') + '" href="/products?categoryId=' + esc(cat.id) + '">' +
+            '<span class="hu-cattile__icon"><i class="fa fa-' + esc(cat.icon || 'leaf') + '"></i></span>' +
+            '<span class="hu-cattile__main"><b>' + esc(cat.name) + '</b>' +
+            '<small>' + esc(cat.description || '当日手作，同城当日达') + '</small></span>' +
+            '<em class="hu-cattile__count">' + count + ' 款</em></a></li>';
     }
 
     function syncFilterUi() {
-        $('#clearFilters').toggle(!!selectedCategoryId || !!keyword);
+        $('#clearFilters').toggle(!!selectedCategoryId || !!keyword || !!(filters.scene || filters.tag)
+            || filters.inStockOnly || filters.minPrice != null || filters.maxPrice != null
+            || filters.fields.length > 0);
         $('#sortChips .hu-chip').each(function () {
             $(this).toggleClass('is-active', String($(this).data('sort')) === sortBy);
         });
+    }
+
+    /**
+     * 筛选状态写进 URL：刷新、回退、把链接发给朋友都能还原同一结果集。
+     * 用 replaceState 而不是 pushState——每敲一个字都压一条历史会把回退键变成翻页器
+     */
+    function syncUrl() {
+        const q = new URLSearchParams();
+        if (keyword) q.set('keyword', keyword);
+        if (selectedCategoryId) q.set('categoryId', selectedCategoryId);
+        if (filters.minPrice != null) q.set('minPrice', filters.minPrice);
+        if (filters.maxPrice != null) q.set('maxPrice', filters.maxPrice);
+        if (filters.scene) q.set('scene', filters.scene);
+        if (filters.tag) q.set('tag', filters.tag);
+        if (filters.inStockOnly) q.set('inStockOnly', '1');
+        if (filters.fields.length) q.set('fields', filters.fields.join(','));
+        if (sortBy !== 'default') q.set('sort', sortBy);
+        if (currentPage > 1) q.set('page', currentPage);
+        if (pageSize !== 12) q.set('limit', pageSize);
+        const qs = q.toString();
+        history.replaceState({}, '', location.pathname + (qs ? '?' + qs : ''));
+    }
+
+    /** 进页面先吃一遍 URL，缺省值维持原行为 */
+    function restoreFromUrl() {
+        const q = new URLSearchParams(location.search);
+        const num = key => (q.get(key) === null || q.get(key) === '' ? null : Math.max(parseFloat(q.get(key)) || 0, 0));
+        filters.minPrice = num('minPrice');
+        filters.maxPrice = num('maxPrice');
+        filters.scene = q.get('scene') || null;
+        filters.tag = q.get('tag') || null;
+        filters.inStockOnly = q.get('inStockOnly') === '1';
+        // 白名单外的字段值直接丢弃，服务端也会再校验一遍，页面不承担脏参数
+        filters.fields = (q.get('fields') || '').split(',')
+            .filter(function (v) { return ['subtitle', 'flowerLanguage', 'careTip'].indexOf(v) >= 0; });
+        if (q.get('sort')) sortBy = q.get('sort');
+        const limit = parseInt(q.get('limit'), 10);
+        if ([12, 24, 48].indexOf(limit) >= 0) pageSize = limit;
+        const page = parseInt(q.get('page'), 10);
+        if (page > 0) currentPage = page;
+        keyword = keyword || q.get('keyword') || '';
+        if (filters.minPrice != null) $('#minPrice').val(filters.minPrice);
+        if (filters.maxPrice != null) $('#maxPrice').val(filters.maxPrice);
+        if (filters.inStockOnly) $('#inStockOnly').prop('checked', true);
     }
 
     /* ---------- 搜索联想 / 历史词 ---------- */
@@ -423,12 +670,66 @@
         keyword = keyword || '';
         bindSide();
         bindSuggest();
+        restoreFromUrl();
         syncFilterUi();
+        paintFilterSummary();
         if (keyword) $('#searchInput').val(keyword);
 
         loadCategories();
         loadProducts();
 
+        $('#priceChips').on('click', '.hu-chip', function () {
+            const min = $(this).data('min'), max = $(this).data('max');
+            filters.minPrice = (min === '' || min == null) ? null : Number(min);
+            filters.maxPrice = (max === '' || max == null) ? null : Number(max);
+            $('#minPrice').val(min == null ? '' : min);
+            $('#maxPrice').val(max == null ? '' : max);
+            applyFilters();
+        });
+        $('#sceneChips').on('click', '.hu-chip', function () {
+            const v = String($(this).data('scene'));
+            filters.scene = filters.scene === v ? null : v;
+            applyFilters();
+        });
+        $('#tagChips').on('click', '.hu-chip', function () {
+            const v = String($(this).data('tag'));
+            filters.tag = filters.tag === v ? null : v;
+            applyFilters();
+        });
+        $('#inStockOnly').on('change', function () {
+            filters.inStockOnly = this.checked;
+            applyFilters();
+        });
+        /* A06/A18 补充：只保留「写了该说明」的款，运营核对内容缺口时也用它 */
+        $('#fieldChips').on('click', '.hu-chip', function () {
+            const v = String($(this).data('field'));
+            const at = filters.fields.indexOf(v);
+            if (at >= 0) filters.fields.splice(at, 1); else filters.fields.push(v);
+            applyFilters();
+        });
+        $('#pageSizeSel').on('change', function () {
+            const size = parseInt($(this).val(), 10);
+            pageSize = [12, 24, 48].indexOf(size) >= 0 ? size : 12;
+            applyFilters();
+        });
+        let priceTyping = null;
+        $('#minPrice, #maxPrice').on('input', function () {
+            clearTimeout(priceTyping);
+            priceTyping = setTimeout(function () {
+                const min = parseFloat($('#minPrice').val()), max = parseFloat($('#maxPrice').val());
+                filters.minPrice = isNaN(min) ? null : Math.max(min, 0);
+                filters.maxPrice = isNaN(max) ? null : Math.max(max, 0);
+                applyFilters();
+            }, 420);
+        });
+        $('#resetFilters').on('click', function () {
+            filters.minPrice = filters.maxPrice = filters.scene = filters.tag = null;
+            filters.inStockOnly = false;
+            filters.fields = [];
+            $('#minPrice, #maxPrice').val('');
+            $('#inStockOnly').prop('checked', false);
+            applyFilters();
+        });
         $('#sortChips').on('click', '.hu-chip', function () {
             sortBy = String($(this).data('sort'));
             syncFilterUi();

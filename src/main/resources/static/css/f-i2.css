@@ -1,0 +1,59 @@
+/* f-i2.css · 地图/天气/花田批次（第二轮）专用样式，与 f-i.css 分文件避免并行追加互相覆盖 */
+
+/* ---------- I08 花田侧栏「今日 + 未来三日」配送建议 ---------- */
+.hu-fc {
+    display: flex; flex-direction: column; gap: 7px;
+}
+.hu-fc__day {
+    position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 2px 10px; align-items: baseline; padding: 9px 12px 10px;
+    border: 1px solid var(--hu-line); border-radius: var(--hu-radius); background: var(--hu-surface);
+    transition: border-color .18s var(--hu-ease), box-shadow .18s var(--hu-ease);
+}
+.hu-fc__day:hover { border-color: var(--hu-line-strong); box-shadow: var(--hu-shadow-sm); }
+.hu-fc__day > b { font-size: 12.5px; font-weight: 600; letter-spacing: .02em; }
+.hu-fc__day > span { font-size: 12.5px; color: var(--hu-ink-soft); }
+.hu-fc__day > em {
+    font-style: normal; font-size: 12px; color: var(--hu-muted);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.hu-fc__day > p {
+    grid-column: 1 / -1; margin: 3px 0 0; font-size: 12.5px; line-height: 1.6; color: var(--hu-ink-soft);
+}
+.hu-fc__day.is-today {
+    border-color: rgba(15, 123, 99, .42);
+    background: linear-gradient(180deg, rgba(15, 123, 99, .05), transparent 62%);
+}
+.hu-fc__day.is-today > b { color: var(--hu-accent-deep); }
+.hu-fc__day--caution { border-left: 3px solid rgba(217, 140, 58, .75); }
+.hu-fc__day--risk { border-left: 3px solid rgba(193, 91, 107, .8); }
+.hu-fc__note {
+    display: block; font-style: normal; margin-top: 3px; padding-left: 10px;
+    border-left: 2px solid var(--hu-line-strong); color: var(--hu-muted); font-size: 12px;
+}
+.hu-fc__cold { font-style: normal; margin-left: 8px; color: #3d6fa8; font-size: 12px; }
+.hu-fc__cold i { margin-right: 3px; }
+
+/* ---------- I09/I16 天气降级与缓存来源说明 ---------- */
+.hu-weather__notice {
+    margin: 8px 0 0; padding: 8px 10px; font-size: 12px; line-height: 1.6;
+    color: var(--hu-muted); background: var(--hu-surface-alt);
+    border: 1px dashed var(--hu-line-strong); border-radius: var(--hu-radius);
+}
+
+/* ---------- I12 兑换记录里的券码 ---------- */
+.hu-fc__code {
+    display: inline-block; margin-top: 5px; padding: 2px 8px; font-size: 11.5px;
+    font-family: var(--hu-font-body, ui-monospace, monospace); letter-spacing: .04em;
+    color: var(--hu-accent-deep); background: var(--hu-accent-soft);
+    border: 1px solid rgba(15, 123, 99, .24); border-radius: var(--hu-radius-pill);
+}
+
+/* ---------- I14 成长曲线坐标轴（自绘 SVG，不依赖任何图表库） ---------- */
+.hu-curve__axis { font-size: 9.5px; fill: var(--hu-muted); }
+.hu-curve__axisline { stroke: var(--hu-line-strong); stroke-width: 1; }
+
+@media (max-width: 480px) {
+    .hu-fc__day { grid-template-columns: 36px minmax(0, 1fr); }
+    .hu-fc__day > em { grid-column: 2; }
+}

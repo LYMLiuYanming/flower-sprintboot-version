@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>邀请有礼 · 花语轩</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<div class="hu-pagehead">
+    <div class="hu-container hu-pagehead__row">
+        <div>
+            <div class="hu-crumb"><a href="/index">首页</a> / <a href="/user/profile">个人中心</a> / <span>邀请有礼</span></div>
+            <h1>邀请有礼</h1>
+            <p class="hu-pagehead__sub">把邀请码送给朋友，TA 首单支付成功后，你和 TA 各得一张券</p>
+        </div>
+        <div class="hu-pagehead__aside">
+            <span class="hu-muted" style="font-size:13px">已邀请</span>
+            <span class="hu-num" id="invitedTotal">—</span>
+        </div>
+    </div>
+</div>
+
+<div class="hu-container">
+    <div class="hu-account">
+        <aside th:replace="~{common/account-nav :: accountNav('invite')}"></aside>
+        <div>
+
+            <!-- 我的邀请码 -->
+            <section class="hu-panel" style="margin-top:0">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2><i class="fa fa-user-plus" style="color:var(--hu-accent);margin-right:9px"></i>我的邀请码</h2>
+                        <p id="inviteNote">注册时填码即可绑定，一个账号只能绑定一次</p>
+                    </div>
+                    <a class="hu-link" href="/user/coupons" style="font-size:13px">我的券包 <i class="fa fa-long-arrow-right"></i></a>
+                </div>
+                <div class="hu-panel__body hu-e-invite">
+                    <div class="hu-e-invite__code">
+                        <span class="hu-e-invite__label">邀请码</span>
+                        <strong id="myCode" th:text="${inviteCode}">------</strong>
+                        <button type="button" class="hu-btn hu-btn--sm" data-hu-copy-target="#myCode"
+                                data-hu-copy-label="邀请码">复制
+                        </button>
+                    </div>
+                    <div class="hu-e-invite__link">
+                        <span class="hu-e-invite__label">专属链接</span>
+                        <code id="myLink" class="hu-e-invite__url">—</code>
+                        <button type="button" class="hu-btn hu-btn--sm hu-btn--ghost" data-hu-copy-target="#myLink"
+                                data-hu-copy-label="专属链接">复制链接
+                        </button>
+                    </div>
+                    <ol class="hu-e-steps">
+                        <li><b>1</b><span>把邀请码或专属链接发给 TA</span></li>
+                        <li><b>2</b><span>TA 注册后首次下单，双方自动绑定</span></li>
+                        <li><b>3</b><span id="stepReward">TA 首单支付成功后，券即刻进双方券包</span></li>
+                    </ol>
+                </div>
+            </section>
+
+            <!-- 奖励进度 -->
+            <section class="hu-panel" style="margin-top:26px">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2><i class="fa fa-bar-chart" style="color:var(--hu-accent);margin-right:9px"></i>邀请进度</h2>
+                        <p>首单以「已支付及之后」的订单计算，退款或取消不计入</p>
+                    </div>
+                </div>
+                <div class="hu-panel__body">
+                    <div class="hu-e-stats">
+                        <div class="hu-e-stat"><span>已邀请</span><b id="statInvited">0</b></div>
+                        <div class="hu-e-stat"><span>已完成首单</span><b id="statRewarded">0</b></div>
+                        <div class="hu-e-stat"><span>奖励券</span><b id="statCoupon">未配置</b></div>
+                        <div class="hu-e-stat"><span>额外积分</span><b id="statPoints">0</b></div>
+                    </div>
+                    <div class="hu-e-tablewrap">
+                        <table class="hu-e-table">
+                            <caption class="hu-sr-only">被邀请记录</caption>
+                            <thead>
+                            <tr>
+                                <th scope="col">花友</th>
+                                <th scope="col">绑定时间</th>
+                                <th scope="col">状态</th>
+                                <th scope="col">奖励发放</th>
+                            </tr>
+                            </thead>
+                            <tbody id="recordBody"></tbody>
+                        </table>
+                        <div id="recordEmpty" class="hu-empty hu-empty--compact" style="margin-top:14px">
+                            <i class="fa fa-user-plus"></i>
+                            <strong>还没有朋友通过你注册</strong>
+                            <p class="hu-empty__desc">把上面的专属链接发给第一次买花的人，TA 下单成功后你就能收到奖励券。</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 绑定邀请码 -->
+            <section class="hu-panel" style="margin-top:26px">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2><i class="fa fa-link" style="color:var(--hu-accent);margin-right:9px"></i>我有邀请码</h2>
+                        <p>注册时没填也没关系，还没成交的账号可以现在补上</p>
+                    </div>
+                </div>
+                <div class="hu-panel__body">
+                    <form class="hu-e-bind" id="bindForm" autocomplete="off">
+                        <label class="hu-sr-only" for="bindCode">邀请码</label>
+                        <input type="text" id="bindCode" maxlength="16" placeholder="朋友给你的邀请码" aria-describedby="bindHint">
+                        <button type="submit" class="hu-btn hu-btn--solid">绑定</button>
+                    </form>
+                    <p class="hu-e-hint" id="bindHint">绑定后不可更换，已有成交订单的账号无法绑定。</p>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<script>
+    function esc(v) {
+        return window.huEscape(v == null ? '' : String(v));
+    }
+
+    function dateOf(v) {
+        return String(v || '').slice(0, 16).replace('T', ' ');
+    }
+
+    function render(data) {
+        var code = String(data.code || '');
+        var link = code ? window.location.origin + '/auth/register?invite=' + encodeURIComponent(code) : '';
+        $('#myCode').text(code || '—');
+        $('#myLink').text(link || '—');
+        $('#invitedTotal').text(data.invitedCount || 0);
+        $('#statInvited').text(data.invitedCount || 0);
+        $('#statRewarded').text(data.rewardedCount || 0);
+        $('#statCoupon').text(data.rewardCouponName || '未配置');
+        $('#statPoints').text(data.rewardPoints || 0);
+        if (data.note) $('#inviteNote').text(data.note);
+        if (data.rewardCouponName) {
+            $('#stepReward').text('TA 首单支付成功后，双方各得一张「' + data.rewardCouponName + '」');
+        }
+        var rows = data.records || [];
+        $('#recordBody').html(rows.map(function (r) {
+            return '<tr><td>' + esc(r.nickname) + '</td><td>' + esc(dateOf(r.invitedAt)) + '</td>' +
+                '<td><span class="hu-pill ' + (r.status === 'rewarded' ? 'hu-pill--ok'
+                    : r.status === 'skipped' ? 'hu-pill--muted' : 'hu-pill--warn') + '">' + esc(r.statusText) + '</span></td>' +
+                '<td>' + (r.rewardedAt ? esc(dateOf(r.rewardedAt)) : '—') + '</td></tr>';
+        }).join(''));
+        $('#recordEmpty').toggle(!rows.length);
+    }
+
+    function load() {
+        huApi({
+            url: '/api/invite/my',
+            ok: render,
+            fail: function () { $('#recordEmpty').show(); }
+        });
+    }
+
+    $(function () {
+        load();
+
+        $('#bindCode').on('blur', function () {
+            var code = $.trim($(this).val());
+            if (!code) return;
+            huApi({
+                url: '/api/invite/check',
+                type: 'GET',
+                data: {code: code},
+                silent: true,
+                ok: function (res) {
+                    $('#bindHint').text(res.message || (res.valid ? '邀请码有效' : '邀请码无效'))
+                        .toggleClass('hu-e-hint--bad', !res.valid);
+                }
+            });
+        });
+
+        $('#bindForm').on('submit', function (event) {
+            event.preventDefault();
+            var code = $.trim($('#bindCode').val());
+            if (!code) {
+                window.huToast('请填写邀请码', 'err');
+                return;
+            }
+            var btn = $(this).find('button').prop('disabled', true);
+            huApi({
+                url: '/api/invite/bind',
+                type: 'POST',
+                data: {code: code},
+                ok: function (res) {
+                    window.huToast((res && res.message) || '绑定成功', 'ok');
+                    $('#bindCode').val('');
+                    load();
+                },
+                fail: function () { btn.prop('disabled', false); },
+                always: function () { btn.prop('disabled', false); }
+            });
+        });
+    });
+</script>
+</body>
+</html>

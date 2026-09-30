@@ -17,6 +17,9 @@ import java.util.UUID;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+/**
+ * 后台轮播图管理：/api/admin/** 由 AuthInterceptor 校验管理员，AdminAuditFilter 自动留痕。
+ */
 @RestController
 @RequestMapping("/api/admin/banners")
 @Tag(name = "后台 · 轮播图管理")
@@ -25,15 +28,29 @@ public class BannerAdminController {
     @Autowired
     private BannerService bannerService;
 
+    /** 后台列表：拖拽排序需要一次看到全量，页面按 limit=100（Pages 上限）取 */
     @GetMapping
     public Result<List<BannerView>> list(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int limit,
-            @RequestParam(required = false) String keyword) {
-        Page<Banner> result = (keyword == null || keyword.isBlank())
-                ? bannerService.findAll(Pages.of(page, limit, Sort.Direction.DESC, "sortOrder"))
-                : bannerService.searchByTitle(keyword.trim(), Pages.of(page, limit));
-        return Result.page(BannerView.from(result.getContent()), result.getTotalElements());
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "") String status) {
+        Page<Banner> result = bannerService.searchAdmin(status, keyword,
+                Pages.of(page, limit, Sort.Direction.DESC, "sortOrder"));
+        return Result.page(BannerView.from(result.getContent()), result.getTotalElements())
+                .with("displayableCount", bannerService.countDisplayable());
+    }
+
+    /** F14 预览：按前台真实播放顺序返回当前生效的轮播，后台弹窗直接照这个渲染 */
+    @GetMapping("/preview")
+    public Result<List<BannerView>> preview() {
+        return Result.ok(BannerView.from(bannerService.findDisplayableBanners()));
+    }
+
+    /** 新建表单里的「插到第一位」按钮取这个值，避免运营猜排序号 */
+    @GetMapping("/next-sort")
+    public Result<Integer> nextSort() {
+        return Result.ok(bannerService.nextTopSortOrder());
     }
 
     /**
@@ -64,6 +81,9 @@ public class BannerAdminController {
 
     @PostMapping("/{id}/status")
     public Result<Void> updateStatus(@PathVariable UUID id, @RequestParam String status) {
+        if (!Banner.STATUS_ACTIVE.equals(status) && !Banner.STATUS_INACTIVE.equals(status)) {
+            return Result.error("状态取值不合法");
+        }
         return bannerService.updateStatus(id, status)
                 ? Result.ok("状态更新成功", null)
                 : Result.error("状态更新失败");

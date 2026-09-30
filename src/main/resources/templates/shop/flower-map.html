@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>鲜花地图 · 花语轩</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+<th:block th:replace="~{common/amap :: loader}"></th:block>
+
+<div class="hu-pagehead">
+    <div class="hu-container hu-pagehead__row">
+        <div>
+            <div class="hu-crumb"><a href="/index">首页</a> / <span>鲜花地图</span></div>
+            <h1>鲜花地图</h1>
+            <p class="hu-pagehead__sub">从一朵花被采下的那片土地，到你手上的那张桌子，全程看得见</p>
+        </div>
+        <div class="hu-pagehead__aside">
+            <span class="hu-muted" style="font-size:13px">直采基地</span>
+            <div class="hu-num" id="originCount" style="font-size:26px">—</div>
+        </div>
+    </div>
+</div>
+
+<div class="hu-container">
+    <div class="hu-mapwrap" id="mapWrap" data-theme="light">
+        <div class="hu-mapwrap__side">
+            <div class="hu-chips" id="mapTabs" style="margin-bottom:12px">
+                <button type="button" class="hu-chip is-active" data-layer="origin"><i class="fa fa-map-marker"></i> 产地与干线</button>
+                <button type="button" class="hu-chip" data-layer="sales"><i class="fa fa-bar-chart"></i> 销量分布</button>
+                <button type="button" class="hu-chip" data-layer="route"><i class="fa fa-route"></i> 我的订单路线</button>
+            </div>
+
+            <!-- 地图偏好：暗色底图（I06）+ 站点标记自定义图标（I06）+ 数据列表视图（I07） -->
+            <div class="hu-maptools">
+                <button type="button" class="hu-chip hu-chip--ghost" id="themeBtn" aria-label="切换地图配色">
+                    <i class="fa fa-adjust"></i> <span id="themeLabel">暗色底图</span>
+                </button>
+                <button type="button" class="hu-chip hu-chip--ghost" id="pinBtn" aria-label="自定义站点标记">
+                    <i class="fa fa-magic"></i> 标记样式
+                </button>
+                <button type="button" class="hu-chip hu-chip--ghost" id="listBtn" aria-label="切换数据列表视图">
+                    <i class="fa fa-list"></i> 数据列表
+                </button>
+                <!-- 门店自提页的入口：门店节点在这张图上只是标记，地址电话与就近推荐要到那一页看全 -->
+                <a class="hu-chip hu-chip--ghost" href="/stores"><i class="fa fa-store"></i> 门店自提</a>
+            </div>
+
+            <!-- I16：外部依赖体检，密钥状态与缓存命中量级写成一行小字，异常时才显眼 -->
+            <p class="hu-muted hu-mapdiag" id="mapDiag" style="margin:-6px 0 14px"></p>
+
+            <!-- 标记样式面板（I06）：三种类别各选一个图标，存本地，只影响这张图 -->
+            <div class="hu-panel hu-panel--pad" id="pinPanel" style="display:none;margin-bottom:14px">
+                <h3 class="hu-side-title" style="margin-top:0">站点标记图标</h3>
+                <div id="pinPicker"></div>
+                <p class="hu-muted" style="font-size:12px;margin:10px 0 0">选择只保存在本机浏览器，刷新后仍是这套。</p>
+            </div>
+
+            <!-- 产地层 -->
+            <div class="hu-panel hu-panel--pad" id="layerOrigin">
+                <p class="hu-muted" style="font-size:13px;margin:0 0 14px">
+                    点击基地查看采收细节与在售花材；干线在分拨中心换装，末端由同城闪送完成。
+                </p>
+                <div id="originList" class="hu-origins"></div>
+                <!-- I02：产地详情与关联商品 -->
+                <div id="originDetail" class="hu-odetail" style="display:none"></div>
+            </div>
+
+            <!-- 销量层 -->
+            <div class="hu-panel hu-panel--pad" id="layerSales" style="display:none">
+                <div class="hu-mapstat">
+                    <div><b id="salesCities">—</b><span>送达城市</span></div>
+                    <div><b id="salesUnits">—</b><span>发货枝数</span></div>
+                    <div><b id="salesOrders">—</b><span>成交订单</span></div>
+                </div>
+                <div class="hu-field" style="margin:14px 0 10px">
+                    <label for="salesWindow">统计窗口</label>
+                    <select id="salesWindow" class="hu-input hu-select">
+                        <option value="7">近 7 天</option>
+                        <option value="30">近 30 天</option>
+                        <option value="90">近 90 天</option>
+                        <option value="180" selected>近 180 天</option>
+                        <option value="365">近一年</option>
+                    </select>
+                </div>
+                <!-- I05：省份下钻 -->
+                <div class="hu-side-title" style="margin:6px 0 8px">按省份下钻</div>
+                <div class="hu-chips hu-provinces" id="provinceChips"></div>
+                <div id="salesList" class="hu-rank" style="margin-top:12px"></div>
+            </div>
+
+            <!-- 路线层 -->
+            <div class="hu-panel hu-panel--pad" id="layerRoute" style="display:none">
+                <div id="routeGuest" class="hu-empty" style="padding:26px 0">
+                    <i class="fa fa-sign-in"></i>
+                    <strong>登录后查看自己的配送路线</strong>
+                    <a href="/auth/login" class="hu-btn hu-btn--solid hu-btn--sm" style="margin-top:16px">去登录</a>
+                </div>
+                <div id="routeBody" style="display:none">
+                    <div class="hu-field">
+                        <label for="routeOrder">选择订单</label>
+                        <select id="routeOrder" class="hu-input hu-select"></select>
+                    </div>
+                    <div id="routeSummary" class="hu-muted" style="font-size:13px;margin:12px 0"></div>
+                    <div id="routeLegend" class="hu-legend"></div>
+                    <div id="routeSegments"></div>
+                </div>
+            </div>
+
+            <!-- I07：底图不可用 / 主动切换时的数据兜底列表 -->
+            <div class="hu-panel hu-panel--pad" id="layerTable" style="display:none;margin-top:16px">
+                <h3 class="hu-side-title" style="margin-top:0">数据视图<span id="tableTitle" class="hu-muted" style="font-size:12px"></span></h3>
+                <div id="tableBody" class="hu-dtable"></div>
+            </div>
+
+            <div class="hu-panel hu-panel--pad" id="mapWeather" style="display:none;margin-top:16px">
+                <h3 class="hu-side-title" style="margin-top:0">配送城市天气</h3>
+                <div id="weatherBody" class="hu-muted" style="font-size:13px"></div>
+                <!-- I08：未来 3 日预报与配送建议 -->
+                <div id="forecastBody" class="hu-forecast" style="margin-top:12px"></div>
+                <!-- I09：可读的服务降级说明 -->
+                <p class="hu-muted" id="weatherStatus" style="font-size:12px;margin:10px 0 0"></p>
+            </div>
+        </div>
+
+        <div class="hu-mapwrap__main">
+            <div id="mapCanvas" class="hu-map"></div>
+            <div id="mapFallback" class="hu-empty" style="display:none;position:absolute;inset:0">
+                <i class="fa fa-map-o"></i>
+                <strong>底图暂不可用</strong>
+                <span id="mapFallbackNote" style="font-size:13px">未配置高德密钥或网络受限，左侧数据仍可查看</span>
+                <button type="button" class="hu-btn hu-btn--ghost hu-btn--sm" id="fallbackListBtn" style="margin-top:14px">
+                    打开数据列表视图
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<script th:inline="javascript">
+    const LOGGED_IN = /*[[${loginUser != null}]]*/ false;
+
+    let map = null;
+    let AMapRef = null;
+    let overlay = [];          // 当前层的覆盖物集合，切层时整体移除
+    let nodes = [];
+    let sales = [];
+    let provinces = [];
+    let province = '';         // 当前下钻省份，空表示全国
+    let lastRoute = null;
+    let tableOn = false;       // 数据列表视图（I07）
+    let weatherCity = '';      // 已选定要看天气的城市（I08）：换层时不该把已经读到的预报弄丢
+    /** 深链进来的关注基地，定位一次后清空，避免用户切层又被拉回去 */
+    let pendingFocus = new URLSearchParams(location.search).get('focus') || '';
+    const query = new URLSearchParams(location.search);
+    /** 订单详情页「在地图中查看」带过来的层与订单，用于直达某单的路线图 */
+    const START_LAYER = ['origin', 'sales', 'route'].indexOf(query.get('layer')) >= 0 ? query.get('layer') : '';
+    const START_ORDER = query.get('order') || '';
+
+    /* ---------- 偏好：暗色底图与自定义标记（I06），都存在本机 localStorage ---------- */
+
+    const PIN_PRESETS = [
+        {icon: 'fa-leaf', color: '#0f7b63'}, {icon: 'fa-cube', color: '#2f6fb0'},
+        {icon: 'fa-store', color: '#7a5cc4'}, {icon: 'fa-map-marker', color: '#d94a4a'},
+        {icon: 'fa-flower', color: '#c15b6b'}, {icon: 'fa-snowflake-o', color: '#1f8a8c'}
+    ];
+    const KIND_TEXT = {origin: '直采产地', hub: '分拨中心', store: '自提门店', dest: '收花点'};
+    const DEFAULT_PIN = {origin: 0, hub: 1, store: 2, dest: 3};
+    let pinStyle = loadPins();
+
+    function loadPins() {
+        try {
+            const raw = localStorage.getItem('huMapPinStyle');
+            const saved = raw ? JSON.parse(raw) : null;
+            return Object.assign({}, DEFAULT_PIN, saved || {});
+        } catch (e) {
+            return Object.assign({}, DEFAULT_PIN);
+        }
+    }
+
+    function pinContent(kind, name) {
+        const preset = PIN_PRESETS[pinStyle[kind]] || PIN_PRESETS[0];
+        return '<div class="hu-pin hu-pin--' + kind + '" style="background:' + preset.color + '" title="' + esc(name) + '">'
+            + '<i class="fa ' + preset.icon + '"></i></div>';
+    }
+
+    /* ---------- 底图装载 ---------- */
+
+    function mapStyle() {
+        return $('#mapWrap').attr('data-theme') === 'dark' ? 'amap://styles/dark' : 'amap://styles/whitesmoke';
+    }
+
+    function initMap() {
+        window.huAmap.ready(function (AMap) {
+            AMapRef = AMap;
+            map = new AMap.Map('mapCanvas', {
+                zoom: 4.3,
+                center: [105.5, 33.5],
+                viewMode: '2D',
+                mapStyle: mapStyle(),
+                resizeEnable: true,
+                scrollWheel: true
+            });
+            map.addControl(new AMap.ToolBar({position: {right: '18px', bottom: '48px'}}));
+            map.addControl(new AMap.Scale());
+            render();
+        }, function (message) {
+            $('#mapFallback').show();
+            $('#mapFallbackNote').text(message + '；左侧数据仍可正常查看，已自动切到数据列表视图');
+            tableOn = true;
+            render();
+        });
+    }
+
+    function clearOverlay() {
+        if (map && overlay.length) {
+            map.remove(overlay);
+        }
+        overlay = [];
+    }
+
+    function currentLayer() {
+        return $('#mapTabs .hu-chip.is-active').data('layer');
+    }
+
+    function showLayer(name) {
+        $('#layerOrigin').toggle(name === 'origin');
+        $('#layerSales').toggle(name === 'sales');
+        $('#layerRoute').toggle(name === 'route');
+        // 天气面板跟着「已经选定城市」走而不是跟着层走：产地卡与销量图同样要回答「这个温度敢不敢下单」
+        $('#mapWeather').toggle(!!weatherCity);
+        $('#layerTable').toggle(tableOn);
+    }
+
+    function render() {
+        const layer = currentLayer();
+        showLayer(layer);
+        clearOverlay();
+        if (layer === 'origin') {
+            drawOrigins();
+        } else if (layer === 'sales') {
+            drawSales();
+        } else {
+            drawRoute();
+        }
+        drawTable(layer);
+    }
+
+    function esc(v) {
+        return window.huEscape(v == null ? '' : String(v));
+    }
+
+    function kindLabel(kind) {
+        return KIND_TEXT[kind] || '节点';
+    }
+
+    /* ---------- 产地与干线 ---------- */
+
+    function drawOrigins() {
+        const origins = nodes.filter(function (n) { return n.kind === 'origin'; });
+        $('#originCount').text(origins.length);
+        $('#originList').html(nodes.map(function (n) {
+            const stats = n.kind === 'origin'
+                ? '<span>在售 ' + (n.productCount || 0) + ' 款</span><span>窗口期发货 ' + (n.units || 0) + ' 枝</span>'
+                : '<span>' + (n.feature ? esc(n.feature) : '') + '</span>';
+            return '<button type="button" class="hu-origin" data-id="' + esc(n.id) + '">' +
+                '<span class="hu-origin__dot hu-origin__dot--' + n.kind + '"></span>' +
+                '<span class="hu-origin__main"><b>' + esc(n.name) + '</b>' +
+                '<small>' + kindLabel(n.kind) + (n.city ? ' · ' + esc(n.city) : '') + '</small>' +
+                (n.flowers ? '<em>' + esc(n.flowers) + '</em>' : '') + '</span>' +
+                '<span class="hu-origin__stats">' + stats + '</span></button>';
+        }).join(''));
+
+        if (!map) {
+            return;
+        }
+        const items = [];
+        nodes.forEach(function (n) {
+            const marker = new AMapRef.Marker({
+                position: [n.lng, n.lat],
+                anchor: 'center',
+                content: pinContent(n.kind, n.name)
+            });
+            marker.on('click', function () {
+                focusOrigin(n.id);
+                map.setZoomAndCenter(5.6, [n.lng, n.lat]);
+            });
+            items.push(marker);
+            if (n.kind !== 'origin') {
+                items.push(label(n.lng, n.lat, n.name));
+            }
+        });
+        // 干线：每个产地连到最近的分拨中心，让「直采 → 换装」这条链在图上有形
+        nodes.filter(function (n) { return n.kind === 'origin'; }).forEach(function (from) {
+            const to = nearestNode(from, nodes.filter(function (n) { return n.kind === 'hub'; }));
+            if (to) {
+                items.push(line(arc(from, to), '#9fb6ae', 2, true));
+            }
+        });
+        overlay = items;
+        map.add(items);
+        map.setFitView(items, false, [40, 40, 40, 40]);
+
+        if (pendingFocus) {
+            const hit = nodes.filter(function (n) { return n.name === pendingFocus; })[0];
+            pendingFocus = '';
+            if (hit) {
+                focusOrigin(hit.id);
+                map.setZoomAndCenter(6.2, [hit.lng, hit.lat]);
+            }
+        }
+    }
+
+    /**
+     * 产地详情（I02）：卡片展开后拉 /api/map/origin/{id}，把采收故事与在售商品放在同一处，
+     * 顾客不用再切回商品列表去猜「这个基地到底供什么花」。
+     */
+    function focusOrigin(id) {
+        $('#originList .hu-origin').removeClass('is-active');
+        $('#originList .hu-origin[data-id="' + id + '"]').addClass('is-active');
+        const node = nodes.filter(function (n) { return n.id === id; })[0];
+        if (node && node.kind === 'origin') {
+            showWeather(node.city || node.province);
+            loadOriginDetail(node);
+        }
+    }
+
+    function loadOriginDetail(node) {
+        $('#originDetail').show().html('<p class="hu-muted" style="font-size:13px">正在读取「' + esc(node.name) + '」的采收与在售信息…</p>');
+        huApi({
+            url: '/api/map/origin/' + node.id,
+            data: {days: $('#salesWindow').val() || 180},
+            silent: true,
+            ok: function (data) {
+                if (!data || !data.node) {
+                    $('#originDetail').html('<p class="hu-muted" style="font-size:13px">该产地信息暂时读不到</p>');
+                    return;
+                }
+                const n = data.node;
+                const products = data.products || [];
+                const cards = products.filter(function (p) { return p.active; }).slice(0, 8).map(function (p) {
+                    return '<a class="hu-odetail__item" href="/product/' + esc(p.id) + '">' +
+                        (p.mainImage ? '<img src="' + esc(p.mainImage) + '" alt="' + esc(p.name) + '" loading="lazy">' : '<span class="hu-odetail__noimg"><i class="fa fa-picture-o"></i></span>') +
+                        '<b>' + esc(p.name) + '</b><em>¥' + window.huMoney(p.price) + (p.unit ? ' / ' + esc(p.unit) : '') + '</em></a>';
+                }).join('');
+                $('#originDetail').html(
+                    '<div class="hu-odetail__head"><b>' + esc(n.name) + '</b>' +
+                    '<span>' + kindLabel(n.kind) + (n.season ? ' · ' + esc(n.season) : '') + '</span></div>' +
+                    // 配图由后台维护（I01），没配图时不留一个空灰块
+                    (n.imageUrl ? '<div class="hu-odetail__hero"><img src="' + esc(n.imageUrl)
+                        + '" alt="' + esc(n.name) + '" loading="lazy"></div>' : '') +
+                    (n.altitude ? '<p class="hu-odetail__meta">海拔约 ' + esc(n.altitude) + ' 米 · 窗口期发出 '
+                        + (data.units || 0) + ' 枝 / ' + (data.orders || 0) + ' 单</p>' : '') +
+                    (n.story ? '<p class="hu-odetail__story">' + esc(n.story) + '</p>' : '') +
+                    (n.feature ? '<p class="hu-odetail__feature"><i class="fa fa-tag"></i> ' + esc(n.feature) + '</p>' : '') +
+                    '<div class="hu-side-title" style="margin:14px 0 8px">这里采出来的在售花材' +
+                    '<span class="hu-muted" style="font-size:12px">（共 ' + products.length + ' 款）</span></div>' +
+                    (cards ? '<div class="hu-odetail__grid">' + cards + '</div>'
+                        : '<p class="hu-muted" style="font-size:13px">' + esc(data.note || '该产地暂无在售商品') + '</p>'));
+            },
+            fail: function () {
+                $('#originDetail').html('<p class="hu-muted" style="font-size:13px">产地详情读取失败，稍后再试</p>');
+            }
+        });
+    }
+
+    /* ---------- 销量分布（I05：省份下钻 + 时间窗） ---------- */
+
+    function drawSales() {
+        const totalUnits = sales.reduce(function (sum, s) { return sum + (s.units || 0); }, 0);
+        const totalOrders = sales.reduce(function (sum, s) { return sum + (s.orders || 0); }, 0);
+        $('#salesCities').text(sales.length);
+        $('#salesUnits').text(totalUnits);
+        $('#salesOrders').text(totalOrders);
+        renderProvinces();
+        $('#salesList').html(sales.length ? sales.map(function (s, i) {
+            return '<div class="hu-rank__row"><span class="hu-rank__no">' + (i + 1) + '</span>' +
+                '<span class="hu-rank__name">' + esc(s.city) + '</span>' +
+                '<span class="hu-rank__bar"><i style="width:' + barWidth(s.units, sales) + '%"></i></span>' +
+                '<span class="hu-rank__val">' + s.units + ' 枝 · ¥' + window.huMoney(s.amount) + '</span></div>';
+        }).join('') : '<p class="hu-muted" style="font-size:13px">该窗口内暂无成交订单</p>');
+
+        if (!map) {
+            return;
+        }
+        const items = [];
+        if (!province) {
+            // 全国视角画省份气泡，点省才下钻到城市，两万个城市气泡是没法看的
+            provinces.forEach(function (p) {
+                const radius = 12 + 26 * Math.sqrt((p.units || 0) / (provinces[0].units || 1));
+                items.push(new AMapRef.CircleMarker({
+                    center: [p.lng, p.lat], radius: radius,
+                    strokeColor: '#0f7b63', strokeWeight: 1.5, strokeOpacity: .85,
+                    fillColor: '#0f7b63', fillOpacity: .18, cursor: 'pointer'
+                }));
+                items.push(label(p.lng, p.lat, p.province + ' ' + p.units));
+            });
+        } else {
+            sales.forEach(function (s) {
+                const radius = 9 + 30 * Math.sqrt((s.units || 0) / (sales[0].units || 1));
+                items.push(new AMapRef.CircleMarker({
+                    center: [s.lng, s.lat], radius: radius,
+                    strokeColor: '#0f7b63', strokeWeight: 1.5, strokeOpacity: .9,
+                    fillColor: '#0f7b63', fillOpacity: .22, cursor: 'pointer'
+                }));
+                items.push(label(s.lng, s.lat, s.city + ' ' + s.units));
+            });
+        }
+        overlay = items;
+        map.add(items);
+        if (items.length) {
+            map.setFitView(items, false, [50, 50, 50, 50]);
+        }
+    }
+
+    function renderProvinces() {
+        const chips = ['<button type="button" class="hu-chip' + (province ? '' : ' is-active')
+            + '" data-province="">全国</button>'];
+        provinces.forEach(function (p) {
+            chips.push('<button type="button" class="hu-chip' + (province === p.province ? ' is-active' : '')
+                + '" data-province="' + esc(p.province) + '">' + esc(p.province)
+                + '<i>' + (p.units || 0) + '</i></button>');
+        });
+        $('#provinceChips').html(chips.join(''));
+    }
+
+    function loadProvinces(days) {
+        huApi({
+            url: '/api/map/sales/provinces',
+            data: {days: days},
+            silent: true,
+            ok: function (data) {
+                provinces = data || [];
+                if (currentLayer() === 'sales') {
+                    render();
+                }
+            }
+        });
+    }
+
+    function barWidth(value, list) {
+        const max = Math.max.apply(null, list.map(function (s) { return s.units || 0; }).concat([1]));
+        return Math.max(6, Math.round((value || 0) / max * 100));
+    }
+
+    /* ---------- 数据列表视图（I07） ---------- */
+
+    function drawTable(layer) {
+        if (!tableOn) {
+            $('#tableBody').empty();
+            return;
+        }
+        if (layer === 'origin') {
+            $('#tableTitle').text('· 全部节点坐标');
+            $('#tableBody').html('<table class="hu-dtable__table"><thead><tr><th>节点</th><th>类型</th><th>城市</th>'
+                + '<th>经度</th><th>纬度</th><th>在售</th><th>发货</th></tr></thead><tbody>'
+                + nodes.map(function (n) {
+                    return '<tr><td>' + esc(n.name) + '</td><td>' + kindLabel(n.kind) + '</td>'
+                        + '<td>' + esc(n.city || n.province || '—') + '</td>'
+                        + '<td>' + Number(n.lng).toFixed(4) + '</td><td>' + Number(n.lat).toFixed(4) + '</td>'
+                        + '<td>' + (n.productCount || 0) + '</td><td>' + (n.units || 0) + ' 枝</td></tr>';
+                }).join('') + '</tbody></table>');
+        } else if (layer === 'sales') {
+            $('#tableTitle').text('· ' + (province || '全国'));
+            $('#tableBody').html('<table class="hu-dtable__table"><thead><tr><th>城市</th><th>省份</th><th>订单</th>'
+                + '<th>枝数</th><th>金额</th></tr></thead><tbody>'
+                + (sales.length ? sales.map(function (s) {
+                    return '<tr><td>' + esc(s.city) + '</td><td>' + esc(s.province || '—') + '</td>'
+                        + '<td>' + s.orders + '</td><td>' + s.units + '</td><td>¥' + window.huMoney(s.amount) + '</td></tr>';
+                }).join('') : '<tr><td colspan="5">该窗口内暂无成交订单</td></tr>') + '</tbody></table>');
+        } else {
+            const route = lastRoute || {};
+            $('#tableTitle').text('· 订单配送分段');
+            $('#tableBody').html('<table class="hu-dtable__table"><thead><tr><th>分段</th><th>方式</th><th>里程</th>'
+                + '<th>耗时</th><th>取线方式</th><th>状态</th></tr></thead><tbody>'
+                + ((route.segments || []).map(function (s) {
+                    return '<tr><td>' + esc(s.from) + ' → ' + esc(s.to) + '</td><td>' + esc(s.modeLabel) + '</td>'
+                        + '<td>' + s.km + ' km</td><td>' + (s.minutes ? Math.round(s.minutes / 60 * 10) / 10 + ' 小时' : '—') + '</td>'
+                        + '<td>' + (s.shape === 'real' ? '实测路径' : '直线估算') + '</td>'
+                        + '<td>' + (s.passed ? '已完成' : (s.current ? '在途' : '待发')) + '</td></tr>';
+                }).join('') || '<tr><td colspan="6">暂无路线数据</td></tr>') + '</tbody></table>');
+        }
+    }
+
+    /* ---------- 我的订单路线（I03/I04） ---------- */
+
+    function drawRoute() {
+        if (!LOGGED_IN) {
+            $('#routeGuest').show();
+            $('#routeBody').hide();
+            return;
+        }
+        $('#routeGuest').hide();
+        if (!$('#routeOrder option').length) {
+            loadMyOrders();
+        }
+        loadRoute();
+    }
+
+    function loadMyOrders() {
+        huApi({
+            url: '/api/orders?page=1&limit=20',
+            silent: true,
+            ok: function (data) {
+                const list = (data && (data.list || data)) || [];
+                $('#routeOrder').html(list.map(function (o) {
+                    return '<option value="' + esc(o.id) + '">' + esc(o.orderNo) + ' · '
+                        + esc(o.statusLabel || o.status) + ' · ' + esc(o.receiverAddress || '').slice(0, 18) + '</option>';
+                }).join('') || '<option value="">暂无订单</option>');
+                if (START_ORDER) {
+                    $('#routeOrder').val(START_ORDER);
+                }
+                $('#routeBody').show();
+                loadRoute();
+            },
+            fail: function () {
+                $('#routeBody').hide();
+            }
+        });
+    }
+
+    function loadRoute() {
+        const id = $('#routeOrder').val();
+        if (!id) {
+            return;
+        }
+        huApi({
+            url: '/api/map/order/' + id + '/route',
+            silent: true,
+            ok: function (data) {
+                renderRoute(data || {});
+            }
+        });
+    }
+
+    function renderRoute(route) {
+        lastRoute = route;
+        const points = route.points || [];
+        const segments = route.segments || [];
+        const realCount = route.realSegments || 0;
+        $('#routeSummary').html(route.available
+            ? '全程约 <b>' + (route.totalKm || 0) + '</b> 公里 · 配送方式 ' + esc(route.deliveryMethodName || '')
+            + (route.resolution === 'geocode' ? ' · 已定位到门牌' : ' · 按城市质心绘制')
+            + (realCount ? ' · 其中 ' + realCount + ' 段为实测路线' : '')
+            : esc(route.note || '暂无路线'));
+        // 图例（I04）：方式与配色都由服务端下发，页面不再维护字典
+        $('#routeLegend').html((route.legend || []).map(function (l) {
+            return '<span class="hu-legend__item"><i style="background:' + esc(l.color) + '"></i>'
+                + '<em class="fa ' + esc(l.icon) + '"></em>' + esc(l.label) + '</span>';
+        }).join(''));
+        $('#routeSegments').html(segments.length ? segments.map(function (s) {
+            const state = s.passed ? 'done' : (s.current ? 'current' : 'todo');
+            return '<div class="hu-seg hu-seg--' + state + '">' +
+                '<span class="hu-seg__mode" style="color:' + esc(s.color) + '"><i class="fa ' + esc(s.icon) + '"></i> '
+                + esc(s.modeLabel) + (s.shape === 'real' ? '<em class="hu-seg__real">实测</em>' : '') + '</span>' +
+                '<b>' + esc(s.from) + ' <i class="fa fa-long-arrow-right"></i> ' + esc(s.to) + '</b>' +
+                '<em>' + s.km + ' 公里' + (s.minutes ? ' · 约 ' + Math.round(s.minutes / 60 * 10) / 10 + ' 小时' : '') + '</em></div>';
+        }).join('') : '');
+        const last = points.length ? points[points.length - 1] : null;
+        if (last) {
+            showWeather(last.name);
+        }
+        if (!map || !points.length) {
+            return;
+        }
+        const items = [];
+        points.forEach(function (p) {
+            items.push(new AMapRef.Marker({
+                position: [p.lng, p.lat],
+                anchor: 'center',
+                content: pinContent(p.kind === 'dest' ? 'dest' : p.kind, p.name)
+            }));
+            items.push(label(p.lng, p.lat, p.name));
+        });
+        segments.forEach(function (s, i) {
+            const from = points[i];
+            const to = points[i + 1];
+            if (!from || !to) {
+                return;
+            }
+            const color = s.passed ? '#0f7b63' : (s.current ? '#d98c3a' : '#b8c0ca');
+            // 有实测折线就画折线，没有才退回带弧度的估算线（I03）
+            const path = s.shape === 'real' && s.polyline && s.polyline.length
+                ? s.polyline.map(function (pair) { return [pair[0], pair[1]]; })
+                : arc(from, to);
+            items.push(line(path, color, s.passed || s.current ? 4 : 2.5, !s.passed && !s.current));
+        });
+        const current = segments.findIndex(function (s) { return s.current; });
+        if (current >= 0 && points[current] && points[current + 1]) {
+            items.push(movingMarker(points[current], points[current + 1], segments[current]));
+        }
+        overlay = items;
+        map.add(items);
+        map.setFitView(items, false, [60, 60, 60, 60]);
+        if (tableOn) {
+            drawTable('route');
+        }
+    }
+
+    function modeIcon(mode) {
+        return mode === 'air' ? 'fa-plane' : mode === 'sea' ? 'fa-ship'
+            : mode === 'last_mile' ? 'fa-bicycle' : 'fa-truck';
+    }
+
+    /* ---------- 画图小工具 ---------- */
+
+    function label(lng, lat, text) {
+        return new AMapRef.Text({
+            text: text,
+            position: [lng, lat],
+            anchor: 'top_center',
+            offset: new AMapRef.Pixel(0, 12),
+            style: labelStyle()
+        });
+    }
+
+    /** 暗色底图上的文字标签要换反色，否则白底标签在黑图上一团糊（I06） */
+    function labelStyle() {
+        const dark = $('#mapWrap').attr('data-theme') === 'dark';
+        return dark
+            ? {background: 'rgba(16,22,35,.86)', border: '1px solid #2b3546', color: '#e7ecf3',
+                padding: '2px 7px', 'border-radius': '6px', 'font-size': '12px'}
+            : {background: 'rgba(255,255,255,.9)', border: '1px solid #e2e6ea', color: '#1c2430',
+                padding: '2px 7px', 'border-radius': '6px', 'font-size': '12px'};
+    }
+
+    /** 两点间取弧线：中段向法向偏移，跨省干线上看起来才像航线而不是尺子线 */
+    function arc(from, to) {
+        const path = [];
+        const x1 = from.lng, y1 = from.lat, x2 = to.lng, y2 = to.lat;
+        const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+        const dx = x2 - x1, dy = y2 - y1;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const lift = Math.min(2.2, len * 0.18);
+        const cx = mx - dy / len * lift, cy = my + dx / len * lift;
+        for (let i = 0; i <= 24; i++) {
+            const t = i / 24;
+            const a = Math.pow(1 - t, 2), b = 2 * t * (1 - t), c = t * t;
+            path.push([a * x1 + b * cx + c * x2, a * y1 + b * cy + c * y2]);
+        }
+        return path;
+    }
+
+    function line(path, color, weight, dashed) {
+        return new AMapRef.Polyline({
+            path: path,
+            strokeColor: color,
+            strokeWeight: weight,
+            strokeOpacity: .92,
+            strokeStyle: dashed ? 'dashed' : 'solid',
+            strokeDasharray: dashed ? [6, 6] : undefined,
+            lineJoin: 'round',
+            bubble: true
+        });
+    }
+
+    function movingMarker(from, to, segment) {
+        const marker = new AMapRef.Marker({
+            position: [from.lng, from.lat],
+            anchor: 'center',
+            content: '<div class="hu-pin hu-pin--moving"><i class="fa '
+                + (segment && segment.icon ? esc(segment.icon) : modeIcon(segment && segment.mode)) + '"></i></div>'
+        });
+        const path = segment && segment.shape === 'real' && segment.polyline && segment.polyline.length
+            ? segment.polyline.map(function (p) { return [p[0], p[1]]; }) : arc(from, to);
+        marker.moveAlong(path, {duration: 4200, autoRotation: false});
+        return marker;
+    }
+
+    function nearestNode(from, list) {
+        let best = null;
+        let bestD = Infinity;
+        (list || []).forEach(function (n) {
+            const d = Math.pow(n.lng - from.lng, 2) + Math.pow(n.lat - from.lat, 2);
+            if (d < bestD) {
+                bestD = d;
+                best = n;
+            }
+        });
+        return best;
+    }
+
+    /* ---------- 天气（I08 预报 / I09 可读降级） ---------- */
+
+    function showWeather(city) {
+        if (!city) {
+            weatherCity = '';
+            $('#mapWeather').hide();
+            return;
+        }
+        weatherCity = city;
+        $('#mapWeather').show();
+        $('#weatherBody').html('正在读取 ' + esc(city) + ' 天气…');
+        $('#forecastBody').empty();
+        $('#weatherStatus').empty();
+        huApi({
+            url: '/api/map/weather',
+            data: {address: city},
+            silent: true,
+            ok: function (data) {
+                if (!data) {
+                    $('#weatherBody').html('<p class="hu-weather__none">暂无实况天气，已给出常规养护建议</p>');
+                    loadStatus(city);
+                    return;
+                }
+                $('#weatherBody').html(
+                    '<div class="hu-weather hu-weather--' + esc(data.level) + '">' +
+                    '<b>' + esc(data.weather) + ' ' + esc(data.temperature) + '℃</b>' +
+                    '<span>湿度 ' + esc(data.humidity) + '% · ' + esc(data.windDirection) + '风 ' + esc(data.windPower) + ' 级</span>' +
+                    '<p>' + esc(data.headline) + '</p>' +
+                    '<ul>' + (data.tips || []).map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' +
+                    (data.careNote ? '<p class="hu-weather__care"><i class="fa fa-scissors"></i> ' + esc(data.careNote) + '</p>' : '') +
+                    (data.recommendColdChain ? '<em>该天气下建议选择「空运冷链」</em>' : '') +
+                    '</div>');
+                loadForecast(city);
+            },
+            fail: function () {
+                $('#weatherBody').text('天气读取失败，稍后再试');
+                loadStatus(city);
+            }
+        });
+    }
+
+    function loadForecast(city) {
+        huApi({
+            url: '/api/map/weather/forecast',
+            data: {address: city, days: 3},
+            silent: true,
+            ok: function (data) {
+                if (!data || !data.days || !data.days.length) {
+                    $('#forecastBody').html('');
+                    loadStatus(city);
+                    return;
+                }
+                $('#forecastBody').html('<div class="hu-side-title" style="margin:0 0 8px">未来 ' + data.days.length
+                    + ' 日配送建议</div>' + data.days.map(function (d) {
+                        return '<div class="hu-forecast__day hu-forecast__day--' + esc(d.level) + '">' +
+                            '<b>' + esc((d.date || '').slice(5)) + ' ' + esc(d.dayWeather) + '</b>' +
+                            '<span>' + esc(d.dayTemp) + '℃ / ' + esc(d.nightTemp) + '℃</span>' +
+                            '<em>' + esc(d.deliveryNote) + '</em></div>';
+                    }).join(''));
+            }
+        });
+    }
+
+    /** 拿不到天气时再问一次服务状态，把「为什么没有」写清楚（I09） */
+    function loadStatus(city) {
+        huApi({
+            url: '/api/map/weather/status',
+            data: {address: city},
+            silent: true,
+            ok: function (data) {
+                if (!data) {
+                    return;
+                }
+                $('#weatherStatus').text((data.note || '') + (data.lastIssue ? '（' + data.lastIssue + '）' : ''));
+            }
+        });
+    }
+
+    /**
+     * 外部依赖体检（I16）：缓存命中量级写成一行小字。
+     * 这行不是给顾客看的装饰——密钥没配、配额被打爆、引擎偶发报错这三种情况在图上的表现都是「少一层」，
+     * 有这一行才能一眼分清是没配密钥还是接口在抖。
+     */
+    function loadDiagnostics() {
+        huApi({
+            url: '/api/map/diagnostics',
+            silent: true,
+            ok: function (data) {
+                if (!data) {
+                    return;
+                }
+                const c = data.caches || {};
+                const parts = [data.configured ? '服务端密钥已配置' : '未配服务端密钥：取点走内置城市字典'];
+                if (c.lookups) {
+                    parts.push('外部查询 ' + c.lookups + ' 次 · 综合命中 ' + (c.hitRate || 0) + '%');
+                    parts.push('取点 ' + (c.geoHitRate || 0) + '% · 天气 ' + (c.liveHitRate || 0)
+                        + '% · 路径 ' + (c.pathHitRate || 0) + '%');
+                }
+                parts.push('内置城市 ' + (data.dictionaryCities || 0) + ' 座');
+                parts.push('缓存有效期：天气 ' + (data.weatherCacheMinutes || 0) + ' 分钟 / 取点 '
+                    + (data.geoCacheHours || 0) + ' 小时');
+                $('#mapDiag').html('<i class="fa fa-plug"></i> ' + esc(parts.join(' · '))
+                    + (data.lastIssue ? '<em class="hu-mapdiag__issue">最近一次外部失败：'
+                        + esc(data.lastIssue) + '</em>' : ''));
+            }
+        });
+    }
+
+    /* ---------- 事件绑定 ---------- */
+
+    $(function () {
+        if (START_LAYER) {
+            $('#mapTabs .hu-chip').removeClass('is-active');
+            $('#mapTabs .hu-chip[data-layer="' + START_LAYER + '"]').addClass('is-active');
+        }
+        $('#mapTabs').on('click', '.hu-chip', function () {
+            $('#mapTabs .hu-chip').removeClass('is-active');
+            $(this).addClass('is-active');
+            render();
+        });
+        $('#originList').on('click', '.hu-origin', function () {
+            const id = $(this).data('id');
+            focusOrigin(id);
+            const node = nodes.filter(function (n) { return n.id === id; })[0];
+            if (map && node) {
+                map.setZoomAndCenter(5.6, [node.lng, node.lat]);
+            }
+        });
+        $('#salesWindow').on('change', function () {
+            const days = $(this).val();
+            province = '';
+            loadSales(days);
+            loadProvinces(days);
+        });
+        $('#provinceChips').on('click', '.hu-chip', function () {
+            province = $(this).data('province') || '';
+            loadSales($('#salesWindow').val());
+        });
+        $('#routeOrder').on('change', loadRoute);
+
+        // 暗色底图（I06）
+        if (localStorage.getItem('huMapTheme') === 'dark') {
+            $('#mapWrap').attr('data-theme', 'dark').addClass('hu-mapwrap--dark');
+            $('#themeLabel').text('亮色底图');
+        }
+        $('#themeBtn').on('click', function () {
+            const dark = $('#mapWrap').attr('data-theme') !== 'dark';
+            $('#mapWrap').attr('data-theme', dark ? 'dark' : 'light')
+                .toggleClass('hu-mapwrap--dark', dark);
+            $('#themeLabel').text(dark ? '亮色底图' : '暗色底图');
+            try {
+                localStorage.setItem('huMapTheme', dark ? 'dark' : 'light');
+            } catch (e) { /* 隐私模式忽略 */ }
+            if (map) {
+                map.setMapStyle(mapStyle());
+                render();
+            }
+        });
+
+        // 自定义标记（I06）：三行选择器，每行一个节点类别，选完立即重画
+        $('#pinBtn').on('click', function () {
+            if (!$('#pinPanel').is(':visible')) {
+                renderPinPicker();
+            }
+            $('#pinPanel').toggle();
+        });
+        $('#pinPicker').on('click', '.hu-pinopt', function () {
+            const kind = $(this).data('kind');
+            const index = Number($(this).data('index'));
+            pinStyle[kind] = index;
+            try {
+                localStorage.setItem('huMapPinStyle', JSON.stringify(pinStyle));
+            } catch (e) { /* 隐私模式忽略 */ }
+            $(this).closest('.hu-pinrow').find('.hu-pinopt').removeClass('is-active');
+            $(this).addClass('is-active');
+            render();
+        });
+
+        // 数据列表视图（I07）
+        $('#listBtn').on('click', function () {
+            tableOn = !tableOn;
+            $(this).toggleClass('is-active', tableOn);
+            render();
+        });
+        $('#fallbackListBtn').on('click', function () {
+            tableOn = true;
+            $('#listBtn').addClass('is-active');
+            render();
+        });
+
+        huApi({
+            url: '/api/map/nodes',
+            data: {days: 180},
+            ok: function (data) {
+                nodes = data || [];
+                initMap();
+            },
+            fail: function () {
+                initMap();
+            }
+        });
+        loadSales(180);
+        loadProvinces(180);
+        loadDiagnostics();
+    });
+
+    function renderPinPicker() {
+        const kinds = ['origin', 'hub', 'store', 'dest'];
+        $('#pinPicker').html(kinds.map(function (kind) {
+            return '<div class="hu-pinrow"><span>' + KIND_TEXT[kind] + '</span>' + PIN_PRESETS.map(function (p, i) {
+                return '<button type="button" class="hu-pinopt' + (pinStyle[kind] === i ? ' is-active' : '')
+                    + '" data-kind="' + kind + '" data-index="' + i + '" style="background:' + p.color
+                    + '"><i class="fa ' + p.icon + '"></i></button>';
+            }).join('') + '</div>';
+        }).join(''));
+    }
+
+    function loadSales(days) {
+        huApi({
+            url: '/api/map/sales',
+            data: {days: days, province: province},
+            ok: function (data) {
+                sales = data || [];
+                if (currentLayer() === 'sales') {
+                    render();
+                }
+            }
+        });
+    }
+</script>
+</body>
+</html>

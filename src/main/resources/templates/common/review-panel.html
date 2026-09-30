@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head><title>review-panel</title></head>
+<body>
+<!--
+  评价面板片段（F01–F10 的前台承载）：评分摘要、标签占比、星级/有图筛选、
+  评价卡片（图片 + 追评 + 商家回复时间线）与「写评价 / 追评」表单。
+  商品详情页与晒单广场都 include 这一段，展示口径只有一份。
+-->
+<div th:fragment="reviewPanel(productId, loggedIn)" class="hu-rp"
+     th:attr="data-product=${productId},data-logged=${loggedIn} ? '1' : '0'">
+
+    <!-- 写评价：只有存在「已签收/已完成且未评价」的明细时才展开（F07 由服务端判定） -->
+    <div class="hu-rp__compose" id="rpCompose" hidden>
+        <div class="hu-rp__compose-head">
+            <h3><i class="fa fa-pencil"></i> 你买过这款，写下真实体验</h3>
+            <button type="button" class="hu-btn hu-btn--plain hu-btn--sm" id="rpComposeClose">收起</button>
+        </div>
+        <div class="hu-rp__compose-body">
+            <div class="hu-field hu-field--tight">
+                <label class="hu-field__label" for="rpOrderItem">评价哪一笔订单</label>
+                <select class="hu-select hu-select--block" id="rpOrderItem"></select>
+            </div>
+            <div class="hu-field hu-field--tight">
+                <span class="hu-field__label">总体评分</span>
+                <div class="hu-rp__stars" id="rpStars" role="radiogroup" aria-label="评分"></div>
+            </div>
+            <div class="hu-field hu-field--tight">
+                <span class="hu-field__label">印象标签（最多 6 个）</span>
+                <div class="hu-chips hu-chips--tight" id="rpTagPicker"></div>
+            </div>
+            <div class="hu-field hu-field--tight">
+                <label class="hu-field__label" for="rpContent">说点什么（不超过 500 字）</label>
+                <textarea class="hu-textarea" id="rpContent" rows="3" maxlength="500"
+                          placeholder="花材状态、送达时间、包装与贺卡，都是别人想知道的"></textarea>
+            </div>
+            <div class="hu-field hu-field--tight">
+                <span class="hu-field__label">实拍图片（最多 9 张，单张不超过 5MB）</span>
+                <div class="hu-rp__shots" id="rpShots"></div>
+                <label class="hu-rp__shot-add" for="rpFile"><i class="fa fa-camera"></i> 添加图片</label>
+                <input type="file" id="rpFile" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
+            </div>
+            <div class="hu-rp__compose-foot">
+                <label class="hu-check">
+                    <input type="checkbox" id="rpAnonymous">
+                    <span>匿名发布（不展示昵称）</span>
+                </label>
+                <button type="button" class="hu-btn hu-btn--solid hu-btn--sm" id="rpSubmit">发布评价</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="rpSummary"></div>
+    <div class="hu-rp__filters" id="rpFilters" hidden>
+        <div class="hu-chips" id="rpFilterStars"></div>
+        <div class="hu-chips" id="rpFilterExtra"></div>
+    </div>
+    <div class="hu-rp__list" id="rpList"></div>
+    <div class="hu-empty" id="rpEmpty" hidden style="padding:38px 0">
+        <i class="fa fa-comment-o"></i>
+        <strong>还没有符合这个条件的评价</strong>
+        <span style="font-size:14px">换一个筛选条件看看，或完成订单后写下第一条</span>
+    </div>
+    <div class="hu-pager" id="rpPager" hidden></div>
+
+    <script th:inline="javascript">
+        (function ($) {
+            'use strict';
+            var PRODUCT_ID = /*[[${productId}]]*/ '';
+            var LOGGED = /*[[${loggedIn}]]*/ false;
+            var TAGS = [];
+            var state = {page: 1, limit: 10, minRating: null, hasImage: false, tag: '', sort: 'newest', total: 0};
+            var picked = {rating: 0, tags: [], images: [], items: []};
+
+            function el(id) { return $(document.getElementById(id)); }
+            function esc(s) { return $('<i>').text(s == null ? '' : String(s)).html(); }
+            function safeUrl(u) {
+                if (!u) return '';
+                return u.charAt(0) === '/' || /^https?:\/\//i.test(u) ? u : '';
+            }
+
+            function starsOf(n) {
+                var s = '';
+                for (var i = 1; i <= 5; i++) s += '<i class="fa fa-star' + (i <= n ? '' : '-o') + '"></i>';
+                return s;
+            }
+
+            /** 未登录时点击写评价统一跳登录，行为与全站其它按钮一致 */
+            function needLogin() {
+                if (!LOGGED) {
+                    window.location.href = '/auth/login';
+                    return true;
+                }
+                return false;
+            }
+
+            // ----------------------------------------------------------------
+            // 摘要（F05 标签占比 + F06 星级分布 + F09 计数）
+            // ----------------------------------------------------------------
+            function loadSummary() {
+                $.getJSON('/api/showcase/product/' + PRODUCT_ID + '/summary', function (res) {
+                    if (res.code !== 200 || !res.data) return;
+                    var s = res.data;
+                    $('#reviewCount').text(s.total ? '(' + s.total + ')' : '(0)');
+                    var bars = '';
+                    (s.stars || []).forEach(function (b) {
+                        var pct = s.total ? Math.round(b.count * 100 / s.total) : 0;
+                        bars += '<button type="button" class="hu-rp__bar" data-star="' + b.rating + '">' +
+                            '<span>' + b.rating + ' 星</span>' +
+                            '<span class="hu-rp__bar-track"><span class="hu-rp__bar-fill" style="width:' + pct + '%"></span></span>' +
+                            '<span class="hu-rp__bar-num">' + b.count + '</span></button>';
+                    });
+                    var chips = (s.tags || []).map(function (t) {
+                        return '<button type="button" class="hu-chip hu-rp__tagchip" data-tag="' + esc(t.code) + '">' +
+                            esc(t.label) + '<b>' + t.ratio + '%</b></button>';
+                    }).join('');
+                    el('rpSummary').html(
+                        '<div class="hu-scorecard">' +
+                        '<div><div class="hu-scorecard__num">' + Number(s.avgRating || 5).toFixed(1) + '</div>' +
+                        '<div class="hu-scorecard__label">' + starsOf(Math.round(Number(s.avgRating || 5))) + '</div></div>' +
+                        '<div class="hu-rp__metric"><b>' + s.total + '</b><span>条真实评价<br>' +
+                        '其中 ' + (s.withImageCount || 0) + ' 条带图、' + (s.appendCount || 0) + ' 条有追评</span></div>' +
+                        (LOGGED ? '<button type="button" class="hu-btn hu-btn--solid hu-btn--sm" id="rpWriteBtn">写评价</button>'
+                            : '<a href="/user/orders" class="hu-btn hu-btn--ghost hu-btn--sm">登录后评价</a>') +
+                        '</div>' +
+                        '<div class="hu-rp__dist">' + bars + '</div>' +
+                        (chips ? '<div class="hu-rp__tags"><span class="hu-rp__tags-label">大家提到</span>' + chips + '</div>' : ''));
+                    bindSummary();
+                    paintFilters();
+                });
+            }
+
+            function bindSummary() {
+                el('rpSummary').find('.hu-rp__bar').on('click', function () {
+                    var star = Number($(this).data('star'));
+                    toggle(state.minRating === star ? null : star, 'minRating');
+                });
+                el('rpSummary').find('.hu-rp__tagchip').on('click', function () {
+                    var tag = String($(this).data('tag'));
+                    toggle(state.tag === tag ? '' : tag, 'tag');
+                });
+                el('rpSummary').find('#rpWriteBtn').on('click', function () {
+                    if (needLogin()) return;
+                    openCompose();
+                });
+            }
+
+            // ----------------------------------------------------------------
+            // 筛选条（F06）
+            // ----------------------------------------------------------------
+            function paintFilters() {
+                var stars = [[0, '全部星级'], [5, '5 星'], [4, '4 星及以上'], [3, '3 星及以上']]
+                    .map(function (p) {
+                        var val = p[0] === 0 ? null : p[0] === 5 ? 5 : p[0];
+                        var active = val === null ? !state.minRating : matchesStar(state.minRating, p[0]);
+                        return '<button type="button" class="hu-chip' + (active ? ' is-active' : '') +
+                            '" data-star="' + p[0] + '">' + esc(p[1]) + '</button>';
+                    }).join('');
+                var extra = '<button type="button" class="hu-chip' + (state.hasImage ? ' is-active' : '') +
+                    '" data-img="1"><i class="fa fa-picture-o"></i> 只看带图</button>' +
+                    '<button type="button" class="hu-chip' + (state.sort === 'rating-desc' ? ' is-active' : '') +
+                    '" data-sort="rating-desc">评分高在前</button>' +
+                    '<button type="button" class="hu-chip' + (state.sort === 'newest' ? ' is-active' : '') +
+                    '" data-sort="newest">最新在前</button>' +
+                    (state.tag || state.minRating || state.hasImage || state.sort !== 'newest'
+                        ? '<button type="button" class="hu-chip hu-chip--ghost" data-clear="1"><i class="fa fa-times"></i> 清除筛选</button>'
+                        : '');
+                el('rpFilters').prop('hidden', false)
+                    .find('#rpFilterStars').html(stars).end()
+                    .find('#rpFilterExtra').html(extra);
+            }
+
+            /** 「4 星及以上」与单档星级条共用一个 minRating，判定口径不能分叉 */
+            function matchesStar(min, chip) {
+                if (min === null) return chip === 0;
+                if (chip === 0) return false;
+                return chip === 5 ? min === 5 : min === chip;
+            }
+
+            function toggle(value, key) {
+                state[key] = value;
+                state.page = 1;
+                loadList();
+            }
+
+            // ----------------------------------------------------------------
+            // 列表（F01/F02/F03/F04）
+            // ----------------------------------------------------------------
+            function loadList() {
+                var params = {page: state.page, limit: state.limit, sort: state.sort};
+                if (state.minRating) params.minRating = state.minRating;
+                if (state.hasImage) params.hasImage = true;
+                if (state.tag) params.tag = state.tag;
+                $.getJSON('/api/showcase/product/' + PRODUCT_ID, params, function (res) {
+                    if (res.code !== 200) return;
+                    var list = res.data || [];
+                    state.total = Number(res.count || 0);
+                    paintFilters();
+                    if (!list.length) {
+                        el('rpList').html('');
+                        el('rpEmpty').prop('hidden', false);
+                        el('rpPager').prop('hidden', true);
+                        return;
+                    }
+                    el('rpEmpty').prop('hidden', true);
+                    el('rpList').html(list.map(card).join(''));
+                    bindList();
+                    paintPager(res);
+                });
+            }
+
+            function card(r) {
+                var imgs = (r.images || []).filter(safeUrl).map(function (u) {
+                    return '<img src="' + esc(u) + '" alt="买家实拍" loading="lazy" data-zoom="1">';
+                }).join('');
+                var tags = (r.tagLabels || []).map(function (t) {
+                    return '<span class="hu-rp__pill">' + esc(t) + '</span>';
+                }).join('');
+                var append = r.appendContent
+                    ? '<div class="hu-rp__append"><span class="hu-rp__tl">买家追评 · ' + day(r.appendAt) + '</span>' +
+                      '<p>' + esc(r.appendContent) + '</p>' + shots(r.appendImages) + '</div>'
+                    : (r.visible === false
+                        ? '<div class="hu-rp__append hu-rp__append--dim">该评价已提交，正在平台复核中</div>' : '');
+            var reply = r.reply
+                    ? '<div class="hu-rp__reply"><span class="hu-rp__tl">花语轩回复 · ' + esc(r.replyByName || '花艺师') + ' '
+                      + day(r.replyAt) + '</span><p>' + esc(r.reply) + '</p></div>'
+                    : '';
+                var mine = LOGGED && r.visible === false ? ' hu-rp__item--dim' : '';
+                return '<article class="hu-rp__item' + mine + '" data-id="' + esc(r.id) + '">' +
+                    '<div class="hu-review__avatar">' + esc((r.userName || '客').charAt(0)) + '</div>' +
+                    '<div class="hu-rp__main">' +
+                    '<div class="hu-review__head"><span class="hu-review__name">' + esc(r.userName || '匿名顾客') + '</span>' +
+                    '<span class="hu-rp__star">' + starsOf(r.rating) + '</span>' +
+                    (r.anonymous ? '<span class="hu-rp__pill hu-rp__pill--anon">匿名</span>' : '') +
+                    '<span class="hu-review__time">' + day(r.createdAt) + '</span></div>' +
+                    '<div class="hu-review__text">' + esc(r.content || '这位顾客没有留下文字') + '</div>' +
+                    (tags ? '<div class="hu-rp__pills">' + tags + '</div>' : '') +
+                    (imgs ? '<div class="hu-rp__imgs">' + imgs + '</div>' : '') +
+                    append + reply +
+                    (canAppend(r) ? '<button type="button" class="hu-btn hu-btn--plain hu-btn--sm" data-append="1">' +
+                        '<i class="fa fa-plus-circle"></i> 追评</button>' : '') +
+                    '</div></article>';
+            }
+
+            function shots(raw) {
+                var list = [];
+                if (typeof raw === 'string') list = raw.split(',');
+                else if (raw) list = raw;
+                var html = list.filter(safeUrl).map(function (u) {
+                    return '<img src="' + esc(String(u).trim()) + '" alt="追评实拍" loading="lazy" data-zoom="1">';
+                }).join('');
+                return html ? '<div class="hu-rp__imgs">' + html + '</div>' : '';
+            }
+
+            function day(v) { return (v || '').toString().replace('T', ' ').slice(0, 10); }
+
+            /** 追评只能一次，且只能本人——服务端同样校这两条 */
+            function canAppend(r) {
+                return LOGGED && !r.appendContent && r.visible !== false;
+            }
+
+            function bindList() {
+                el('rpList').find('[data-zoom]').on('click', function () {
+                    $('#rpLightbox').remove();
+                    var $lb = $('<div id="rpLightbox" class="hu-rp__lightbox"><span></span><img alt=""></div>');
+                    $lb.find('img').attr('src', $(this).attr('src'));
+                    $lb.on('click', function () { $(this).remove(); });
+                    $('body').append($lb);
+                });
+                el('rpList').find('[data-append]').on('click', function () {
+                    if (needLogin()) return;
+                    var $item = $(this).closest('.hu-rp__item');
+                    if ($item.find('.hu-rp__append-form').length) return;
+                    $item.find('[data-append]').before(appendForm());
+                });
+                el('rpList').on('click', '[data-append-submit]', function () {
+                    var $form = $(this).closest('.hu-rp__append-form');
+                    var content = $.trim($form.find('textarea').val());
+                    if (!content) { window.huToast('追评写几个字吧', 'err'); return; }
+                    var btn = $(this).prop('disabled', true);
+                    $.ajax({
+                        url: '/api/reviews/' + $form.closest('.hu-rp__item').attr('data-id') + '/append',
+                        type: 'POST', contentType: 'application/json;charset=UTF-8', dataType: 'json',
+                        data: JSON.stringify({content: content}),
+                        success: function (res) {
+                            btn.prop('disabled', false);
+                            if (res.code !== 200) { window.huToast(res.msg || '追评失败', 'err'); return; }
+                            window.huToast('追评已发布', 'ok');
+                            loadSummary();
+                            loadList();
+                        },
+                        error: function () { btn.prop('disabled', false); window.huToast('网络异常', 'err'); }
+                    });
+                });
+                el('rpList').on('click', '[data-append-cancel]', function () {
+                    $(this).closest('.hu-rp__append-form').remove();
+                });
+            }
+
+            function appendForm() {
+                return '<div class="hu-rp__append-form">' +
+                    '<textarea class="hu-textarea" rows="2" maxlength="500" ' +
+                    'placeholder="过了几天花怎么样了？补一句对别人很有用"></textarea>' +
+                    '<div style="margin-top:8px;display:flex;gap:8px">' +
+                    '<button type="button" class="hu-btn hu-btn--solid hu-btn--sm" data-append-submit="1">发布追评</button>' +
+                    '<button type="button" class="hu-btn hu-btn--plain hu-btn--sm" data-append-cancel="1">取消</button>' +
+                    '</div></div>';
+            }
+
+            function paintPager(res) {
+                var pages = Number(res.totalPages || 1);
+                if (pages <= 1) { el('rpPager').prop('hidden', true); return; }
+                var curr = Number(res.page || state.page);
+                var html = '';
+                if (curr > 1) html += '<button type="button" data-page="' + (curr - 1) + '">上一页</button>';
+                html += '<span class="hu-muted" style="align-self:center;font-size:13px">第 ' + curr +
+                    ' / ' + pages + ' 页 · 共 ' + state.total + ' 条</span>';
+                if (curr < pages) html += '<button type="button" data-page="' + (curr + 1) + '">下一页</button>';
+                el('rpPager').prop('hidden', false).html(html)
+                    .find('[data-page]').on('click', function () {
+                        state.page = Number($(this).data('page'));
+                        loadList();
+                        el('rpFilters')[0].scrollIntoView({behavior: 'smooth', block: 'center'});
+                    });
+            }
+
+            // ----------------------------------------------------------------
+            // 写评价（F01/F02/F05/F07）
+            // ----------------------------------------------------------------
+            function openCompose() {
+                if (el('rpCompose').prop('hidden') === false) {
+                    loadReviewable();
+                    return;
+                }
+                el('rpCompose').prop('hidden', false);
+                loadReviewable();
+                loadTagPicker();
+                paintStarPicker();
+                el('rpCompose')[0].scrollIntoView({behavior: 'smooth', block: 'center'});
+            }
+
+            function loadReviewable() {
+                if (!LOGGED) return;
+                $.ajax({
+                    url: '/api/reviews/reviewable', type: 'GET', dataType: 'json',
+                    data: {productId: PRODUCT_ID, limit: 5},
+                    success: function (res) {
+                        if (res.code === 401) { return; }
+                        picked.items = (res.code === 200 && res.data) ? res.data : [];
+                        if (!picked.items.length) {
+                            el('rpCompose').prop('hidden', false).find('.hu-rp__compose-body').html(
+                                '<p class="hu-muted" style="margin:0;font-size:13.5px;line-height:1.8">' +
+                                '评价要在订单签收之后写下。你还没有已完成且未评价的这款花礼，' +
+                                '收到花后到「我的订单」确认签收，就能回来写。</p>');
+                            return;
+                        }
+                        var opts = picked.items.map(function (it, i) {
+                            return '<option value="' + esc(it.orderItemId) + '" data-order="' + esc(it.orderId) + '">' +
+                                esc(day(it.doneAt) + ' 签收 · 订单 ' + it.orderNo + ' · ' + (it.quantity || 1) + ' 束') + '</option>';
+                        }).join('');
+                        el('rpOrderItem').html(opts);
+                    },
+                    error: function () {
+                        el('rpCompose').prop('hidden', true);
+                    }
+                });
+            }
+
+            function loadTagPicker() {
+                if (TAGS.length) { paintTagPicker(); return; }
+                $.getJSON('/api/showcase/tags', function (res) {
+                    if (res.code === 200 && res.data) { TAGS = res.data; paintTagPicker(); }
+                });
+            }
+
+            function paintTagPicker() {
+                el('rpTagPicker').html(TAGS.map(function (t) {
+                    return '<button type="button" class="hu-chip" data-tag="' + esc(t.code) + '">' + esc(t.label) + '</button>';
+                }).join(''));
+            }
+
+            function paintStarPicker() {
+                var html = '';
+                for (var i = 1; i <= 5; i++) {
+                    html += '<button type="button" data-star="' + i + '" aria-label="' + i + ' 星">' +
+                        '<i class="fa fa-star-o"></i></button>';
+                }
+                el('rpStars').html(html + '<span class="hu-rp__star-hint" id="rpStarHint">点击打星</span>');
+            }
+
+            function bindCompose() {
+                el('rpComposeClose').on('click', function () { el('rpCompose').prop('hidden', true); });
+                el('rpTagPicker').on('click', '.hu-chip', function () {
+                    var tag = String($(this).data('tag'));
+                    var idx = picked.tags.indexOf(tag);
+                    if (idx >= 0) picked.tags.splice(idx, 1);
+                    else if (picked.tags.length >= 6) { window.huToast('最多选 6 个标签', 'err'); return; }
+                    else picked.tags.push(tag);
+                    $(this).toggleClass('is-active', idx < 0);
+                });
+                el('rpStars').on('click', '[data-star]', function () {
+                    picked.rating = Number($(this).data('star'));
+                    el('rpStars').find('[data-star]').each(function () {
+                        var on = Number($(this).data('star')) <= picked.rating;
+                        $(this).find('i').attr('class', 'fa fa-star' + (on ? '' : '-o'));
+                    });
+                    el('rpStarHint').text(['很失望', '不太满意', '还行', '比较满意', '非常满意'][picked.rating - 1] || '点击打星');
+                });
+                el('rpFile').on('change', function () {
+                    var file = this.files && this.files[0];
+                    this.value = '';
+                    if (!file) return;
+                    if (picked.images.length >= 9) { window.huToast('最多 9 张图', 'err'); return; }
+                    if (file.size > 5 * 1024 * 1024) { window.huToast('单张图片不超过 5MB', 'err'); return; }
+                    var form = new FormData();
+                    form.append('file', file);
+                    var $slot = $('<span class="hu-rp__shot hu-rp__shot--up"><i class="fa fa-spinner fa-spin"></i></span>');
+                    el('rpShots').append($slot);
+                    $.ajax({
+                        url: '/api/reviews/uploads/image', type: 'POST', data: form,
+                        processData: false, contentType: false, dataType: 'json',
+                        success: function (res) {
+                            if (res.code !== 200 || !res.data) {
+                                $slot.remove();
+                                window.huToast(res.msg || '图片上传失败', 'err');
+                                return;
+                            }
+                            picked.images.push(res.data.url);
+                            $slot.removeClass('hu-rp__shot--up').html(
+                                '<img src="' + esc(res.data.url) + '" alt="待发布实拍">' +
+                                '<button type="button" title="移除"><i class="fa fa-times"></i></button>');
+                        },
+                        error: function (xhr) {
+                            $slot.remove();
+                            window.huToast(xhr.status === 401 ? '请先登录' : '图片上传失败', 'err');
+                        }
+                    });
+                });
+                el('rpShots').on('click', 'button', function () {
+                    var url = $(this).prev('img').attr('src');
+                    picked.images = picked.images.filter(function (u) { return u !== url; });
+                    $(this).closest('.hu-rp__shot').remove();
+                });
+                el('rpSubmit').on('click', function () {
+                    if (!picked.rating) { window.huToast('先给个星级', 'err'); return; }
+                    var $opt = el('rpOrderItem').find(':selected');
+                    if (!$opt.length) { window.huToast('没有可评价的订单明细', 'err'); return; }
+                    var payload = {
+                        orderId: String($opt.data('order')),
+                        orderItemId: String(el('rpOrderItem').val()),
+                        rating: picked.rating,
+                        content: $.trim(el('rpContent').val()),
+                        images: picked.images,
+                        tags: picked.tags,
+                        anonymous: el('rpAnonymous').prop('checked')
+                    };
+                    var btn = $(this).prop('disabled', true);
+                    $.ajax({
+                        url: '/api/reviews', type: 'POST', dataType: 'json',
+                        contentType: 'application/json;charset=UTF-8', data: JSON.stringify(payload),
+                        success: function (res) {
+                            btn.prop('disabled', false);
+                            if (res.code !== 200) { window.huToast(res.msg || '提交失败', 'err'); return; }
+                            window.huToast('评价已发布，感谢你的真实反馈', 'ok');
+                            picked.rating = 0;
+                            picked.tags = [];
+                            picked.images = [];
+                            el('rpContent').val('');
+                            el('rpShots').html('');
+                            el('rpTagPicker').find('.hu-chip').removeClass('is-active');
+                            paintStarPicker();
+                            el('rpCompose').prop('hidden', true);
+                            loadSummary();
+                            loadList();
+                        },
+                        error: function (xhr) {
+                            btn.prop('disabled', false);
+                            window.huToast(xhr.status === 401 ? '请先登录' : '网络异常，请稍后重试', 'err');
+                        }
+                    });
+                });
+            }
+
+            $(document).ready(function () {
+                el('rpFilters').on('click', '[data-star]', function () {
+                    var chip = Number($(this).data('star'));
+                    toggle(chip === 0 ? null : (chip === 5 ? 5 : chip), 'minRating');
+                });
+                el('rpFilters').on('click', '[data-img]', function () {
+                    state.hasImage = !state.hasImage;
+                    state.page = 1;
+                    loadList();
+                });
+                el('rpFilters').on('click', '[data-sort]', function () {
+                    toggle(String($(this).data('sort')), 'sort');
+                });
+                el('rpFilters').on('click', '[data-clear]', function () {
+                    state.minRating = null;
+                    state.hasImage = false;
+                    state.tag = '';
+                    state.sort = 'newest';
+                    state.page = 1;
+                    loadList();
+                });
+                bindCompose();
+                loadSummary();
+                loadList();
+            });
+        })(jQuery);
+    </script>
+</div>
+</body>
+</html>

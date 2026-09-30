@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>领券中心 · 花语轩</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<div class="hu-pagehead">
+    <div class="hu-container hu-pagehead__row">
+        <div>
+            <div class="hu-crumb"><a href="/index">首页</a> / <span>领券中心</span></div>
+            <h1>领券中心</h1>
+            <p class="hu-pagehead__sub">按分类挑一张，结算时自动比对最划算的组合；领取后立即入包，未领完的券也会标注原因</p>
+        </div>
+        <div class="hu-pagehead__aside">
+            <span class="hu-muted" style="font-size:13px">可领券</span>
+            <span class="hu-num" id="claimableTotal">—</span>
+            <a class="hu-link" href="/user/coupons" style="font-size:13px">我的券包 <i class="fa fa-long-arrow-right"></i></a>
+        </div>
+    </div>
+</div>
+
+<div class="hu-container hu-e-page">
+    <!-- 鉴权拦截器只放行 /api/coupons/receivable（见 WebMvcConfig），所以登录态决定取数接口：
+         登录后走 /center 拿到「已领过 / 今日已领」标记，游客走 /receivable 只看能领的 -->
+    <span id="loginFlag" th:attr="data-logged=${loginUser != null}" hidden></span>
+
+    <!-- E19 顶部促销位：文案与跳转全部来自后台开关，关闭后整条隐藏 -->
+    <div id="slotBar" class="hu-e-slots" hidden></div>
+
+    <!-- E10 分类筛选 -->
+    <section class="hu-panel" style="margin-top:22px">
+        <div class="hu-panel-head">
+            <div>
+                <h2><i class="fa fa-filter" style="color:var(--hu-accent);margin-right:9px"></i>按分类筛选</h2>
+                <p id="filterSub">正在读取分类…</p>
+            </div>
+            <div class="hu-chips" id="cateFilter">
+                <button type="button" class="hu-chip is-active" data-category="">全部分类</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 券列表 -->
+    <section class="hu-panel" style="margin-top:18px">
+        <div class="hu-panel-head">
+            <div>
+                <h2><i class="fa fa-ticket" style="color:var(--hu-accent);margin-right:9px"></i>当前在发的券</h2>
+                <p id="listSub">领不到的券也会列出，并写明「已领过 / 今日已领 / 新客专享」等原因</p>
+            </div>
+            <div class="hu-chips" id="stateFilter">
+                <button type="button" class="hu-chip is-active" data-state="all">全部</button>
+                <button type="button" class="hu-chip" data-state="claimable">还能领</button>
+                <button type="button" class="hu-chip" data-state="owned">已领过</button>
+            </div>
+        </div>
+        <div style="padding:0 22px 24px">
+            <div id="grid" class="hu-coupons hu-coupons--center" aria-live="polite"></div>
+            <div id="empty" class="hu-empty" style="display:none;margin-top:8px">
+                <i class="fa fa-gift"></i>
+                <strong id="emptyTitle">这个分类下还没有活动券</strong>
+                <p class="hu-empty__desc">换一个分类看看，或者先去挑花礼，上新活动时这里会第一时间出现。</p>
+                <a class="hu-btn hu-btn--solid hu-empty__action" href="/products">去挑花礼</a>
+            </div>
+        </div>
+    </section>
+</div>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<script>
+    var center = {categories: [], categoryId: '', coupons: [], state: 'all'};
+    var LOGGED = String(jQuery('#loginFlag').data('logged')) === 'true';
+
+    function esc(v) {
+        return window.huEscape(v == null ? '' : String(v));
+    }
+
+    function num(v) {
+        return Number(v || 0).toFixed(2).replace(/\.00$/, '');
+    }
+
+    function dateOf(v) {
+        return String(v || '').slice(0, 10);
+    }
+
+    /** 券面大字：折扣券显示「8.8 折」，满减券显示金额；阶梯券显示最高档减免 */
+    function stub(c) {
+        if (c.type === 'discount' && c.discountRate != null) {
+            return '<div class="hu-coupon__amount">' + (Number(c.discountRate) * 10).toFixed(1).replace(/\.0$/, '') +
+                '<small>折</small></div>';
+        }
+        var best = ladderTop(c.ladderText);
+        var money = best != null ? best : Number(c.amount || 0);
+        return '<div class="hu-coupon__amount"><small>¥</small>' + num(money) + '</div>';
+    }
+
+    /** 阶梯文案形如「满199减20 · 满599减100」，取最高一档做券面大字 */
+    function ladderTop(text) {
+        var parts = String(text || '').split('·');
+        if (parts.length < 2) return null;
+        var hit = parts[parts.length - 1].match(/减\s*(\d+(?:\.\d+)?)/);
+        return hit ? Number(hit[1]) : null;
+    }
+
+    function validText(c) {
+        if (c.validDays > 0) return '领取后 ' + c.validDays + ' 天内有效';
+        if (c.validEndTime) return '有效期至 ' + dateOf(c.validEndTime);
+        if (c.endTime) return '随活动 ' + dateOf(c.endTime) + ' 结束';
+        return '长期有效';
+    }
+
+    /** 标签位：条款特征由服务端字段推导，页面不重复解释规则 */
+    function tags(c) {
+        var list = [];
+        if (c.newUserOnly) list.push('新客专享');
+        if (c.memberOnly) list.push('会员专享');
+        if (c.ladderText) list.push('阶梯立减');
+        if (c.perUserDailyLimit > 0) list.push('每日可领 ' + c.perUserDailyLimit + ' 张');
+        if (c.allowTransfer) list.push('可转赠');
+        if (c.productIds && c.productIds.length) list.push('指定花礼');
+        return list.length
+            ? '<div class="hu-e-tags">' + list.map(function (t) {
+                return '<span class="hu-e-tag">' + esc(t) + '</span>';
+            }).join('') + '</div>'
+            : '';
+    }
+
+    function stockText(c) {
+        if (!(c.total > 0)) return '不限量发放';
+        var left = c.total - (c.issued || 0);
+        return left > 0 ? '剩 ' + left + ' 张' : '本批已领完';
+    }
+
+    function action(c) {
+        if (!c.claimable) {
+            var done = c.claimBlockReason === '已领取' || c.claimBlockReason === '今日已领';
+            return '<span class="hu-pill ' + (done ? 'hu-pill--ok' : 'hu-pill--muted') + '">' +
+                esc(c.claimBlockReason || '暂不可领') + '</span>';
+        }
+        return '<button type="button" class="hu-btn hu-btn--sm hu-btn--solid" data-claim="' + esc(c.id) + '">领取</button>';
+    }
+
+    function card(c) {
+        var dim = !c.claimable;
+        return '<article class="hu-coupon' + (dim ? ' hu-coupon--dim' : '') + '" data-id="' + esc(c.id) + '">' +
+            '<div class="hu-coupon__stub">' + stub(c) +
+            '<div class="hu-coupon__rule">' + esc(c.ruleText || '') + '</div></div>' +
+            '<div class="hu-coupon__body">' +
+            '<div class="hu-coupon__name">' + esc(c.name) + '</div>' +
+            // 适用范围文案（E20）与阶梯文案都直接读服务端字段，页面不自己拼
+            '<div class="hu-coupon__meta">' + esc(c.scopeText || '') + '</div>' +
+            (c.ladderText ? '<div class="hu-e-ladder">' + esc(c.ladderText) + '</div>' : '') +
+            tags(c) +
+            '<div class="hu-coupon__meta">' + esc(validText(c)) + ' · ' + esc(stockText(c)) + '</div>' +
+            '<div class="hu-coupon__foot"><span class="hu-coupon__code">' + esc(c.code) + '</span>' + action(c) + '</div>' +
+            '</div></article>';
+    }
+
+    /** 促销位跳转地址由后台录入，只放行站内相对路径与 http(s)，挡掉 javascript: 之类 */
+    function safeLink(url) {
+        var text = String(url || '').trim();
+        if (!text || /^javascript:/i.test(text)) return '';
+        if (text.charAt(0) === '/' || /^https?:\/\//i.test(text)) return text;
+        return '';
+    }
+
+    function matchState(c) {
+        if (center.state === 'claimable') return c.claimable;
+        if (center.state === 'owned') return c.claimBlockReason === '已领取' || c.claimBlockReason === '今日已领';
+        return true;
+    }
+
+    function render() {
+        var list = center.coupons.filter(matchState);
+        $('#claimableTotal').text(center.coupons.filter(function (c) { return c.claimable; }).length);
+        $('#grid').html(list.map(card).join(''));
+        $('#empty').toggle(!list.length);
+        if (!list.length) {
+            $('#emptyTitle').text(center.coupons.length
+                ? '这个筛选条件下没有券' : '这个分类下还没有活动券');
+        }
+        var claimable = center.coupons.filter(function (c) { return c.claimable; }).length;
+        $('#listSub').text(LOGGED
+            ? '共 ' + center.coupons.length + ' 张，其中 ' + claimable + ' 张现在可领'
+            : '当前可领 ' + claimable + ' 张；登录后这里会一并列出已经领过的券');
+    }
+
+    /**
+     * 游客拿不到 /api/coupons/center（鉴权拦截器只放行 receivable），
+     * 所以分类筛选在本地按「所选分类 + 其下级 + 其直接上级」比对，口径与服务端一致
+     */
+    function matchesCategory(c) {
+        if (!center.categoryId) return true;
+        if (c.scope !== 'category') return true;
+        var bound = (c.categoryIds && c.categoryIds.length) ? c.categoryIds : (c.categoryId ? [c.categoryId] : []);
+        if (!bound.length) return true;
+        var selected = String(center.categoryId);
+        var accept = {};
+        accept[selected] = true;
+        center.categories.forEach(function (x) {
+            if (String(x.id) === selected && x.parentId) accept[String(x.parentId)] = true;
+            if (String(x.parentId) === selected) accept[String(x.id)] = true;
+        });
+        return bound.some(function (id) { return accept[String(id)] === true; });
+    }
+
+    function buildChips() {
+        var roots = center.categories.filter(function (c) { return !c.parentId && c.isActive !== false; });
+        $('#cateFilter').append(roots.map(function (c) {
+            return '<button type="button" class="hu-chip" data-category="' + esc(c.id) + '">' + esc(c.name) + '</button>';
+        }).join(''));
+        $('#filterSub').text(roots.length
+            ? '按花礼分类挑券，全场通用券在任意分类下都会出现' : '暂无可用分类，先浏览全部券');
+    }
+
+    function loadCoupons() {
+        $('#grid').html(window.huSkeleton ? window.huSkeleton.html('coupon', 3) : '');
+        huApi({
+            url: LOGGED ? '/api/coupons/center' : '/api/coupons/receivable',
+            data: LOGGED && center.categoryId ? {categoryId: center.categoryId} : {},
+            ok: function (data) {
+                var list = data || [];
+                center.coupons = LOGGED ? list : list.filter(matchesCategory);
+                render();
+            },
+            fail: function () { center.coupons = []; render(); }
+        });
+    }
+
+    function loadSlots() {
+        huApi({
+            url: '/api/promotions/slots',
+            data: {position: 'center'},
+            silent: true,
+            ok: function (list) {
+                var items = (list || []).filter(function (s) { return s.stateLabel === '投放中'; });
+                if (!items.length) return;
+                $('#slotBar').prop('hidden', false).html(items.map(function (s) {
+                    var link = safeLink(s.linkUrl);
+                    return '<div class="hu-e-slot">' +
+                        '<strong>' + esc(s.title) + '</strong>' +
+                        (s.subtitle ? '<span>' + esc(s.subtitle) + '</span>' : '') +
+                        (link ? '<a class="hu-link" href="' + esc(link) + '">查看 <i class="fa fa-long-arrow-right"></i></a>' : '') +
+                        '</div>';
+                }).join(''));
+            }
+        });
+    }
+
+    $(function () {
+        if (!LOGGED) {
+            // 游客没有「已领过」可言，隐藏这组筛选，避免出现点了却永远为空的开关
+            $('#stateFilter').remove();
+        }
+        loadSlots();
+        huApi({
+            url: '/api/categories',
+            silent: true,
+            ok: function (data) { center.categories = data || []; buildChips(); }
+        });
+        loadCoupons();
+
+        $('#cateFilter').on('click', '.hu-chip', function () {
+            $('#cateFilter .hu-chip').removeClass('is-active');
+            $(this).addClass('is-active');
+            center.categoryId = String($(this).data('category') || '');
+            if (LOGGED) {
+                loadCoupons();
+            } else {
+                render();
+            }
+        });
+
+        $('#stateFilter').on('click', '.hu-chip', function () {
+            $('#stateFilter .hu-chip').removeClass('is-active');
+            $(this).addClass('is-active');
+            center.state = String($(this).data('state'));
+            render();
+        });
+
+        $('#grid').on('click', '[data-claim]', function () {
+            var btn = $(this).prop('disabled', true).text('领取中…');
+            huApi({
+                url: '/api/coupons/claim',
+                type: 'POST',
+                data: {couponId: String($(this).data('claim'))},
+                ok: function () {
+                    window.huToast('领取成功，已放入券包', 'ok');
+                    loadCoupons();
+                },
+                fail: function () { btn.prop('disabled', false).text('领取'); }
+            });
+        });
+    });
+</script>
+</body>
+</html>

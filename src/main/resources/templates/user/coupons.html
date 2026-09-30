@@ -17,14 +17,25 @@
         <div class="hu-pagehead__aside">
             <span class="hu-muted" style="font-size:13px">可用券</span>
             <span class="hu-num" id="usableTotal" style="font-size:26px">—</span>
+            <a href="/user/coupon-center" class="hu-link" style="font-size:13px">领券中心 <i class="fa fa-long-arrow-right"></i></a>
         </div>
     </div>
 </div>
 
-<div class="hu-container" style="padding-bottom:80px">
+<div class="hu-container">
+    <div class="hu-account">
+        <aside th:replace="~{common/account-nav :: accountNav('coupons')}"></aside>
+        <div>
+
+    <!-- E06 到期提醒条：内容来自服务端 expireReminder 字段 -->
+    <div id="remindBar" class="hu-e-remind" hidden>
+        <i class="fa fa-clock-o" aria-hidden="true"></i>
+        <span id="remindText"></span>
+        <a href="/products" class="hu-link" style="font-size:13px;margin-left:auto">去下单</a>
+    </div>
 
     <!-- 我的券包 -->
-    <section class="hu-panel" style="margin-top:30px">
+    <section class="hu-panel" style="margin-top:0">
         <div class="hu-panel-head">
             <div>
                 <h2><i class="fa fa-ticket" style="color:var(--hu-accent);margin-right:9px"></i>我的券包</h2>
@@ -33,6 +44,7 @@
             <div class="hu-chips" id="mineFilter">
                 <button type="button" class="hu-chip is-active" data-filter="all">全部</button>
                 <button type="button" class="hu-chip" data-filter="unused">未使用</button>
+                <button type="button" class="hu-chip" data-filter="gifting">转赠中</button>
                 <button type="button" class="hu-chip" data-filter="used">已使用</button>
                 <button type="button" class="hu-chip" data-filter="expired">已过期</button>
             </div>
@@ -47,6 +59,29 @@
         </div>
     </section>
 
+    <!-- E07 转赠 -->
+    <section class="hu-panel" style="margin-top:26px">
+        <div class="hu-panel-head">
+            <div>
+                <h2><i class="fa fa-share-alt" style="color:var(--hu-accent);margin-right:9px"></i>券转赠</h2>
+                <p>支持转赠的券可生成 12 位转赠码，对方凭码领取；48 小时无人领取自动退回</p>
+            </div>
+        </div>
+        <div class="hu-panel__body">
+            <div id="inbox" hidden>
+                <h3 style="font-size:14px;font-weight:700;margin:0 0 6px">别人赠你的券</h3>
+                <div id="inboxList"></div>
+                <div style="height:18px"></div>
+            </div>
+            <form class="hu-e-bind" id="acceptForm" autocomplete="off">
+                <label class="hu-sr-only" for="acceptToken">转赠码</label>
+                <input type="text" id="acceptToken" maxlength="40" placeholder="输入朋友的 12 位转赠码" aria-describedby="acceptHint">
+                <button type="submit" class="hu-btn hu-btn--solid">凭码领取</button>
+            </form>
+            <p class="hu-e-hint" id="acceptHint">领取是原子操作：两个人同时点只有一位拿得到，另一位的券不会消失。</p>
+        </div>
+    </section>
+
     <!-- 领券中心 -->
     <section class="hu-panel" style="margin-top:26px">
         <div class="hu-panel-head">
@@ -54,7 +89,7 @@
                 <h2><i class="fa fa-gift" style="color:var(--hu-accent);margin-right:9px"></i>领券中心</h2>
                 <p id="centerSub">当前可领取的活动券，领取后立即入包</p>
             </div>
-            <a href="/products" class="hu-link" style="font-size:13px">去挑花礼 <i class="fa fa-long-arrow-right"></i></a>
+            <a href="/user/coupon-center" class="hu-link" style="font-size:13px">按分类挑券 <i class="fa fa-long-arrow-right"></i></a>
         </div>
         <div style="padding:0 22px 24px">
             <div id="centerGrid" class="hu-coupons"></div>
@@ -65,14 +100,44 @@
             </div>
         </div>
     </section>
+        </div>
+    </div>
 </div>
 
 <div th:replace="~{common/footer :: footer}"></div>
 
+<!-- E07 转赠弹窗：留空即生成凭码通用的转赠码 -->
+<div class="hu-mask" id="giftMask">
+    <div class="hu-panel hu-dialog hu-dialog--sm" role="dialog" aria-modal="true" aria-labelledby="giftTitle">
+        <div class="hu-panel-head">
+            <div>
+                <h2 id="giftTitle">转赠这张券</h2>
+                <p>对方凭转赠码领取，领取后券从你的券包移除</p>
+            </div>
+            <button type="button" class="hu-icon-btn" id="giftClose" title="关闭"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="hu-panel__body">
+            <div class="hu-e-transfer-row" style="padding-top:0">
+                <div>
+                    <strong style="font-size:14px" id="giftName">—</strong>
+                    <div class="hu-coupon__meta" id="giftMeta"></div>
+                </div>
+            </div>
+            <form id="giftForm" class="hu-e-bind hu-e-plain" autocomplete="off" style="margin-top:14px">
+                <label class="hu-sr-only" for="giftReceiver">收礼人</label>
+                <input type="text" id="giftReceiver" maxlength="50" placeholder="收礼人的用户名或手机号（可留空）">
+                <button type="submit" class="hu-btn hu-btn--solid">生成转赠码</button>
+            </form>
+            <p class="hu-e-hint">指定收礼人后只有 TA 能领取；留空则任何登录账号凭码都能领。</p>
+        </div>
+    </div>
+</div>
+
 <script>
     let mine = [];
-    let receivable = [];
+    let center = [];
     let filter = 'all';
+    let giftTarget = '';
 
     function esc(s) {
         return window.huEscape(s == null ? '' : String(s));
@@ -80,6 +145,10 @@
 
     function num(v) {
         return Number(v || 0).toFixed(2).replace(/\.00$/, '');
+    }
+
+    function dateOf(v) {
+        return String(v || '').slice(0, 10);
     }
 
     /** 券面左侧大字：满减显示金额，折扣显示几折 */
@@ -91,12 +160,9 @@
         return '<div class="hu-coupon__amount"><small>¥</small>' + num(c.amount) + '</div>';
     }
 
+    /** 券面规则、适用范围、阶梯一律读服务端字段（E01/E20），页面不再自己拼文案 */
     function ruleOf(c) {
-        return Number(c.threshold || 0) > 0 ? '满 ' + num(c.threshold) + ' 可用' : '无门槛使用';
-    }
-
-    function dateOf(v) {
-        return String(v || '').slice(0, 10);
+        return c.ruleText || (Number(c.threshold || 0) > 0 ? '满 ' + num(c.threshold) + ' 可用' : '无门槛使用');
     }
 
     function validText(c) {
@@ -106,17 +172,14 @@
         return '长期有效';
     }
 
-    function scopeText(c) {
-        return c.scope === 'category' ? '指定分类可用' : '全场花礼通用';
-    }
-
     function card(options) {
         return '<div class="hu-coupon' + (options.dim ? ' hu-coupon--dim' : '') + '">' +
             '<div class="hu-coupon__stub">' + stub(options.coupon) +
             '<div class="hu-coupon__rule">' + esc(ruleOf(options.coupon)) + '</div></div>' +
             '<div class="hu-coupon__body">' +
             '<div class="hu-coupon__name">' + esc(options.coupon.name) + '</div>' +
-            '<div class="hu-coupon__meta">' + esc(scopeText(options.coupon)) + ' · ' + esc(validText(options.coupon)) + '</div>' +
+            '<div class="hu-coupon__meta">' + esc(options.coupon.scopeText || '') + ' · ' + esc(validText(options.coupon)) + '</div>' +
+            (options.coupon.ladderText ? '<div class="hu-e-ladder">' + esc(options.coupon.ladderText) + '</div>' : '') +
             (options.note ? '<div class="hu-coupon__meta">' + esc(options.note) + '</div>' : '') +
             '<div class="hu-coupon__foot">' +
             '<span class="hu-coupon__code">' + esc(options.coupon.code || '') + '</span>' +
@@ -124,10 +187,48 @@
             '</div></div></div>';
     }
 
+    /** E06：券面提醒文案由服务端算，页面只负责着色 */
+    function mineNote(u) {
+        const bits = ['领取于 ' + dateOf(u.receivedAt)];
+        if (u.status === 'used') bits.push('使用于 ' + dateOf(u.usedAt));
+        if (u.source === 'gift') bits.push('来自转赠');
+        if (u.source === 'rebate') bits.push('下单返券');
+        if (u.source === 'invite') bits.push('邀请奖励');
+        return bits.join(' · ');
+    }
+
+    function mineAction(u) {
+        if (u.status === 'unused') {
+            const share = u.transferable
+                ? '<button type="button" class="hu-btn hu-btn--sm hu-btn--ghost" data-transfer="' + esc(u.id) + '">转赠</button>'
+                : '';
+            return '<div class="hu-e-actions">' +
+                '<a class="hu-btn hu-btn--sm hu-btn--solid" href="/products">去使用</a>' + share + '</div>';
+        }
+        if (u.status === 'gifting') {
+            // 转赠码本身可点复制，券面底部只留两个元素，窄列下不会挤掉按钮
+            return '<div class="hu-e-actions">' +
+                (u.transferToken
+                    ? '<span class="hu-e-token" role="button" tabindex="0" title="点击复制" data-hu-copy="' + esc(u.transferToken) + '" data-hu-copy-label="转赠码">' + esc(u.transferToken) + '</span>'
+                    : '') +
+                '<button type="button" class="hu-btn hu-btn--sm hu-btn--ghost" data-cancel="' + esc(u.id) + '">撤销</button></div>';
+        }
+        if (u.status === 'used') return '<span class="hu-pill hu-pill--muted">已使用</span>';
+        return '<span class="hu-pill hu-pill--muted">已过期</span>';
+    }
+
     function renderMine() {
         const list = filter === 'all' ? mine : mine.filter(function (u) { return u.status === filter; });
-        const usableCount = mine.filter(function (u) { return u.status === 'unused'; }).length;
-        $('#usableTotal').text(usableCount);
+        $('#usableTotal').text(mine.filter(function (u) { return u.status === 'unused'; }).length);
+        const soon = mine.filter(function (u) { return u.expireReminder; });
+        if (soon.length) {
+            $('#remindBar').prop('hidden', false);
+            $('#remindText').text('有 ' + soon.length + ' 张券即将到期：' +
+                soon.slice(0, 3).map(function (u) { return u.name + '（' + u.expireReminder + '）'; }).join('、') +
+                (soon.length > 3 ? ' 等' : '') + '，结算时会自动列出可用券');
+        } else {
+            $('#remindBar').prop('hidden', true);
+        }
         if (!list.length) {
             $('#mineGrid').html('');
             $('#mineEmpty').text(mine.length ? '该状态下暂时没有券' : '券包还是空的，去下面的领券中心看看').show();
@@ -135,42 +236,50 @@
         }
         $('#mineEmpty').hide();
         $('#mineGrid').html(list.map(function (u) {
-            let action;
-            if (u.status === 'unused') {
-                action = '<a class="hu-btn hu-btn--sm hu-btn--solid" href="/products">去使用</a>';
-            } else if (u.status === 'used') {
-                action = '<span class="hu-pill hu-pill--muted">已使用 · ' + esc(dateOf(u.usedAt)) + '</span>';
-            } else {
-                action = '<span class="hu-pill hu-pill--muted">已过期</span>';
-            }
+            const note = mineNote(u) + (u.expireReminder ? ' · ' + u.expireReminder : '');
             return card({
                 coupon: u,
                 dim: u.status !== 'unused',
-                note: '领取于 ' + dateOf(u.receivedAt) + (u.status === 'used' ? ' · 使用于 ' + dateOf(u.usedAt) : ''),
-                action: action
+                note: note,
+                action: mineAction(u)
             });
         }).join(''));
     }
 
     function renderCenter() {
-        if (!receivable.length) {
+        // 领券中心已迁到 /user/coupon-center，这里只留最近结束的 6 张做提醒
+        const list = center.filter(function (c) { return c.claimable; }).slice(0, 6);
+        if (!list.length) {
             $('#centerGrid').html('');
             $('#centerEmpty').show();
-            $('#centerSub').text('当前没有可领取的活动券');
+            $('#centerSub').text('当前没有可领取的活动券，去领券中心看看是否已经领过');
             return;
         }
         $('#centerEmpty').hide();
-        $('#centerSub').text('当前可领取 ' + receivable.length + ' 张活动券，领取后立即入包');
-        $('#centerGrid').html(receivable.map(function (c) {
+        $('#centerSub').text('当前可领取 ' + center.filter(function (c) { return c.claimable; }).length + ' 张，领取后立即入包');
+        $('#centerGrid').html(list.map(function (c) {
             const left = c.total > 0 ? (c.total - (c.issued || 0)) : null;
-            const soldOut = left != null && left <= 0;
             return card({
                 coupon: c,
-                dim: soldOut,
-                note: left != null ? (left > 0 ? '剩余 ' + left + ' 张可领' : '本批已领完') : '不限量发放',
-                action: soldOut ? '<span class="hu-pill hu-pill--muted">已领完</span>'
-                    : '<button type="button" class="hu-btn hu-btn--sm hu-btn--solid" data-claim="' + esc(c.id) + '">领取</button>'
+                note: left != null ? '剩余 ' + left + ' 张可领' : '不限量发放',
+                action: '<button type="button" class="hu-btn hu-btn--sm hu-btn--solid" data-claim="' + esc(c.id) + '">领取</button>'
             });
+        }).join(''));
+    }
+
+    function renderInbox(list) {
+        if (!list.length) {
+            $('#inbox').prop('hidden', true);
+            return;
+        }
+        $('#inbox').prop('hidden', false);
+        $('#inboxList').html(list.map(function (u) {
+            return '<div class="hu-e-transfer-row"><div><strong style="font-size:14px">' + esc(u.name) + '</strong>' +
+                '<div class="hu-coupon__meta">' + esc(u.scopeText || '') + ' · ' + esc(validText(u)) + '</div></div>' +
+                '<div class="hu-e-actions">' +
+                (u.transferToken ? '<span class="hu-e-token">' + esc(u.transferToken) + '</span>' : '') +
+                '<button type="button" class="hu-btn hu-btn--sm hu-btn--solid" data-accept="' + esc(u.transferToken || '') + '">领取</button>' +
+                '</div></div>';
         }).join(''));
     }
 
@@ -184,15 +293,25 @@
 
     function loadCenter() {
         huApi({
-            url: '/api/coupons/receivable',
-            ok: function (data) { receivable = data || []; renderCenter(); },
-            fail: function () { receivable = []; renderCenter(); }
+            url: '/api/coupons/center',
+            ok: function (data) { center = data || []; renderCenter(); },
+            fail: function () { center = []; renderCenter(); }
+        });
+    }
+
+    function loadInbox() {
+        huApi({
+            url: '/api/coupons/transfer/incoming',
+            silent: true,
+            ok: renderInbox,
+            fail: function () { renderInbox([]); }
         });
     }
 
     $(function () {
         loadCenter();
         loadMine();
+        loadInbox();
 
         $('#mineFilter').on('click', '.hu-chip', function () {
             $('#mineFilter .hu-chip').removeClass('is-active');
@@ -214,6 +333,85 @@
                 },
                 fail: function () { btn.prop('disabled', false).text('领取'); }
             });
+        });
+
+        // E07：弹窗里填收礼人（可留空生成通用码），确认后提交条件更新锁券
+        $('#mineGrid').on('click', '[data-transfer]', function () {
+            const id = String($(this).data('transfer'));
+            const held = mine.filter(function (u) { return String(u.id) === id; })[0];
+            if (!held) return;
+            giftTarget = id;
+            $('#giftName').text(held.name);
+            $('#giftMeta').text((held.scopeText || '') + ' · ' + validText(held));
+            $('#giftReceiver').val('');
+            $('#giftMask').addClass('is-open');
+            $('#giftReceiver').trigger('focus');
+        });
+
+        function closeGift() {
+            $('#giftMask').removeClass('is-open');
+        }
+
+        $('#giftClose').on('click', closeGift);
+        $('#giftMask').on('click', function (event) {
+            if (event.target === this) closeGift();
+        });
+        $(document).on('keydown', function (event) {
+            if (event.key === 'Escape') closeGift();
+        });
+
+        $('#giftForm').on('submit', function (event) {
+            event.preventDefault();
+            if (!giftTarget) return;
+            const btn = $(this).find('button').prop('disabled', true).text('生成中…');
+            huApi({
+                url: '/api/coupons/transfer',
+                type: 'POST',
+                data: {userCouponId: giftTarget, receiver: $.trim($('#giftReceiver').val())},
+                ok: function () {
+                    window.huToast('转赠码已生成，复制给对方即可', 'ok');
+                    closeGift();
+                    loadMine();
+                },
+                fail: function () { btn.prop('disabled', false).text('生成转赠码'); }
+            });
+        });
+
+        $('#mineGrid').on('click', '[data-cancel]', function () {
+            huApi({
+                url: '/api/coupons/transfer/cancel',
+                type: 'POST',
+                data: {userCouponId: String($(this).data('cancel'))},
+                ok: function () {
+                    window.huToast('已撤销转赠', 'ok');
+                    loadMine();
+                }
+            });
+        });
+
+        function accept(token) {
+            if (!token) {
+                window.huToast('请填写转赠码', 'err');
+                return false;
+            }
+            huApi({
+                url: '/api/coupons/transfer/accept',
+                type: 'POST',
+                data: {token: token},
+                ok: function () {
+                    window.huToast('已收到这份转赠', 'ok');
+                    loadMine();
+                    loadInbox();
+                }
+            });
+            return true;
+        }
+
+        $('#inboxList').on('click', '[data-accept]', function () { accept(String($(this).data('accept'))); });
+
+        $('#acceptForm').on('submit', function (event) {
+            event.preventDefault();
+            if (accept($.trim($('#acceptToken').val()))) $('#acceptToken').val('');
         });
     });
 </script>

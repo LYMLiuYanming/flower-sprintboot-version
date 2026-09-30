@@ -29,4 +29,9 @@ public interface FavoriteRepository extends JpaRepository<Favorite, UUID> {
     @Modifying
     @Query("DELETE FROM Favorite f WHERE f.product.id = :productId")
     int deleteByProductId(@Param("productId") UUID productId);
+
+    /** 批量取消收藏：where 带 user_id，越权 id 影响行数为 0，不会误删他人收藏 */
+    @Modifying
+    @Query("DELETE FROM Favorite f WHERE f.id = :id AND f.user.id = :userId")
+    int deleteByIdAndUserId(@Param("id") UUID id, @Param("userId") UUID userId);
 }

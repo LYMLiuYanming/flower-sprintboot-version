@@ -1,0 +1,158 @@
+/* ============================================================
+   f-h.css · H 组「数据看板与报表」专用样式（勿跨组改动本文件）
+   承载 admin/index.html 与 admin/report.html：现代 / 商务 / 精致
+   ============================================================ */
+
+/* ---------- 页面骨架 ---------- */
+.h-content {padding: 22px 24px 30px;background: #f5f6f8;min-height: 100%;}
+.h-head {display: flex;align-items: flex-end;justify-content: space-between;gap: 16px;flex-wrap: wrap;margin-bottom: 16px;}
+.h-head h2 {font-size: 20px;font-weight: 600;color: #101623;letter-spacing: -.01em;margin: 0;}
+.h-head__note {font-size: 12.5px;color: #798394;margin-top: 5px;}
+.h-ops {display: flex;align-items: center;gap: 10px;flex-wrap: wrap;}
+.h-updated {font-size: 12px;color: #9aa3b2;font-variant-numeric: tabular-nums;white-space: nowrap;}
+.h-updated i {margin-right: 4px;color: #0f7b63;}
+
+/* ---------- 控件：时间范围 / 粒度 / 按钮 ---------- */
+.h-range {display: flex;align-items: center;gap: 8px;flex-wrap: wrap;}
+.h-seg {display: inline-flex;gap: 2px;background: #f2f4f7;border-radius: 8px;padding: 3px;}
+.h-seg button {border: 0;background: transparent;color: #798394;font-size: 12.5px;padding: 5px 12px;border-radius: 6px;cursor: pointer;transition: all .2s;}
+.h-seg button:hover {color: #101623;}
+.h-seg button.is-active {background: #fff;color: #0f7b63;font-weight: 600;box-shadow: 0 1px 3px rgba(16,22,35,.12);}
+.h-seg--label {font-size: 12px;color: #9aa3b2;margin-right: 2px;}
+.h-date {width: 118px;height: 30px;border: 1px solid #e0e5ec;border-radius: 8px;background: #fff;color: #39424f;font-size: 12.5px;padding: 0 10px;font-variant-numeric: tabular-nums;}
+.h-date:focus {border-color: #0f7b63;outline: none;}
+.h-btn {display: inline-flex;align-items: center;gap: 6px;height: 30px;padding: 0 13px;border: 1px solid #e0e5ec;border-radius: 8px;background: #fff;color: #39424f;font-size: 12.5px;text-decoration: none;cursor: pointer;transition: all .2s var(--hu-ease, cubic-bezier(.4,.08,.24,1));}
+.h-btn:hover {border-color: #0f7b63;color: #0f7b63;box-shadow: 0 6px 16px -12px rgba(15,123,99,.6);}
+.h-btn i {font-size: 11px;}
+.h-btn--primary {background: #0f7b63;border-color: #0f7b63;color: #fff;}
+.h-btn--primary:hover {color: #fff;background: #0c6a56;border-color: #0c6a56;}
+.h-btn[disabled] {opacity: .55;cursor: not-allowed;}
+
+/* ---------- 待办卡片（G27） ---------- */
+/* 待办排成一行四张：运营进后台第一眼要看到的是「要动手的事」，不是指标 */
+.h-todos {display: grid;grid-template-columns: repeat(4, minmax(0, 1fr));gap: 12px;margin-bottom: 14px;}
+.h-todo {display: flex;align-items: center;gap: 12px;background: #fff;border: 1px solid #e8ebf0;border-radius: 12px;
+    padding: 12px 14px;text-decoration: none;color: inherit;position:relative;overflow: hidden;
+    transition: box-shadow .24s, transform .24s, border-color .2s;}
+.h-todo::before {content: '';position: absolute;left: 0;top: 0;bottom: 0;width: 3px;background: var(--bar, #9aa3b2);opacity: .35;}
+.h-todo:hover {transform: translateY(-1px);border-color: #dfe4ea;box-shadow: 0 14px 30px -22px rgba(16,22,35,.35);}
+.h-todo.is-hot::before {opacity: 1;}
+.h-todo__icon {flex: none;width: 34px;height: 34px;border-radius: 9px;display: flex;align-items: center;justify-content: center;
+    background: #f2f4f7;color: var(--bar, #798394);font-size: 14px;}
+.h-todo.is-hot .h-todo__icon {background: color-mix(in srgb, var(--bar) 12%, #fff);}
+.h-todo__body {flex: 1;min-width: 0;display: block;}
+.h-todo__value {display: block;font-size: 20px;line-height: 1.2;font-weight: 600;color: #101623;
+    font-variant-numeric: tabular-nums;letter-spacing: -.02em;}
+.h-todo__label {display: block;font-size: 12.5px;color: #39424f;font-weight: 500;margin-top: 1px;}
+.h-todo__sub {display: block;font-size: 11.5px;color: #a4acba;margin-top: 1px;}
+.h-todo__go {color: #c6ccd6;font-size: 13px;transition: color .2s, transform .2s;}
+.h-todo:hover .h-todo__go {color: var(--bar, #0f7b63);transform: translateX(2px);}
+
+/* ---------- KPI 指标卡（H03 / H14） ---------- */
+.h-cards {display: grid;grid-template-columns: repeat(4, minmax(0, 1fr));gap: 14px;margin-bottom: 14px;}
+.h-cards--wide {grid-template-columns: repeat(5, minmax(0, 1fr));}
+.h-card {position: relative;background: #fff;border: 1px solid #e8ebf0;border-radius: 12px;padding: 15px 17px 14px 19px;box-shadow: 0 1px 2px rgba(16,22,35,.04);transition: box-shadow .24s, transform .24s;overflow: hidden;}
+.h-card::before {content: '';position: absolute;left: 0;top: 0;bottom: 0;width: 3px;background: var(--bar, #0f7b63);}
+.h-card:hover {transform: translateY(-1px);box-shadow: 0 14px 30px -22px rgba(16,22,35,.35);}
+.h-card__label {font-size: 12.5px;color: #798394;display: flex;align-items: center;gap: 6px;}
+.h-card__label i {color: var(--bar, #0f7b63);font-size: 11px;}
+.h-card__value {font-size: 24px;line-height: 1.2;font-weight: 600;color: #101623;font-variant-numeric: tabular-nums;letter-spacing: -.02em;margin-top: 5px;}
+.h-card__value em {font-style: normal;font-size: 13px;color: #a4acba;font-weight: 500;margin-left: 3px;}
+.h-card__sub {font-size: 12px;color: #a4acba;margin-top: 4px;font-variant-numeric: tabular-nums;}
+.h-card__sub b {color: #798394;font-weight: 500;}
+.h-delta {display: inline-flex;align-items: center;gap: 3px;margin-left: 6px;padding: 1px 7px;border-radius: 999px;background: #f2f4f7;color: #798394;font-size: 11.5px;font-weight: 600;font-variant-numeric: tabular-nums;vertical-align: 2px;}
+.h-delta em {font-style: normal;font-weight: 400;opacity: .7;}
+/* H14：环比大跌标红、暴涨标金，颜色与阈值文案在 hu-stats.js 里统一出 */
+.h-delta.is-down {background: #fdecec;color: #c53030;}
+.h-delta.is-up {background: #fdf6e6;color: #a3761f;}
+.h-card.is-flagged {border-color: #f3c9c9;}
+.h-card.is-flagged::before {background: #c53030;}
+
+/* ---------- 图卡容器 ---------- */
+.h-panel {background: #fff;border: 1px solid #e8ebf0;border-radius: 12px;margin-bottom: 14px;box-shadow: 0 1px 2px rgba(16,22,35,.04);}
+.h-panel__head {display: flex;align-items: center;justify-content: space-between;gap: 12px;padding: 13px 18px;border-bottom: 1px solid #eef0f4;}
+.h-panel__title {display: flex;align-items: center;gap: 8px;font-size: 14.5px;font-weight: 600;color: #101623;}
+.h-panel__title i {color: #0f7b63;font-size: 13px;}
+.h-panel__title small {font-weight: 400;color: #9aa3b2;font-size: 12px;margin-left: 2px;}
+.h-panel__tools {display: flex;align-items: center;gap: 8px;}
+.h-panel__body {padding: 12px 16px 16px;}
+.h-panel__foot {padding: 10px 16px;border-top: 1px dashed #eef0f4;font-size: 12px;color: #9aa3b2;line-height: 1.7;}
+.h-chart {width: 100%;height: 292px;}
+.h-chart--sm {height: 236px;}
+.h-chart--xs {height: 186px;}
+.h-chart--empty {display: flex;align-items: center;justify-content: center;color: #a4acba;font-size: 13px;background: repeating-linear-gradient(45deg, #fbfcfd, #fbfcfd 8px, #f6f8fa 8px, #f6f8fa 16px);border-radius: 10px;}
+
+/* ---------- 异常提示条（H14） ---------- */
+.h-alerts {display: grid;gap: 8px;margin-bottom: 14px;}
+.h-alert {display: flex;align-items: center;gap: 9px;padding: 10px 14px;border-radius: 10px;font-size: 12.5px;border: 1px solid #e8ebf0;background: #fff;color: #39424f;}
+.h-alert b {color: #101623;font-weight: 600;}
+.h-alert span {color: #798394;}
+.h-alert i {font-size: 13px;}
+.h-alert--ok {color: #2f8553;border-color: #d9ecdd;background: #f3fbf5;}
+.h-alert--ok i {color: #2f8553;}
+.h-alert--danger {border-color: #f3c9c9;background: #fdf3f3;}
+.h-alert--danger i, .h-alert--danger b {color: #c53030;}
+.h-alert--warn {border-color: #f0e2c4;background: #fdf9ef;}
+.h-alert--warn i, .h-alert--warn b {color: #a3761f;}
+
+/* ---------- 榜单 / 明细表 ---------- */
+.h-rank {list-style: none;margin: 0;padding: 0;}
+.h-rank li {display: flex;align-items: center;gap: 10px;padding: 9px 2px;border-bottom: 1px dashed #eef0f4;font-size: 13px;}
+.h-rank li:last-child {border-bottom: 0;}
+.h-rank .no {flex: none;width: 20px;height: 20px;line-height: 20px;text-align: center;border-radius: 6px;background: #f2f4f7;color: #798394;font-size: 11px;font-weight: 600;}
+.h-rank li:nth-child(-n+3) .no {background: #e8f4f0;color: #0f7b63;}
+.h-rank .name {flex: 1;min-width: 0;color: #39424f;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;}
+.h-rank .name span {display: block;font-size: 11.5px;color: #a4acba;}
+.h-rank .amt {flex: none;color: #101623;font-weight: 600;font-variant-numeric: tabular-nums;}
+.h-rank .amt span {display: block;font-weight: 400;font-size: 11.5px;color: #a4acba;text-align: right;}
+.h-rank--empty {padding: 32px 0;text-align: center;color: #a4acba;font-size: 13px;border: 0;}
+.h-rank a {color: #0f7b63;text-decoration: none;}
+.h-rank a:hover {text-decoration: underline;}
+
+/* 占比条：地区榜与告急清单里比纯数字更直观 */
+.h-bar {position: relative;height: 5px;border-radius: 999px;background: #f2f4f7;overflow: hidden;flex: 1 1 60px;min-width: 46px;}
+.h-bar i {position: absolute;left: 0;top: 0;bottom: 0;border-radius: 999px;background: linear-gradient(90deg, #9dc7ba, #0f7b63);}
+.h-bar.is-warn i {background: linear-gradient(90deg, #e8c48a, #c08a33);}
+.h-bar.is-danger i {background: linear-gradient(90deg, #eaa5a5, #c53030);}
+
+.h-kv {display: grid;grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));gap: 10px 14px;}
+.h-kv div {border-left: 2px solid #eef0f4;padding-left: 10px;}
+.h-kv dt {font-size: 11.5px;color: #9aa3b2;margin: 0 0 2px;}
+.h-kv dd {margin: 0;font-size: 15px;font-weight: 600;color: #101623;font-variant-numeric: tabular-nums;}
+.h-kv dd em {font-style: normal;font-size: 11.5px;color: #a4acba;font-weight: 400;margin-left: 3px;}
+
+/* 徽章：核销率 / 状态 / 告急原因 */
+.h-badge {display: inline-block;padding: 1px 8px;border-radius: 999px;font-size: 11.5px;line-height: 18px;background: #f2f4f7;color: #798394;white-space: nowrap;}
+.h-badge.is-good {background: #e9f6ee;color: #2f8553;}
+.h-badge.is-warn {background: #fdf4e3;color: #a3761f;}
+.h-badge.is-danger {background: #fdecec;color: #c53030;}
+.h-badge.is-info {background: #e9f2fb;color: #2f6fb5;}
+
+.h-panel .layui-table-view {margin: 0;border: 0;}
+.h-panel .layui-table th {background: #fafbfc;color: #798394;font-weight: 500;}
+.h-panel .layui-table-view .layui-table td {font-variant-numeric: tabular-nums;}
+
+/* ---------- 报表页布局 ---------- */
+.h-note {font-size: 12px;color: #9aa3b2;line-height: 1.75;}
+.h-note b {color: #798394;font-weight: 500;}
+.h-link {color: #0f7b63;text-decoration: none;}
+.h-link:hover {text-decoration: underline;}
+.h-timeline {display: grid;gap: 10px;}
+.h-timeline__row {display: grid;grid-template-columns: 116px 1fr auto;align-items: center;gap: 12px;font-size: 12.5px;}
+.h-timeline__row b {color: #101623;font-weight: 600;}
+.h-timeline__row span {color: #798394;}
+.h-timeline__pills {display: flex;gap: 6px;flex-wrap: wrap;}
+.h-pill {padding: 2px 9px;border-radius: 999px;background: #f5f7f9;color: #39424f;font-size: 11.5px;font-variant-numeric: tabular-nums;}
+.h-pill i {color: #9aa3b2;font-style: normal;margin-right: 3px;}
+
+.h-empty {padding: 28px 0;text-align: center;color: #a4acba;font-size: 13px;}
+.h-loading {display: flex;align-items: center;gap: 8px;color: #9aa3b2;font-size: 12.5px;padding: 18px 0;justify-content: center;}
+
+@media (max-width: 1400px) {
+    .h-cards--wide {grid-template-columns: repeat(4, minmax(0, 1fr));}
+}
+@media (max-width: 1180px) {
+    .h-cards, .h-cards--wide {grid-template-columns: repeat(2, minmax(0, 1fr));}
+    .h-todos {grid-template-columns: repeat(2, minmax(0, 1fr));}
+    .h-timeline__row {grid-template-columns: 1fr;}
+}

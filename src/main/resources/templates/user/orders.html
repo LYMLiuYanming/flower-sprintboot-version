@@ -15,7 +15,7 @@
             <p class="hu-pagehead__sub">每一次交付都可追溯，售后与评价都在这里</p>
         </div>
         <div class="hu-pagehead__aside">
-            <span class="hu-muted" style="font-size:13px">全部订单</span>
+            <span class="hu-muted" style="font-size:13px">符合条件的订单</span>
             <span class="hu-num" id="orderTotal" style="font-size:26px">—</span>
         </div>
     </div>
@@ -23,55 +23,67 @@
 
 <div class="hu-container">
     <div class="hu-account">
-        <aside>
-            <div class="hu-panel hu-idcard">
-                <span class="hu-idcard__avatar"
-                      th:text="${loginUser != null and loginUser.fullName != null} ? ${#strings.substring(loginUser.fullName,0,1)} : '花'">花</span>
-                <div>
-                    <div class="hu-idcard__name" th:text="${loginUser != null ? loginUser.fullName : '顾客'}">用户名</div>
-                    <div class="hu-idcard__meta" th:text="${loginUser != null and loginUser.phone != null} ? ${loginUser.phone} : '未绑定手机号'">手机号</div>
-                </div>
-            </div>
-            <div class="hu-panel hu-panel--pad hu-side-sticky">
-                <h3 class="hu-side-title">账户导航</h3>
-                <ul class="hu-navtabs">
-                    <li><a href="/user/profile"><i class="fa fa-user-o"></i>个人资料</a></li>
-                    <li><a href="/user/orders" class="is-active"><i class="fa fa-file-text-o"></i>我的订单</a></li>
-                    <li><a href="/user/favorites"><i class="fa fa-heart-o"></i>我的收藏</a></li>
-                    <li><a href="/user/coupons"><i class="fa fa-ticket"></i>我的优惠券</a></li>
-                    <li><a href="/user/addresses"><i class="fa fa-map-marker"></i>收货地址</a></li>
-                    <li><a href="/user/settings"><i class="fa fa-cog"></i>账号设置</a></li>
-                    <li><a href="/cart"><i class="fa fa-shopping-bag"></i>购物车</a></li>
-                    <li><a href="/auth/logout" style="color:var(--hu-clay)"><i class="fa fa-sign-out"></i>退出登录</a></li>
-                </ul>
-            </div>
-        </aside>
+        <aside th:replace="~{common/account-nav :: accountNav('orders')}"></aside>
 
         <div>
             <div class="hu-panel">
                 <div class="hu-panel-head">
                     <div>
                         <h2>订单列表</h2>
-                        <p>待付款订单 30 分钟内未支付将自动取消并回补库存</p>
+                        <p id="listSub">待付款订单超时未支付将自动取消并回补库存</p>
                     </div>
                     <span class="hu-pill hu-pill--muted" id="filterLabel">全部</span>
                 </div>
                 <div class="hu-panel__body">
-                    <div class="hu-chips" id="statusTabs" style="margin-bottom:22px">
-                        <button type="button" class="hu-chip is-active" data-status="">全部</button>
+                    <!-- C01/C02/C03：状态分组 + 下单时间范围 + 关键词 + 排序，条件全部交给服务端一次查完 -->
+                    <div class="hu-chips" id="statusTabs" style="margin-bottom:18px">
+                        <button type="button" class="hu-chip is-active" data-status="all">全部</button>
                         <button type="button" class="hu-chip" data-status="pending">待付款</button>
-                        <button type="button" class="hu-chip" data-status="paid">待发货</button>
-                        <button type="button" class="hu-chip" data-status="shipped">配送中</button>
-                        <button type="button" class="hu-chip" data-status="completed">已完成</button>
-                        <button type="button" class="hu-chip" data-status="cancelled">已取消</button>
+                        <button type="button" class="hu-chip" data-status="toship">待发货</button>
+                        <button type="button" class="hu-chip" data-status="shipping">配送中</button>
+                        <button type="button" class="hu-chip" data-status="done">已完成</button>
+                        <button type="button" class="hu-chip" data-status="closed">已取消/退款</button>
                     </div>
+
+                    <div class="hu-c-filter">
+                        <div class="hu-c-filter__field hu-c-filter__field--kw">
+                            <label for="kw">搜索</label>
+                            <input class="hu-input" id="kw" type="search" maxlength="40"
+                                   placeholder="订单号 / 收货人 / 手机号">
+                        </div>
+                        <div class="hu-c-filter__field">
+                            <label for="dateFrom">下单开始</label>
+                            <input class="hu-input" id="dateFrom" type="date">
+                        </div>
+                        <div class="hu-c-filter__field">
+                            <label for="dateTo">下单结束</label>
+                            <input class="hu-input" id="dateTo" type="date">
+                        </div>
+                        <div class="hu-c-filter__field">
+                            <label for="sortBy">排序</label>
+                            <select class="hu-select" id="sortBy">
+                                <option value="time_desc">最近下单</option>
+                                <option value="time_asc">最早下单</option>
+                                <option value="amount_desc">金额从高到低</option>
+                                <option value="amount_asc">金额从低到高</option>
+                            </select>
+                        </div>
+                        <div class="hu-c-filter__submit">
+                            <button type="button" class="hu-btn hu-btn--solid hu-btn--sm" id="doFilter">
+                                <i class="fa fa-search"></i>&nbsp;查询
+                            </button>
+                            <button type="button" class="hu-btn hu-btn--plain hu-btn--sm" id="resetFilter">重置</button>
+                        </div>
+                    </div>
+
+                    <p class="hu-c-listhint" id="filterHint"></p>
 
                     <div id="orderList"></div>
 
                     <div id="orderEmpty" class="hu-empty" style="display:none">
                         <i class="fa fa-file-text-o"></i>
                         <strong>暂无相关订单</strong>
-                        <span style="font-size:14px">挑一束合心意的花，让今天有点不一样</span>
+                        <span style="font-size:14px">换个状态或时间范围再试试，或者挑一束合心意的花</span>
                         <a href="/products" class="hu-btn hu-btn--solid hu-btn--sm" style="margin-top:18px">去选购花礼</a>
                     </div>
 
@@ -82,14 +94,44 @@
     </div>
 </div>
 
+<!-- 取消订单的二次确认弹窗（C06/C07）：原因必选一项或填写说明，落库后在详情页与后台显示 -->
+<div class="hu-c-mask" id="cMask">
+    <div class="hu-c-dialog" role="dialog" aria-modal="true" aria-labelledby="cDlgTitle">
+        <div class="hu-c-dialog__head">
+            <div>
+                <h3 id="cDlgTitle">确认取消这笔订单？</h3>
+                <p id="cDlgSub">取消后占用的库存、优惠券与积分将立即回退，本单不可恢复。</p>
+            </div>
+            <button type="button" class="hu-c-dialog__close" data-close aria-label="关闭">&times;</button>
+        </div>
+        <div class="hu-c-dialog__body">
+            <div class="hu-c-field">
+                <div class="hu-c-field__label"><span>取消原因</span><span class="hu-c-field__hint">也可只写补充说明</span></div>
+                <div class="hu-c-reasons" id="cDlgReasons"></div>
+            </div>
+            <div class="hu-c-field">
+                <div class="hu-c-field__label"><label for="cDlgText">补充说明（选填）</label></div>
+                <textarea class="hu-textarea" id="cDlgText" rows="3" maxlength="120"
+                          placeholder="例如：临时改行程，这周不需要了"></textarea>
+            </div>
+        </div>
+        <div class="hu-c-dialog__foot">
+            <button type="button" class="hu-btn hu-btn--ghost hu-btn--sm" data-close>返回</button>
+            <button type="button" class="hu-btn hu-btn--solid hu-btn--sm" id="cDlgOk">确认取消</button>
+        </div>
+    </div>
+</div>
+
 <div th:replace="~{common/footer :: footer}"></div>
 
 <script th:inline="javascript">
     const PLACEHOLDER = /*[[@{/img/product-placeholder.svg}]]*/ '/img/product-placeholder.svg';
     const PAGE_SIZE = 5;
-    let status = '';
+    let status = 'all';
     let page = 1;
     let total = 0;
+    let cancelling = null;
+    let tick = null;
 
     const STATUS_PILL = {
         pending: 'hu-pill--warn',
@@ -114,6 +156,12 @@
         return v ? String(v).replace('T', ' ').slice(0, 16) : '-';
     }
 
+    function mmss(sec) {
+        const s = Math.max(Number(sec || 0), 0);
+        const pad = function (n) { return (n < 10 ? '0' : '') + n; };
+        return pad(Math.floor(s / 60)) + ':' + pad(s % 60);
+    }
+
     function renderSkeletons() {
         let html = '';
         for (let i = 0; i < 2; i++) {
@@ -128,11 +176,15 @@
     }
 
     function itemRow(item) {
+        // 行备注与包装标记是下单当时的快照（B01/B02），列表里也要能一眼看到
+        const note = item.itemNote
+            ? '<div class="hu-c-note"><i class="fa fa-pencil"></i><span>' + esc(item.itemNote) + '</span></div>' : '';
+        const wrap = item.giftWrap ? '<span class="hu-c-tag"><i class="fa fa-gift"></i> 礼品包装</span>' : '';
         return '<div class="hu-ordercard__item">' +
             '<img src="' + esc(item.productImage || PLACEHOLDER) + '" alt="" ' +
             'onerror="this.onerror=null;this.src=\'' + PLACEHOLDER + '\'">' +
             '<div><a class="hu-ordercard__name" href="/product/' + esc(item.productId) + '">' + esc(item.productName) + '</a>' +
-            '<div class="hu-ordercard__sub">' + (item.reviewed ? '已评价 · 感谢反馈' : '未评价') + '</div></div>' +
+            '<div class="hu-ordercard__sub">' + (item.reviewed ? '已评价 · 感谢反馈' : '未评价') + wrap + '</div>' + note + '</div>' +
             '<div class="hu-muted" style="font-size:13px">× ' + esc(item.quantity) + '</div>' +
             '<div style="text-align:right;font-size:14px;font-variant-numeric:tabular-nums">¥' +
             money(item.subtotal != null ? item.subtotal : item.price) + '</div>' +
@@ -155,8 +207,43 @@
         if (o.canReview) {
             html += '<a class="hu-btn hu-btn--ghost hu-btn--sm" href="/order/' + esc(o.id) + '#review">写评价</a>';
         }
+        // 退款要选原因并看进度，统一进详情页操作，列表不铺开第二套表单
+        if (o.canApplyRefund) {
+            html += '<a class="hu-btn hu-btn--plain hu-btn--sm" href="/order/' + esc(o.id) + '">申请退款</a>';
+        }
+        html += '<button class="hu-btn hu-btn--plain hu-btn--sm" data-act="reorder" data-id="' + esc(o.id) + '">' +
+            '<i class="fa fa-repeat"></i>再次购买</button>';
         html += '<a class="hu-btn hu-btn--plain hu-btn--sm" href="/order/' + esc(o.id) + '">查看详情</a>';
         return html;
+    }
+
+    /** 卡片顶部的一条状态提示：待付款倒计时（C08）与售后进度、评价引导（C26） */
+    function cardAlert(o) {
+        if (o.status === 'pending' && o.paySecondsLeft != null) {
+            const danger = Number(o.paySecondsLeft) <= Number(o.payWarnSeconds || 0);
+            return '<div class="hu-c-alert ' + (danger ? 'hu-c-alert--danger' : 'hu-c-alert--warn') + '" style="margin:0 0 14px">' +
+                '<i class="fa fa-clock-o"></i><div class="hu-c-alert__main">剩 <span class="hu-c-count" ' +
+                'data-countdown="' + o.id + '" data-seconds="' + o.paySecondsLeft + '">' + mmss(o.paySecondsLeft)
+                + '</span> 自动关单，超时后库存与优惠将回退</div></div>';
+        }
+        if (o.refund) {
+            return '<div class="hu-c-alert ' + (o.refund.status === 'refunded' ? 'hu-c-alert--ok' : 'hu-c-alert--warn') +
+                '" style="margin:0 0 14px"><i class="fa fa-undo"></i><div class="hu-c-alert__main">退款进度：'
+                + esc(o.refund.statusLabel || o.refund.status) + ' ¥' + money(o.refund.amount) + '　'
+                + esc(o.refund.hint || '') + '</div></div>';
+        }
+        if (o.reviewGuide) {
+            return '<div class="hu-c-alert hu-c-alert--ok" style="margin:0 0 14px"><i class="fa fa-star"></i>' +
+                '<div class="hu-c-alert__main">' + esc(o.reviewGuide) + '</div>' +
+                '<div class="hu-c-alert__act"><a class="hu-btn hu-btn--accent hu-btn--sm" href="/order/'
+                + esc(o.id) + '#review">去评价</a></div></div>';
+        }
+        if (o.cancelReason && (o.status === 'cancelled' || o.status === 'refunded')) {
+            return '<div class="hu-c-alert" style="margin:0 0 14px"><i class="fa fa-info-circle"></i>' +
+                '<div class="hu-c-alert__main">' + (o.status === 'cancelled' ? '取消原因' : '退款原因') + '：'
+                + esc(o.cancelReason) + '</div></div>';
+        }
+        return '';
     }
 
     function card(o) {
@@ -170,7 +257,8 @@
             '<span>下单 ' + time(o.createdAt) + '</span>' +
             '<span class="hu-pill ' + (STATUS_PILL[o.status] || 'hu-pill--muted') + '">' +
             esc(o.statusLabel || o.status) + '</span></div>' +
-            '<div class="hu-ordercard__body">' + (shown || '<div class="hu-ordercard__sub" style="padding:12px 0">商品明细已不可用</div>') + '</div>' +
+            '<div class="hu-ordercard__body">' + cardAlert(o)
+            + (shown || '<div class="hu-ordercard__sub" style="padding:12px 0">商品明细已不可用</div>') + '</div>' +
             more +
             '<div class="hu-ordercard__foot">' +
             '<span class="hu-ordercard__pay">实付<b>¥' + money(o.payAmount) + '</b></span>' +
@@ -192,17 +280,54 @@
         $('#orderPager').html(html);
     }
 
+    /** 列表里的倒计时共用一个 interval：DOM 上的 data-seconds 每秒自减，归零刷新一次 */
+    function startTick() {
+        if (tick) clearInterval(tick);
+        tick = null;
+        if (!$('#orderList [data-countdown]').length) return;
+        tick = setInterval(function () {
+            let hitZero = false;
+            $('#orderList [data-countdown]').each(function () {
+                const left = Math.max(Number($(this).attr('data-seconds')) - 1, 0);
+                $(this).attr('data-seconds', left).text(mmss(left));
+                if (left === 0) hitZero = true;
+            });
+            if (hitZero) {
+                clearInterval(tick);
+                tick = null;
+                load();
+            }
+        }, 1000);
+    }
+
+    function isoStart(value) {
+        return value ? value + 'T00:00:00' : '';
+    }
+
+    function isoEnd(value) {
+        return value ? value + 'T23:59:59' : '';
+    }
+
     function load() {
         renderSkeletons();
         $('#orderEmpty').hide();
-        const url = '/api/orders?page=' + page + '&limit=' + PAGE_SIZE + (status ? '&status=' + status : '');
+        const params = {page: page, limit: PAGE_SIZE, status: status, sort: $('#sortBy').val()};
+        const kw = String($('#kw').val() || '').trim();
+        if (kw) params.keyword = kw;
+        const from = $('#dateFrom').val();
+        const to = $('#dateTo').val();
+        if (from) params.from = isoStart(from);
+        if (to) params.to = isoEnd(to);
         huApi({
-            url: url,
+            url: '/api/orders',
+            data: params,
             ok: function (data, res) {
                 total = Number(res.count || 0);
                 const list = data || [];
+                window.__orders = list;
                 $('#orderTotal').text(total);
                 $('#filterLabel').text($('#statusTabs .hu-chip.is-active').text() || '全部');
+                $('#filterHint').text(describe(list.length));
                 if (!list.length) {
                     $('#orderList').html('');
                     $('#orderEmpty').show();
@@ -211,6 +336,7 @@
                 }
                 $('#orderList').html(list.map(card).join(''));
                 renderPager();
+                startTick();
             },
             fail: function () {
                 $('#orderList').html('');
@@ -219,14 +345,70 @@
         });
     }
 
+    /** 条件摘要：把用户真正生效的筛选条件回读一遍，避免"筛了但没生效"被当成 bug */
+    function describe(count) {
+        const parts = [];
+        const tab = $('#statusTabs .hu-chip.is-active').text();
+        if (tab && tab !== '全部') parts.push('状态 ' + tab);
+        if ($('#kw').val()) parts.push('关键词「' + String($('#kw').val()).trim() + '」');
+        if ($('#dateFrom').val() || $('#dateTo').val()) {
+            parts.push('下单时间 ' + ($('#dateFrom').val() || '不限') + ' ~ ' + ($('#dateTo').val() || '不限'));
+        }
+        const sort = $('#sortBy option:selected').text();
+        parts.push('排序 ' + sort);
+        return '共 ' + count + ' 单 · 当前条件：' + parts.join('　|　');
+    }
+
+    function openCancel(o) {
+        cancelling = o;
+        const reasons = o.cancelReasons || [];
+        $('#cDlgReasons').html(reasons.map(function (r) {
+            return '<button type="button" class="hu-chip" data-reason="' + esc(r.code) + '">' + esc(r.label) + '</button>';
+        }).join(''));
+        $('#cDlgText').val('');
+        $('#cDlgOk').prop('disabled', false);
+        $('#cMask').addClass('is-open');
+    }
+
+    function closeDialog() {
+        $('#cMask').removeClass('is-open');
+        cancelling = null;
+    }
+
     $(document).ready(function () {
         load();
 
         $('#statusTabs').on('click', '.hu-chip', function () {
-            status = String($(this).data('status') || '');
+            status = String($(this).data('status') || 'all');
             page = 1;
             $(this).addClass('is-active').siblings().removeClass('is-active');
             load();
+        });
+
+        $('#doFilter').on('click', function () {
+            page = 1;
+            load();
+        });
+
+        $('#resetFilter').on('click', function () {
+            $('#kw, #dateFrom, #dateTo').val('');
+            $('#sortBy').val('time_desc');
+            status = 'all';
+            page = 1;
+            $('#statusTabs .hu-chip').removeClass('is-active').first().addClass('is-active');
+            load();
+        });
+
+        $('#sortBy').on('change', function () {
+            page = 1;
+            load();
+        });
+
+        $('#kw').on('keydown', function (e) {
+            if (e.key === 'Enter') {
+                page = 1;
+                load();
+            }
         });
 
         $('#orderPager').on('click', 'button[data-page]', function () {
@@ -246,12 +428,8 @@
                     ok: function () { window.huToast('支付成功，花艺师开始为你配花', 'ok'); load(); }
                 });
             } else if (act === 'cancel') {
-                if (!confirm('取消后库存将回补且不可恢复，确认取消？')) return;
-                huApi({
-                    url: '/api/orders/' + id + '/cancel', type: 'POST',
-                    data: {reason: '用户主动取消'},
-                    ok: function () { window.huToast('订单已取消', 'ok'); load(); }
-                });
+                const order = findOrder(id);
+                if (order) openCancel(order);
             } else if (act === 'receipt') {
                 if (!confirm('确认已收到花礼？确认后可为本次体验写评价')) return;
                 huApi({
@@ -259,9 +437,70 @@
                     data: {},
                     ok: function () { window.huToast('已确认收货，感谢你的信任', 'ok'); load(); }
                 });
+            } else if (act === 'reorder') {
+                reorder(id, $(this));
             }
         });
+
+        $('#cMask').on('click', '[data-close]', closeDialog);
+        $('#cMask').on('click', '.hu-chip', function () {
+            $(this).toggleClass('is-active').siblings().removeClass('is-active');
+        });
+
+        $('#cDlgOk').on('click', function () {
+            const btn = $(this);
+            const code = String($('#cMask .hu-chip.is-active').data('reason') || '');
+            const text = String($('#cDlgText').val() || '').trim();
+            if (!code && !text) {
+                window.huToast('请选择或填写取消原因', 'err');
+                return;
+            }
+            btn.prop('disabled', true);
+            huApi({
+                url: '/api/orders/' + cancelling.id + '/cancel', type: 'POST',
+                data: {reasonCode: code, reasonText: text},
+                ok: function () { closeDialog(); window.huToast('订单已取消，库存与优惠已回退', 'ok'); load(); },
+                fail: function () { btn.prop('disabled', false); }
+            });
+        });
     });
+
+    /** 列表数据留在内存里取一次即可，取消弹窗需要该单的预设原因 */
+    function findOrder(id) {
+        return (window.__orders || []).filter(function (o) { return String(o.id) === String(id); })[0] || null;
+    }
+
+    function reorder(orderId, btn) {
+        btn.prop('disabled', true);
+        huApi({
+            url: '/api/cart/reorder/' + orderId, type: 'POST', data: {},
+            ok: function (data, res) {
+                btn.prop('disabled', false);
+                if (res.itemCount != null) $('.hu-cart-count').text(res.itemCount).show();
+                showReorder(res);
+            },
+            fail: function () { btn.prop('disabled', false); }
+        });
+    }
+
+    /** 再次购买回执（B24）：notice 一句话 + adjusted/skipped 逐条列，用户才知道哪束没加回来 */
+    function showReorder(res) {
+        window.huToast(res.notice || '已加回购物车', 'ok');
+        const adjusted = res.adjusted || [];
+        const skipped = res.skipped || [];
+        if (!adjusted.length && !skipped.length) return;
+        let html = '';
+        if (adjusted.length) {
+            html += '<div class="hu-c-report"><b>已按库存调整</b><ul>'
+                + adjusted.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>';
+        }
+        if (skipped.length) {
+            html += '<div class="hu-c-report hu-c-report--skip"><b>未能加购</b><ul>'
+                + skipped.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>';
+        }
+        $('#reorderReport').remove();
+        $('#orderList').before('<div id="reorderReport">' + html + '</div>');
+    }
 </script>
 </body>
 </html>

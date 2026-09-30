@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>我的工单 · 花语轩</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<div class="hu-pagehead">
+    <div class="hu-container hu-pagehead__row">
+        <div>
+            <div class="hu-crumb"><a href="/index">首页</a> / <a href="/user/profile">个人中心</a> / <span>我的工单</span></div>
+            <h1>我的工单</h1>
+            <p class="hu-pagehead__sub">花材、配送、退款的问题都在这里往返；每条工单有承诺的首响与解决时限，客服回复会同时发一条站内信</p>
+        </div>
+        <div class="hu-pagehead__aside">
+            <button type="button" class="hu-btn hu-btn--sm hu-btn--solid" id="newTicketBtn">
+                <i class="fa fa-plus" aria-hidden="true"></i> 提交新工单
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="hu-container">
+    <div class="hu-account">
+        <aside th:replace="~{common/account-nav :: accountNav('tickets')}"></aside>
+        <div>
+
+    <!-- U15 顾客侧列表：未结在前 + 时限近的在前 -->
+    <section class="hu-panel" style="margin-top:0">
+        <div class="hu-panel-head">
+            <div>
+                <h2><i class="fa fa-headphones" style="color:var(--hu-accent);margin-right:9px"></i>工单列表</h2>
+                <p id="listSub">处理中的工单排在前面</p>
+            </div>
+            <div class="hu-chips" id="statusTabs">
+                <button type="button" class="hu-chip is-active" data-status="">全部</button>
+                <button type="button" class="hu-chip" data-status="open">待受理</button>
+                <button type="button" class="hu-chip" data-status="processing">处理中</button>
+                <button type="button" class="hu-chip" data-status="resolved">已解决</button>
+                <button type="button" class="hu-chip" data-status="closed">已关闭</button>
+            </div>
+        </div>
+        <div style="padding:0 22px 22px">
+            <div id="ticketList" class="hu-u-tickets" aria-live="polite"></div>
+            <div id="ticketEmpty" class="hu-empty" hidden>
+                <i class="fa fa-headphones"></i>
+                <strong>还没有提交过工单</strong>
+                <span class="hu-empty__desc">收到花有问题、配送延误、退款没到账，都可以在这里开一张单，客服会按承诺时限回复</span>
+                <button type="button" class="hu-btn hu-btn--sm hu-btn--solid hu-empty__action" id="emptyNewBtn">提交工单</button>
+            </div>
+            <div id="ticketPager" class="hu-pager"></div>
+        </div>
+    </section>
+
+    <div id="detailHost" hidden>
+        <div class="hu-u-anchor" id="detailAnchor"></div>
+    </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<!-- U12 提单弹窗 -->
+<div class="hu-mask" id="createMask">
+    <div class="hu-panel hu-dialog" role="dialog" aria-modal="true" aria-labelledby="createTitle">
+        <div class="hu-panel-head">
+            <div>
+                <h2 id="createTitle">提交工单</h2>
+                <p>带 * 的是必填项；关联订单能让客服直接看到物流与签收信息</p>
+            </div>
+            <button type="button" class="hu-icon-btn" id="createClose" title="关闭"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="hu-panel__body">
+            <form id="createForm" class="hu-form-grid" autocomplete="off">
+                <label class="hu-field">
+                    <span class="hu-field__label">问题类型 *</span>
+                    <select class="hu-select" id="fCategory" required></select>
+                </label>
+                <label class="hu-field">
+                    <span class="hu-field__label">紧急程度</span>
+                    <select class="hu-select" id="fPriority"></select>
+                    <span class="hu-field__err" id="priorityHint"></span>
+                </label>
+                <label class="hu-field" style="grid-column:1/-1">
+                    <span class="hu-field__label">关联订单</span>
+                    <select class="hu-select" id="fOrder">
+                        <option value="">不涉及具体订单（咨询类）</option>
+                    </select>
+                </label>
+                <label class="hu-field" style="grid-column:1/-1">
+                    <span class="hu-field__label">标题 *</span>
+                    <input type="text" class="hu-input" id="fTitle" maxlength="60" required
+                           placeholder="一句话说明问题，例如：玫瑰有三轮花瓣发蔫">
+                </label>
+                <label class="hu-field" style="grid-column:1/-1">
+                    <span class="hu-field__label">具体情况 *</span>
+                    <textarea class="hu-textarea" id="fDescription" rows="5" minlength="5" maxlength="1000" required
+                              placeholder="什么时候收到的、花了什么、希望怎么处理。写得越具体，客服一次就能定位。"></textarea>
+                </label>
+                <div class="hu-u-formfoot">
+                    <button type="submit" class="hu-btn hu-btn--solid">提交工单</button>
+                    <span class="hu-muted" style="font-size:13px">提交后会立刻收到受理回执</span>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- U16 详情抽屉 -->
+<div class="hu-mask" id="detailMask">
+    <div class="hu-panel hu-dialog hu-u-detail" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+        <div class="hu-panel-head">
+            <div>
+                <h2 id="detailTitle">工单详情</h2>
+                <p id="detailSub">—</p>
+            </div>
+            <button type="button" class="hu-icon-btn" id="detailClose" title="关闭"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="hu-panel__body hu-u-detail__body" id="detailBody"></div>
+    </div>
+</div>
+
+<script>
+    let status = '';
+    let page = 1;
+    const PAGE_SIZE = 8;
+    let dict = {categories: [], priorities: [], statuses: []};
+    let current = null;
+
+    function esc(s) {
+        return window.huEscape(s == null ? '' : String(s));
+    }
+    function time(v) { return v ? String(v).replace('T', ' ').slice(0, 16) : '—'; }
+    function when(v) { return v ? (window.huFromNow ? window.huFromNow(v) : time(v)) : '—'; }
+
+    /** 时限徽标：状态文案与配色都由服务端 deadlineState 决定，页面不再算第二遍 */
+    function slaPill(state, left) {
+        const map = {
+            overdue: ['hu-u-sla--bad', '已超时'],
+            warning: ['hu-u-sla--warn', '即将超时'],
+            settled: ['hu-u-sla--muted', '已结单'],
+            none: ['hu-u-sla--muted', '未设时限'],
+            normal: ['hu-u-sla--ok', '时限内']
+        };
+        const hit = map[state] || map.none;
+        let text = hit[1];
+        if (state === 'overdue' && left != null) text += ' ' + human(Math.abs(left));
+        else if ((state === 'warning' || state === 'normal') && left != null) text += ' · 剩 ' + human(left);
+        return '<span class="hu-u-sla ' + hit[0] + '">' + esc(text) + '</span>';
+    }
+
+    function human(minutes) {
+        const m = Math.max(0, Number(minutes) || 0);
+        if (m < 60) return m + ' 分钟';
+        const h = Math.floor(m / 60);
+        if (h < 24) return h + ' 小时 ' + (m % 60) + ' 分';
+        return Math.floor(h / 24) + ' 天 ' + (h % 24) + ' 小时';
+    }
+
+    function statusPill(s, label) {
+        const tone = s === 'resolved' ? 'ok' : (s === 'closed' ? 'muted'
+            : (s === 'processing' || s === 'assigned' ? 'info' : 'warn'));
+        return '<span class="hu-u-status hu-u-status--' + tone + '">' + esc(label || s) + '</span>';
+    }
+
+    /* ---------- 列表 ---------- */
+
+    function renderList(list) {
+        if (!list.length) {
+            $('#ticketList').html('');
+            $('#ticketEmpty').prop('hidden', false);
+            return;
+        }
+        $('#ticketEmpty').prop('hidden', true);
+        $('#ticketList').html(list.map(function (t) {
+            return '<article class="hu-u-ticket' + (t.hasUnreadReply ? ' is-reply' : '') + '" data-id="' + esc(t.id) + '">' +
+                '<div class="hu-u-ticket__head">' +
+                '<code class="hu-u-ticket__no">' + esc(t.ticketNo) + '</code>' +
+                statusPill(t.status, t.statusLabel) +
+                '<span class="hu-u-ticket__pri">优先级 · ' + esc(t.priorityLabel) + '</span>' +
+                slaPill(t.deadlineState, t.slaLeftMinutes) +
+                (t.escalated ? '<span class="hu-u-sla hu-u-sla--bad">已升级</span>' : '') +
+                '</div>' +
+                '<h3 class="hu-u-ticket__title">' + esc(t.title) + '</h3>' +
+                '<div class="hu-u-ticket__meta">' + esc(t.categoryLabel) +
+                (t.assigneeName ? ' · 处理人 ' + esc(t.assigneeName) : ' · 等待受理') +
+                ' · ' + esc(when(t.createdAt)) +
+                (t.satisfaction ? ' · 已评分 ' + esc(t.satisfaction) + ' 分' : '') +
+                (t.hasUnreadReply ? ' · <b class="hu-u-reply">客服有新回复</b>' : '') +
+                '</div>' +
+                '<div class="hu-u-ticket__foot">' +
+                '<button type="button" class="hu-btn hu-btn--sm hu-btn--solid" data-open="' + esc(t.id) + '">查看往返</button>' +
+                (t.reopenable === false ? '' : '') +
+                '</div></article>';
+        }).join(''));
+    }
+
+    function loadList(showLoading) {
+        $('#ticketList').attr('aria-busy', String(!!showLoading));
+        huApi({
+            url: '/api/user/tickets',
+            data: {status: status, page: page, limit: PAGE_SIZE},
+            silent: true,
+            ok: function (data, res) {
+                renderList(data || []);
+                const total = Number(res.count || 0);
+                $('#listSub').text(total ? '共 ' + total + ' 张工单，处理中的排在前面' : '处理中的工单排在前面');
+                window.huPager.render('#ticketPager', {
+                    page: page,
+                    pages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
+                    total: total,
+                    onGo: function (p) { page = p; loadList(true); }
+                });
+            },
+            fail: function () { renderList([]); }
+        });
+    }
+
+    /* ---------- 详情与往返 ---------- */
+
+    function renderDetail(d) {
+        current = d;
+        const b = d.brief || {};
+        $('#detailTitle').text(d.brief.ticketNo + ' · ' + d.brief.title);
+        $('#detailSub').innerHTML = '';
+        $('#detailSub').text(statusLabelOf(b.status) + '｜' + (b.categoryLabel || '') + '｜' + (d.slaText || ''));
+
+        const parts = [];
+
+        parts.push('<div class="hu-u-detail__bar">' + statusPill(b.status, b.statusLabel) +
+            slaPill(b.deadlineState, b.slaLeftMinutes) +
+            '<span class="hu-muted" style="font-size:13px">优先级 ' + esc(b.priorityLabel) + '</span>' +
+            (b.assigneeName ? '<span class="hu-muted" style="font-size:13px">处理人 ' + esc(b.assigneeName) + '</span>' : '') +
+            '</div>');
+
+        if (d.nextStepHint) {
+            parts.push('<p class="hu-u-hint"><i class="fa fa-lightbulb-o" aria-hidden="true"></i> ' + esc(d.nextStepHint) + '</p>');
+        }
+
+        parts.push('<div class="hu-u-kv">' +
+            kv('问题类型', b.categoryLabel) +
+            kv('提交时间', time(b.createdAt)) +
+            kv('联系电话', d.contactPhone || '未留电话') +
+            kv('承诺首响', time(d.firstResponseDueAt)) +
+            kv('首次响应', d.firstResponseAt ? time(d.firstResponseAt) + minutesText(d.firstResponseMinutes, '用时') : '尚未响应') +
+            kv('解决时限', time(d.resolveDueAt)) +
+            kv('解决时间', d.resolvedAt ? time(d.resolvedAt) + minutesText(d.resolveMinutes, '用时') : '—') +
+            (d.sourceType && d.sourceType !== 'manual' ? kv('来源', d.sourceType === 'review' ? '低星评价自动生成' : '订单') : '') +
+            '</div>');
+
+        parts.push('<h3 class="hu-u-sect">问题描述</h3><p class="hu-u-desc">' + esc(d.description || '—') + '</p>');
+        if (d.solution) {
+            parts.push('<h3 class="hu-u-sect">处理结论</h3><p class="hu-u-desc hu-u-desc--done">' + esc(d.solution) + '</p>');
+        }
+
+        if (d.order) {
+            parts.push('<h3 class="hu-u-sect">关联订单</h3>' +
+                '<div class="hu-u-order"><code>' + esc(d.order.orderNo) + '</code>' +
+                '<span>' + esc(d.order.statusLabel || d.order.status) + '</span>' +
+                '<span>收货 ' + esc(d.order.receiverName || '—') + ' · ' + esc(d.order.receiverPhone || '—') + '</span>' +
+                (d.order.expressNo ? '<span>' + esc(d.order.expressCompany || '') + ' ' + esc(d.order.expressNo) + '</span>' : '') +
+                '</div>');
+        }
+
+        // U16 时间线：顾客侧已在服务层过滤内部备注
+        const timeline = (d.timeline || []).map(function (e) {
+            return '<div class="hu-u-node hu-u-node--' + esc(e.authorType) + '">' +
+                '<span class="hu-u-node__dot" aria-hidden="true"></span>' +
+                '<div class="hu-u-node__body">' +
+                '<div class="hu-u-node__head"><strong>' + esc(e.authorLabel) +
+                (e.authorName ? ' · ' + esc(e.authorName) : '') + '</strong>' +
+                '<time datetime="' + esc(e.createdAt || '') + '">' + esc(time(e.createdAt)) + '</time></div>' +
+                '<p>' + esc(e.content) + '</p>' +
+                attachments(e.attachments) +
+                '</div></div>';
+        }).join('');
+        parts.push('<h3 class="hu-u-sect">往返记录</h3><div class="hu-u-timeline">' +
+            (timeline || '<p class="hu-muted" style="font-size:13.5px">还没有客服回复，受理后会在这里更新</p>') + '</div>');
+
+        // U16 留言
+        if (b.status !== 'closed') {
+            parts.push('<form class="hu-u-reply-form" id="replyForm">' +
+                '<label class="hu-sr-only" for="replyContent">补充说明</label>' +
+                '<textarea class="hu-textarea" id="replyContent" rows="3" maxlength="2000" required ' +
+                'placeholder="补充情况或回应客服的提问（5-2000 字）"></textarea>' +
+                '<div><button type="submit" class="hu-btn hu-btn--sm hu-btn--solid">发送</button></div></form>');
+        }
+
+        // U13 重开 + U24 评分
+        const acts = [];
+        if (d.reopenable && (d.allowedActions || []).indexOf('open') >= 0) {
+            acts.push('<button type="button" class="hu-btn hu-btn--sm hu-btn--ghost" id="reopenBtn">重新打开</button>');
+        }
+        if (d.rateable) {
+            acts.push('<div class="hu-u-rate" id="rateBox">' +
+                '<span class="hu-muted" style="font-size:13px">这次处理满意吗</span>' +
+                [1, 2, 3, 4, 5].map(function (n) {
+                    return '<button type="button" class="hu-u-star" data-score="' + n + '" aria-label="' + n + ' 分">' + n + '</button>';
+                }).join('') +
+                '<input type="text" class="hu-input" id="rateNote" maxlength="100" placeholder="补充一句（可选）">' +
+                '</div>');
+        } else if (d.satisfaction) {
+            acts.push('<p class="hu-u-hint">你给这次处理打了 <b>' + esc(d.satisfaction) + '</b> 分' +
+                (d.satisfactionNote ? '：' + esc(d.satisfactionNote) : '') + '，每单只评一次</p>');
+        }
+        if (acts.length) parts.push('<div class="hu-u-acts">' + acts.join('') + '</div>');
+
+        $('#detailBody').html(parts.join(''));
+        $('#detailMask').addClass('is-open');
+    }
+
+    function statusLabelOf(code) {
+        const hit = dict.statuses.filter(function (s) { return s.code === code; })[0];
+        return hit ? hit.label : code;
+    }
+    function kv(k, v) { return '<div><span>' + esc(k) + '</span><b>' + esc(v == null ? '—' : v) + '</b></div>'; }
+    function minutesText(m, prefix) {
+        return m == null ? '' : '（' + prefix + ' ' + human(m) + '）';
+    }
+    /** 附件是本地 URL 的逗号串：只放行站内路径，别把外链塞进 img/a 标签 */
+    function attachments(raw) {
+        if (!raw) return '';
+        const urls = String(raw).split(',').map(function (s) { return s.trim(); }).filter(function (s) {
+            return s.charAt(0) === '/';
+        });
+        if (!urls.length) return '';
+        return '<div class="hu-u-files">' + urls.map(function (u) {
+            return '<a href="' + esc(u) + '" target="_blank" rel="noopener"><i class="fa fa-paperclip" aria-hidden="true"></i> 附件</a>';
+        }).join('') + '</div>';
+    }
+
+    function openDetail(id) {
+        huApi({
+            url: '/api/user/tickets/' + encodeURIComponent(id),
+            silent: true,
+            ok: renderDetail,
+            fail: function () { window.huToast('工单读取失败', 'err'); }
+        });
+    }
+
+    /* ---------- 提单 ---------- */
+
+    function openCreate() {
+        $('#createMask').addClass('is-open');
+        $('#fTitle').trigger('focus');
+    }
+
+    function closeAll() {
+        $('#createMask').removeClass('is-open');
+        $('#detailMask').removeClass('is-open');
+    }
+
+    function loadOrders() {
+        huApi({
+            url: '/api/user/tickets/selectable-orders',
+            silent: true,
+            ok: function (list) {
+                const opts = (list || []).map(function (o) {
+                    return '<option value="' + esc(o.orderId) + '"' + (o.hasOpenTicket ? ' disabled' : '') + '>' +
+                        esc(o.orderNo) + ' · ' + esc(o.statusLabel) + ' · ' + esc(o.sampleItemName || '') +
+                        (o.hasOpenTicket ? '（已有在途工单）' : '') + '</option>';
+                }).join('');
+                $('#fOrder').append(opts);
+            }
+        });
+    }
+
+    function loadDict() {
+        huApi({
+            url: '/api/user/tickets/dictionary',
+            silent: true,
+            ok: function (d) {
+                dict = d || dict;
+                $('#fCategory').html((dict.categories || []).map(function (c) {
+                    return '<option value="' + esc(c.code) + '">' + esc(c.label) + '</option>';
+                }).join(''));
+                $('#fPriority').html((dict.priorities || []).map(function (p) {
+                    return '<option value="' + esc(p.code) + '"' + (p.code === 'normal' ? ' selected' : '') + '>' + esc(p.label) + '</option>';
+                }).join(''));
+            }
+        });
+    }
+
+    $(function () {
+        loadDict();
+        loadOrders();
+        loadList(true);
+
+        // 站内信的跳转是 /user/tickets/{id}：带路径进来就直接展开详情
+        const pathId = (window.location.pathname.match(/\/user\/tickets\/([^/]+)$/) || [])[1];
+        if (pathId) {
+            openDetail(pathId);
+        } else if ($('#detailHost').length && window.location.hash.indexOf('#ticket=') === 0) {
+            openDetail(window.location.hash.replace('#ticket=', ''));
+        }
+
+        $('#statusTabs').on('click', '.hu-chip', function () {
+            $('#statusTabs .hu-chip').removeClass('is-active');
+            $(this).addClass('is-active');
+            status = String($(this).data('status') || '');
+            page = 1;
+            loadList(true);
+        });
+
+        $('#ticketList').on('click', '[data-open]', function () {
+            openDetail(String($(this).data('open')));
+        });
+
+        $('#newTicketBtn, #emptyNewBtn').on('click', openCreate);
+        $('#createClose, #detailClose').on('click', closeAll);
+        $('.hu-mask').on('click', function (event) {
+            if (event.target === this) closeAll();
+        });
+        $(document).on('keydown', function (event) {
+            if (event.key === 'Escape') closeAll();
+        });
+
+        $('#fPriority').on('change', function () {
+            const v = $(this).val();
+            $('#priorityHint').text(v === 'urgent'
+                ? '紧急只用于花材严重损坏或送错，滥用会拉长别人的时限'
+                : (v === 'low' ? '低优先级的处理时限最长，急事请选普通以上' : ''));
+        });
+
+        $('#createForm').on('submit', function (event) {
+            event.preventDefault();
+            const payload = {
+                category: $('#fCategory').val(),
+                title: $.trim($('#fTitle').val()),
+                description: $.trim($('#fDescription').val()),
+                orderId: $('#fOrder').val() || null,
+                priority: $('#fPriority').val()
+            };
+            if (payload.description.length < 5) {
+                window.huToast('请把具体情况写到 5 字以上', 'err');
+                return;
+            }
+            const btn = $(this).find('button[type=submit]').prop('disabled', true).text('提交中…');
+            huApi({
+                url: '/api/user/tickets',
+                type: 'POST',
+                data: payload,
+                ok: function (brief) {
+                    window.huToast('工单已提交，单号 ' + (brief && brief.ticketNo ? brief.ticketNo : ''), 'ok');
+                    $('#createMask').removeClass('is-open');
+                    btn.prop('disabled', false).text('提交工单');
+                    $('#fTitle').val('');
+                    $('#fDescription').val('');
+                    page = 1;
+                    loadList(false);
+                },
+                fail: function () { btn.prop('disabled', false).text('提交工单'); }
+            });
+        });
+
+        $('#detailBody').on('submit', '#replyForm', function (event) {
+            event.preventDefault();
+            const content = $.trim($('#replyContent').val());
+            if (!content) {
+                window.huToast('请填写要补充的内容', 'err');
+                return;
+            }
+            const btn = $(this).find('button').prop('disabled', true).text('发送中…');
+            huApi({
+                url: '/api/user/tickets/' + current.brief.id + '/reply',
+                type: 'POST',
+                data: {content: content},
+                ok: function () {
+                    window.huToast('已提交', 'ok');
+                    openDetail(current.brief.id);
+                    loadList(false);
+                },
+                fail: function () { btn.prop('disabled', false).text('发送'); }
+            });
+        });
+
+        $('#detailBody').on('click', '#reopenBtn', function () {
+            huApi({
+                url: '/api/user/tickets/' + current.brief.id + '/transit',
+                type: 'POST',
+                data: {to: 'open', reason: '顾客申请重新打开'},
+                ok: function () {
+                    window.huToast('工单已重新打开', 'ok');
+                    openDetail(current.brief.id);
+                    loadList(false);
+                }
+            });
+        });
+
+        // U24：评分按钮即提交，1-5 分一次性，重复提交由服务层的 CAS 拦下
+        $('#detailBody').on('click', '.hu-u-star', function () {
+            const score = Number($(this).data('score'));
+            huApi({
+                url: '/api/user/tickets/' + current.brief.id + '/rate',
+                type: 'POST',
+                data: {score: score, note: $.trim($('#rateNote').val() || '')},
+                ok: function () {
+                    window.huToast('感谢评分', 'ok');
+                    openDetail(current.brief.id);
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>

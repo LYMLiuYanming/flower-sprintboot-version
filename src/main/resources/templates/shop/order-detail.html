@@ -25,6 +25,8 @@
     <div class="hu-cart" style="padding-top:30px">
         <!-- 主体 -->
         <div style="display:flex;flex-direction:column;gap:18px">
+            <div id="orderAlerts"></div>
+
             <div class="hu-panel">
                 <div class="hu-panel-head">
                     <div>
@@ -35,6 +37,46 @@
                 </div>
                 <div class="hu-panel__body">
                     <div class="hu-steps" id="orderSteps"></div>
+                    <div id="traceWrap" style="display:none;margin-top:26px;padding-top:22px;border-top:1px dashed var(--hu-line-strong)">
+                        <div class="hu-side-title" style="margin-bottom:14px">履约与配送轨迹</div>
+                        <ol class="hu-trace" id="orderTrace"></ol>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 运输路线与配送城市天气：读 /api/map/order/{id}/route，拿不到数据时整块隐藏 -->
+            <div class="hu-panel" id="routePanel" style="display:none">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2>运输路线</h2>
+                        <p id="routeMeta">从采收到送达，这束花走过的每一段</p>
+                    </div>
+                    <a class="hu-link" id="routeMore" href="/flower-map">在地图中查看 <i class="fa fa-long-arrow-right"></i></a>
+                </div>
+                <div class="hu-panel__body">
+                    <div id="routeList"></div>
+                    <div class="hu-weather" id="routeWeather" style="display:none;margin-top:16px"></div>
+                </div>
+            </div>
+
+            <div class="hu-panel" id="cardPanel" style="display:none">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2>随花贺卡</h2>
+                        <p id="cardMeta">花艺师将按以下样式手书写卡片</p>
+                    </div>
+                    <!-- C17：打印入口只出贺卡，页面其余部分在 @media print 里隐掉 -->
+                    <button type="button" class="hu-btn hu-btn--ghost hu-btn--sm" id="printCard">
+                        <i class="fa fa-print"></i>&nbsp;打印贺卡
+                    </button>
+                </div>
+                <div class="hu-panel__body">
+                    <div class="hu-gcard" id="cardPreview">
+                        <span class="hu-gcard__to">致 ——</span>
+                        <p class="hu-gcard__msg"></p>
+                        <span class="hu-gcard__sign"></span>
+                        <span class="hu-gcard__mark">FLOWER HOUSE</span>
+                    </div>
                 </div>
             </div>
 
@@ -54,6 +96,8 @@
                 </div>
                 <div class="hu-panel__body" id="reviewList"></div>
             </div>
+
+            <div class="hu-report-slot" id="reorderReport"></div>
         </div>
 
         <!-- 侧栏 -->
@@ -62,9 +106,15 @@
                 <div class="hu-side-title">金额明细</div>
                 <div id="summaryRows"></div>
             </div>
+            <div class="hu-panel hu-panel--pad" id="refundPanel" style="display:none">
+                <h3 class="hu-side-title">退款进度</h3>
+                <ol class="hu-c-flow" id="refundFlow"></ol>
+                <div id="refundActions" style="margin-top:14px"></div>
+            </div>
             <div class="hu-panel hu-panel--pad">
-                <h3 class="hu-side-title">收货信息</h3>
+                <h3 class="hu-side-title">收货与配送</h3>
                 <dl class="hu-specs" style="grid-template-columns:1fr" id="receiverBox"></dl>
+                <div class="hu-c-badges" id="prefBadges"></div>
             </div>
             <div class="hu-panel hu-panel--pad">
                 <h3 class="hu-side-title">订单信息</h3>
@@ -75,12 +125,55 @@
     </div>
 </div>
 
+<!-- 贺卡打印专用节点：屏显隐藏，打印时只显示它 -->
+<div class="hu-card-print" id="cardPrint">
+    <div class="hu-card-print__to" id="printTo"></div>
+    <div class="hu-card-print__msg" id="printMsg"></div>
+    <div class="hu-card-print__sign" id="printSign"></div>
+    <span class="hu-card-print__mark">HUAYUXUAN · FLOWER HOUSE</span>
+</div>
+
+<!-- 取消 / 退款的二次确认弹窗（C06/C19）：两个动作共用一套表单，标题、候选原因与提交动作由 JS 注入 -->
+<div class="hu-c-mask" id="cMask">
+    <div class="hu-c-dialog" role="dialog" aria-modal="true" aria-labelledby="cDlgTitle">
+        <div class="hu-c-dialog__head">
+            <div>
+                <h3 id="cDlgTitle">确认操作</h3>
+                <p id="cDlgSub"></p>
+            </div>
+            <button type="button" class="hu-c-dialog__close" data-close aria-label="关闭">&times;</button>
+        </div>
+        <div class="hu-c-dialog__body">
+            <div class="hu-c-amount" id="cDlgAmount" style="display:none">
+                <span>退款金额（按本单实付核定）</span><b>¥0.00</b>
+            </div>
+            <div class="hu-c-field">
+                <div class="hu-c-field__label">
+                    <span id="cDlgReasonLabel">请选择原因</span>
+                    <span class="hu-c-field__hint">也可只在下方补充说明</span>
+                </div>
+                <div class="hu-c-reasons" id="cDlgReasons"></div>
+            </div>
+            <div class="hu-c-field">
+                <div class="hu-c-field__label"><label for="cDlgText">补充说明（选填）</label></div>
+                <textarea class="hu-textarea" id="cDlgText" rows="3" maxlength="120"
+                          placeholder="再写一句具体情况，门店处理会更快"></textarea>
+            </div>
+        </div>
+        <div class="hu-c-dialog__foot">
+            <button type="button" class="hu-btn hu-btn--ghost hu-btn--sm" data-close>返回</button>
+            <button type="button" class="hu-btn hu-btn--solid hu-btn--sm" id="cDlgOk">确认</button>
+        </div>
+    </div>
+</div>
+
 <div th:replace="~{common/footer :: footer}"></div>
 
 <script th:inline="javascript">
     const PLACEHOLDER = /*[[@{/img/product-placeholder.svg}]]*/ '/img/product-placeholder.svg';
     const ORDER_ID = /*[[${orderId}]]*/ '';
     let order = null;
+    let countdownTimer = null;
 
     const STATUS_PILL = {
         pending: 'hu-pill--warn',
@@ -94,7 +187,6 @@
         completed: 5, cancelled: 1, refunded: 2
     };
     const STEPS = ['提交订单', '完成支付', '花艺出货', '鲜花送达', '交易完成'];
-    const PAY_METHOD = {wechat: '微信支付', alipay: '支付宝', balance: '余额支付', offline: '线下支付'};
 
     function esc(s) {
         return $('<i>').text(s == null ? '' : String(s)).html();
@@ -108,12 +200,95 @@
         return v ? String(v).replace('T', ' ').slice(0, 19) : '-';
     }
 
+    /** 服务端下发 ISO 时间，页面截到分钟并按"月日 时:分 前"展示 */
+    function fmtArrive(v) {
+        const s = String(v || '').replace('T', ' ').slice(0, 16);
+        if (!s) return '—';
+        const parts = s.split(' ');
+        return parts[0].slice(5).replace('-', '月') + '日 ' + parts[1] + ' 前';
+    }
+
+    /** 预约时段窗口（C15）：服务端已算好 15:00–16:00，页面只做兜底 */
+    function slotWindow(o) {
+        if (o.deliverySlotWindow) return o.deliverySlotWindow;
+        const raw = String(o.deliverySlot || '').replace('T', ' ').slice(11, 16);
+        return raw || '';
+    }
+
+    function mmss(sec) {
+        const s = Math.max(Number(sec || 0), 0);
+        const pad = function (n) { return (n < 10 ? '0' : '') + n; };
+        return pad(Math.floor(s / 60)) + ':' + pad(s % 60);
+    }
+
     function row(label, value) {
         return '<div class="hu-summary__row"><span>' + esc(label) + '</span><b>' + value + '</b></div>';
     }
 
     function specTerm(label, value) {
         return '<div><dt>' + esc(label) + '</dt><dd>' + value + '</dd></div>';
+    }
+
+    /** 顶部提示条：支付倒计时（C08）、售后进度、评价引导（C26）都追加在这里 */
+    function alertBox(kind, icon, html, actionHtml) {
+        return '<div class="hu-c-alert hu-c-alert--' + kind + '">' +
+            '<i class="fa ' + icon + '"></i>' +
+            '<div class="hu-c-alert__main">' + html + '</div>' +
+            (actionHtml ? '<div class="hu-c-alert__act">' + actionHtml + '</div>' : '') +
+            '</div>';
+    }
+
+    function renderAlerts() {
+        let html = '';
+        if (order.status === 'pending' && order.paySecondsLeft != null) {
+            const warnAt = Number(order.payWarnSeconds || 0);
+            const danger = Number(order.paySecondsLeft) <= warnAt;
+            html += alertBox(danger ? 'danger' : 'warn', danger ? 'fa-exclamation-circle' : 'fa-clock-o',
+                '<span class="hu-c-count" id="payCount">' + mmss(order.paySecondsLeft) + '</span>'
+                + ' 后本单将自动关闭并回补库存，请尽快完成支付。'
+                + (order.payWarnText ? '<br>' + esc(order.payWarnText) : ''),
+                '<button class="hu-btn hu-btn--solid hu-btn--sm" data-act="pay">立即支付</button>');
+        }
+        if (order.refund) {
+            const tone = order.refund.status === 'refunded' ? 'ok'
+                : (order.refund.status === 'rejected' ? 'danger' : 'info');
+            html += alertBox(tone, 'fa-credit-card',
+                '退款进度：' + esc(order.refund.statusLabel || order.refund.status) + '　¥'
+                + money(order.refund.amount) + '<br>' + esc(order.refund.hint || ''),
+                order.canRevokeRefund
+                    ? '<button class="hu-btn hu-btn--plain hu-btn--sm" data-act="revoke-refund">撤销申请</button>' : '');
+        }
+        if (order.reviewGuide) {
+            html += alertBox('ok', 'fa-star', esc(order.reviewGuide),
+                '<a class="hu-btn hu-btn--accent hu-btn--sm" href="#review" data-scroll-review>去写评价</a>');
+        }
+        $('#orderAlerts').html(html);
+    }
+
+    /** 倒计时本地走秒：页面不再自己判断 5 分钟阈值，秒数与阈值都来自服务端 */
+    function startCountdown() {
+        if (countdownTimer) clearInterval(countdownTimer);
+        countdownTimer = null;
+        if (order.status !== 'pending' || order.paySecondsLeft == null) return;
+        let left = Number(order.paySecondsLeft);
+        const warnAt = Number(order.payWarnSeconds || 0);
+        countdownTimer = setInterval(function () {
+            left = Math.max(left - 1, 0);
+            const el = document.getElementById('payCount');
+            if (!el) {
+                clearInterval(countdownTimer);
+                return;
+            }
+            el.textContent = mmss(left);
+            if (left <= warnAt) {
+                $(el).closest('.hu-c-alert').removeClass('hu-c-alert--warn').addClass('hu-c-alert--danger');
+            }
+            if (left === 0) {
+                clearInterval(countdownTimer);
+                // 归零即刷新：服务端关单任务可能还没扫到，刷新后按钮与状态都以服务端为准
+                load();
+            }
+        }, 1000);
     }
 
     function renderSteps() {
@@ -129,6 +304,7 @@
         $('#orderSteps').html(html);
     }
 
+    /** 操作区（C06/C18/C19/B24）：按钮可见性全部由服务端 can* 字段决定 */
     function renderActions() {
         let html = '';
         if (order.canPay) {
@@ -137,17 +313,26 @@
         if (order.canConfirmReceipt) {
             html += '<button class="hu-btn hu-btn--accent hu-btn--sm" data-act="receipt"><i class="fa fa-check"></i>确认收货</button>';
         }
+        if (order.canApplyRefund) {
+            html += '<button class="hu-btn hu-btn--ghost hu-btn--sm" data-act="refund"><i class="fa fa-undo"></i>申请退款</button>';
+        }
         if (order.canCancel) {
             html += '<button class="hu-btn hu-btn--ghost hu-btn--sm" data-act="cancel">取消订单</button>';
         }
+        html += '<button class="hu-btn hu-btn--plain hu-btn--sm" data-act="reorder"><i class="fa fa-repeat"></i>再次购买</button>';
         $('#orderActions').html(html);
         if (order.status === 'cancelled' || order.status === 'refunded') {
             $('#orderHint').text((order.status === 'cancelled' ? '订单已取消' : '订单已退款')
                 + (order.cancelReason ? ' · 原因：' + order.cancelReason : '') + '，库存已回补');
+        } else if (order.status === 'pending') {
+            $('#orderHint').text('请在订单提示的时限内完成支付，超时系统将自动取消并回补库存');
+        } else if (order.expectedArriveAt) {
+            const pickup = order.deliveryMethod === 'self_pickup';
+            $('#orderHint').text(order.deliveryMethodName + ' · 预计 ' + fmtArrive(order.expectedArriveAt)
+                + (order.status === 'shipped' ? '，花礼已在路上'
+                    : (pickup ? ' 可到店取货' : ' 送达')));
         } else {
-            $('#orderHint').text(order.status === 'pending'
-                ? '请在 30 分钟内完成支付，超时系统将自动取消并回补库存'
-                : '支付后花艺师即开始修剪搭配，同城当日送达');
+            $('#orderHint').text('支付后花艺师即开始修剪搭配，按所选配送方式送达');
         }
     }
 
@@ -157,11 +342,16 @@
             items.reduce(function (a, i) { return a + (i.quantity || 0); }, 0) + ' 件');
         let html = '';
         items.forEach(function (item) {
+            // 行备注与包装标记是下单当时的快照（B01/B02），改购物车不会影响这张单
+            const note = item.itemNote
+                ? '<div class="hu-c-note"><i class="fa fa-pencil"></i><span>' + esc(item.itemNote) + '</span></div>' : '';
+            const wrap = item.giftWrap ? '<span class="hu-c-tag"><i class="fa fa-gift"></i> 已选礼品包装</span>' : '';
             html += '<div class="hu-ordercard__item">' +
                 '<img src="' + esc(item.productImage || PLACEHOLDER) + '" alt="" ' +
                 'onerror="this.onerror=null;this.src=\'' + PLACEHOLDER + '\'">' +
                 '<div><a class="hu-ordercard__name" href="/product/' + esc(item.productId) + '">' + esc(item.productName) + '</a>' +
-                '<div class="hu-ordercard__sub">单价 ¥' + money(item.price) + (item.reviewed ? ' · 已评价' : '') + '</div></div>' +
+                '<div class="hu-ordercard__sub">单价 ¥' + money(item.price) + (item.reviewed ? ' · 已评价' : '')
+                + wrap + '</div>' + note + '</div>' +
                 '<div class="hu-muted" style="font-size:13px">× ' + esc(item.quantity) + '</div>' +
                 '<div style="text-align:right;font-variant-numeric:tabular-nums">¥' + money(item.subtotal) + '</div>' +
                 '</div>';
@@ -170,13 +360,19 @@
     }
 
     function renderSummary() {
+        const freight = Number(order.freight || 0);
         let html = row('商品金额', '¥' + money(order.totalAmount)) +
             row('优惠减免', '-¥' + money(order.discountAmount)) +
             (order.couponAmount > 0 ? row('其中优惠券', '-¥' + money(order.couponAmount)) : '') +
-            row('配送费用', '¥' + money(order.freight)) +
+            row('配送费用' + (order.deliveryMethodName ? ' · ' + esc(order.deliveryMethodName) : ''),
+                freight > 0 ? '¥' + money(freight) : '免运费') +
+            (order.card ? row('贺卡定制', '<span style="color:var(--hu-accent-deep)">免费</span>') : '') +
             '<div class="hu-summary__total">' + row('实付款', '<span class="hu-price"><small>¥</small>' + money(order.payAmount) + '</span>') + '</div>';
         if (order.pointsEarned) {
             html += row('本单可得积分', '+' + order.pointsEarned);
+        }
+        if (order.pointsUsed) {
+            html += row('积分抵扣', '-¥' + (order.pointsUsed / 100).toFixed(2) + '（' + order.pointsUsed + ' 积分）');
         }
         $('#summaryRows').html(html);
     }
@@ -184,12 +380,33 @@
     function renderBoxes() {
         $('#receiverBox').html(
             specTerm('收货人', esc(order.receiverName || '-') + '　' + esc(order.receiverPhone || '')) +
-            specTerm('详细地址', esc(order.receiverAddress || '-')));
+            specTerm('详细地址', esc(order.receiverAddress || '-')) +
+            (order.deliveryMethodName ? specTerm('配送方式', esc(order.deliveryMethodName)
+                + (order.deliveryWeight ? '<span class="hu-muted" style="font-size:12px"> · 计费 ' +
+                esc(order.deliveryWeight) + ' kg</span>' : '')) : '') +
+            (order.expectedArriveAt ? specTerm(order.deliveryMethod === 'self_pickup' ? '预计可取' : '预计送达',
+                esc(fmtArrive(order.expectedArriveAt))) : '') +
+            (slotWindow(order) ? specTerm('预约时段', '<span class="hu-c-slot"><i class="fa fa-clock-o"></i>'
+                + esc(slotWindow(order)) + '</span>') : ''));
+
+        // 送达偏好与联系方式徽标（C16）：图标来自服务端字典，门店自提不显示
+        const badges = [];
+        if (order.deliveryPreferenceName) {
+            badges.push('<span class="hu-c-badge"><i class="fa ' + esc(order.deliveryPreferenceIcon || 'fa-map-pin')
+                + '"></i>' + esc(order.deliveryPreferenceName) + '</span>');
+        }
+        if (order.contactPreferenceName) {
+            badges.push('<span class="hu-c-badge"><i class="fa ' + esc(order.contactPreferenceIcon || 'fa-phone')
+                + '"></i>' + esc(order.contactPreferenceName) + '</span>');
+        }
+        $('#prefBadges').html(badges.join(''));
+
         let html = specTerm('订单编号', esc(order.orderNo)) +
             specTerm('下单时间', time(order.createdAt)) +
             specTerm('支付时间', time(order.payTime)) +
-            specTerm('支付方式', esc(PAY_METHOD[order.payMethod] || order.payMethod || '-')) +
+            specTerm('支付方式', esc(order.payMethodName || order.payMethod || '未支付')) +
             specTerm('发货时间', time(order.shipTime)) +
+            specTerm('签收时间', time(order.deliverTime)) +
             specTerm('完成时间', time(order.finishTime));
         if (order.expressNo) {
             html += specTerm('物流信息', esc((order.expressCompany || '') + ' ' + order.expressNo));
@@ -198,9 +415,81 @@
             html += specTerm('订单备注', esc(order.remark));
         }
         if (order.cancelReason) {
-            html += specTerm('取消原因', esc(order.cancelReason));
+            html += specTerm(order.status === 'refunded' ? '退款原因' : '取消原因', esc(order.cancelReason));
         }
         $('#orderBox').html(html);
+    }
+
+    /** 退款进度（C19）：申请 → 受理 → 打款，驳回与撤销也留痕 */
+    function renderRefund() {
+        const r = order.refund;
+        if (!r) {
+            $('#refundPanel').hide();
+            return;
+        }
+        const nodes = [];
+        nodes.push({done: true, title: '提交退款申请', sub: time(r.requestedAt) + (r.reason ? ' · ' + r.reason : '')});
+        if (r.acceptedAt) {
+            nodes.push({done: true, title: '门店已受理', sub: time(r.acceptedAt) + (r.reviewer ? ' · ' + r.reviewer : '')});
+        } else if (r.status !== 'refunded') {
+            nodes.push({done: false, title: '门店受理', sub: '一般 1 个工作日内'});
+        }
+        if (r.status === 'refunded') {
+            nodes.push({done: true, title: '退款已到账', sub: time(r.settledAt) + ' · ¥' + money(r.amount)});
+        } else if (r.status === 'rejected') {
+            nodes.push({done: false, bad: true, title: '申请被驳回', sub: r.reviewNote || '门店未通过本次申请'});
+        } else if (r.status === 'revoked') {
+            nodes.push({done: false, bad: true, title: '申请已撤销', sub: '订单继续按原计划履约'});
+        } else {
+            nodes.push({done: false, title: '退款到账', sub: r.hint || '通过后原路退回'});
+        }
+        $('#refundFlow').html(nodes.map(function (n) {
+            return '<li class="' + (n.done ? 'is-done' : '') + (n.bad ? ' is-bad' : '') + '">' +
+                '<b>' + esc(n.title) + '</b><span>' + esc(n.sub) + '</span></li>';
+        }).join(''));
+        $('#refundActions').html(order.canRevokeRefund
+            ? '<button class="hu-btn hu-btn--plain hu-btn--sm" data-act="revoke-refund">撤销退款申请</button>' : '');
+        $('#refundPanel').show();
+    }
+
+    /** 时间轴倒序展示，最新节点高亮；历史订单没有轨迹时整块隐藏 */
+    function renderTrace() {
+        const nodes = (order.traces || []).slice().reverse();
+        if (!nodes.length) {
+            $('#traceWrap').hide();
+            return;
+        }
+        let html = '';
+        nodes.forEach(function (t, i) {
+            html += '<li class="hu-trace__item is-done' + (i === 0 ? ' is-last' : '') + '">' +
+                '<div class="hu-trace__title">' + esc(t.title) +
+                '<span class="hu-trace__time">' + time(t.createdAt) + '</span></div>' +
+                (t.description ? '<div class="hu-trace__desc">' + esc(t.description) + '</div>' : '') +
+                (t.operator ? '<span class="hu-trace__op">' + esc(t.operator) + '</span>' : '') +
+                '</li>';
+        });
+        $('#orderTrace').html(html);
+        $('#traceWrap').show();
+    }
+
+    function renderCard() {
+        const card = order.card;
+        if (!card) {
+            $('#cardPanel').hide();
+            return;
+        }
+        $('#cardPreview').attr('class', 'hu-gcard hu-gcard--' + (card.style || 'classic'));
+        $('#cardPreview .hu-gcard__to').text(card.recipient ? '致 ' + card.recipient : '致 ——');
+        $('#cardPreview .hu-gcard__msg')
+            .text(card.message || '（未填写留言，花艺师会附一张空白卡）')
+            .toggleClass('is-empty', !card.message);
+        $('#cardPreview .hu-gcard__sign').text(card.signature ? '—— ' + card.signature : '');
+        $('#cardMeta').text('样式「' + (card.styleName || '经典烫金') + '」· 花艺师手书写，随花一同送达');
+        // 打印内容同步落到打印节点，@media print 只渲染这一块
+        $('#printTo').text(card.recipient ? '致 ' + card.recipient : '致 收花人');
+        $('#printMsg').text(card.message || '');
+        $('#printSign').text(card.signature ? '—— ' + card.signature : '');
+        $('#cardPanel').show();
     }
 
     function renderReviews() {
@@ -226,15 +515,76 @@
         $('#reviewPanel').show();
     }
 
+    /** 路线方式图标：与服务端 mode 字典一一对应 */
+    function routeIcon(mode) {
+        return mode === 'air' ? 'fa-plane' : mode === 'sea' ? 'fa-ship'
+            : mode === 'last_mile' ? 'fa-bicycle' : 'fa-truck';
+    }
+
+    /**
+     * 运输路线：数据来自 /api/map/order/{id}/route。
+     * 取消/退款单与拿不到坐标的订单整块隐藏——订单页不留空壳，也不给已终止的订单画「计划路线」
+     */
+    function loadRoute() {
+        if (!ORDER_ID || !order || order.status === 'cancelled' || order.status === 'refunded') {
+            $('#routePanel').hide();
+            return;
+        }
+        $.getJSON('/api/map/order/' + ORDER_ID + '/route').done(function (res) {
+            const route = res && res.data;
+            if (!route || !route.available || !(route.segments || []).length) {
+                $('#routePanel').hide();
+                return;
+            }
+            $('#routeMore').attr('href', '/flower-map?layer=route&order=' + ORDER_ID);
+            $('#routeMeta').text('全程约 ' + (route.totalKm || 0) + ' 公里 · ' + (route.deliveryMethodName || '')
+                + (route.resolution === 'geocode' ? ' · 已定位到门牌' : ' · 按城市质心绘制'));
+            $('#routeList').html(route.segments.map(function (s) {
+                const state = s.passed ? 'done' : (s.current ? 'current' : 'todo');
+                return '<div class="hu-seg hu-seg--' + state + '">' +
+                    '<span class="hu-seg__mode"><i class="fa ' + routeIcon(s.mode) + '"></i> ' + esc(s.modeLabel) + '</span>' +
+                    '<b>' + esc(s.from) + ' <i class="fa fa-long-arrow-right"></i> ' + esc(s.to) + '</b>' +
+                    '<em>' + s.km + ' 公里</em></div>';
+            }).join(''));
+            $('#routePanel').show();
+        });
+        loadWeather();
+    }
+
+    /** 配送城市天气与养护提示；查不到就整条不显示 */
+    function loadWeather() {
+        const address = order && order.receiverAddress;
+        if (!address) {
+            return;
+        }
+        $.getJSON('/api/map/weather?address=' + encodeURIComponent(address)).done(function (res) {
+            const card = res && res.data;
+            if (!card) {
+                return;
+            }
+            $('#routeWeather').show().attr('class', 'hu-weather hu-weather--' + esc(card.level)).html(
+                '<b>' + esc(card.city || '') + ' 今日 ' + esc(card.weather) + ' ' + esc(card.temperature) + '℃</b>' +
+                '<span>湿度 ' + esc(card.humidity) + '% · ' + esc(card.windDirection) + '风 ' + esc(card.windPower) + ' 级 · ' + esc(card.reportTime) + '</span>' +
+                '<ul>' + (card.tips || []).map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' +
+                (card.recommendColdChain ? '<em>该天气下我们优先使用冰袋与保温箱，也可改选「空运冷链」</em>' : ''));
+        });
+    }
+
     function render() {
         $('#orderNoLine').text('订单号 ' + order.orderNo);
         $('#statusPill').text(order.statusLabel || order.status)
             .attr('class', 'hu-pill ' + (STATUS_PILL[order.status] || 'hu-pill--muted'));
         renderSteps();
         renderActions();
+        renderAlerts();
+        startCountdown();
+        loadRoute();
+        renderTrace();
+        renderCard();
         renderItems();
         renderSummary();
         renderBoxes();
+        renderRefund();
         renderReviews();
     }
 
@@ -251,24 +601,136 @@
         });
     }
 
+    /* ---------- 二次确认弹窗（C06/C19 共用） ---------- */
+    let dialogCtx = null;
+
+    function openDialog(cfg) {
+        dialogCtx = cfg;
+        $('#cDlgTitle').text(cfg.title);
+        $('#cDlgSub').text(cfg.sub || '');
+        $('#cDlgReasonLabel').text(cfg.reasonLabel || '请选择原因');
+        $('#cDlgText').val('').attr('placeholder', cfg.placeholder || '再写一句具体情况，门店处理会更快');
+        const reasons = cfg.reasons || [];
+        $('#cDlgReasons').html(reasons.map(function (r) {
+            return '<button type="button" class="hu-chip" data-reason="' + esc(r.code) + '">' + esc(r.label) + '</button>';
+        }).join(''));
+        if (cfg.amount != null) {
+            $('#cDlgAmount').show().find('b').text('¥' + money(cfg.amount));
+        } else {
+            $('#cDlgAmount').hide();
+        }
+        $('#cDlgOk').text(cfg.submitLabel || '确认').prop('disabled', false);
+        $('#cMask').addClass('is-open');
+    }
+
+    function closeDialog() {
+        $('#cMask').removeClass('is-open');
+        dialogCtx = null;
+    }
+
+    function submitDialog(btn) {
+        if (!dialogCtx) return;
+        const code = String($('#cMask .hu-chip.is-active').data('reason') || '');
+        const text = String($('#cDlgText').val() || '').trim();
+        if (dialogCtx.reasonRequired && !code && !text) {
+            window.huToast('请选择或填写原因', 'err');
+            return;
+        }
+        btn.prop('disabled', true);
+        dialogCtx.onSubmit(code, text, btn);
+    }
+
+    /** 提交成功后统一刷新：详情里的状态、按钮与提示条都以服务端回包为准 */
+    function afterAction(data, msg) {
+        if (data) {
+            order = data;
+            render();
+        } else {
+            load();
+        }
+        if (msg) window.huToast(msg, 'ok');
+    }
+
     $(document).ready(function () {
         load();
 
-        $('#orderActions').on('click', '[data-act]', function () {
+        $('#orderActions, #orderAlerts, #refundActions').on('click', '[data-act]', function () {
             const act = $(this).data('act');
             if (act === 'pay') {
                 if (!confirm('确认支付本单？演示环境将直接标记为已支付')) return;
                 huApi({url: '/api/orders/' + ORDER_ID + '/pay', type: 'POST', data: {payMethod: 'wechat'},
-                    ok: function (data) { order = data; render(); window.huToast('支付成功，花艺师开始为你配花', 'ok'); }});
-            } else if (act === 'cancel') {
-                if (!confirm('取消后库存将回补且不可恢复，确认取消？')) return;
-                huApi({url: '/api/orders/' + ORDER_ID + '/cancel', type: 'POST', data: {reason: '用户主动取消'},
-                    ok: function (data) { order = data; render(); window.huToast('订单已取消', 'ok'); }});
+                    ok: function (data) { afterAction(data, '支付成功，花艺师开始为你配花'); }});
             } else if (act === 'receipt') {
                 if (!confirm('确认已收到花礼？确认后可为本次体验写评价')) return;
                 huApi({url: '/api/orders/' + ORDER_ID + '/confirm-receipt', type: 'POST', data: {},
-                    ok: function (data) { order = data; render(); window.huToast('已确认收货，感谢你的信任', 'ok'); }});
+                    ok: function (data) { afterAction(data, '已确认收货，感谢你的信任'); }});
+            } else if (act === 'cancel') {
+                openDialog({
+                    title: '确认取消这笔订单？',
+                    sub: '取消后占用的库存、优惠券与积分将立即回退，本单不可恢复。',
+                    reasons: order.cancelReasons,
+                    reasonLabel: '取消原因（必选一项或填写说明）',
+                    reasonRequired: true,
+                    submitLabel: '确认取消',
+                    amount: null,
+                    placeholder: '例如：临时改行程，这周不需要了',
+                    onSubmit: function (code, text, btn) {
+                        huApi({
+                            url: '/api/orders/' + ORDER_ID + '/cancel', type: 'POST',
+                            data: {reasonCode: code, reasonText: text},
+                            ok: function (data) { closeDialog(); btn.prop('disabled', false); afterAction(data, '订单已取消'); },
+                            fail: function () { btn.prop('disabled', false); }
+                        });
+                    }
+                });
+            } else if (act === 'refund') {
+                openDialog({
+                    title: '申请退款',
+                    sub: '退款金额按本单实付核定，门店受理并确认后原路退回。',
+                    reasons: order.refundReasons,
+                    reasonLabel: '退款原因（必选一项或填写说明）',
+                    reasonRequired: true,
+                    submitLabel: '提交申请',
+                    amount: order.payAmount,
+                    placeholder: '例如：玫瑰有 3 朵花瓣发黑，已拍照',
+                    onSubmit: function (code, text, btn) {
+                        huApi({
+                            url: '/api/orders/' + ORDER_ID + '/refund', type: 'POST',
+                            data: {reasonCode: code, reasonText: text},
+                            ok: function (data) { closeDialog(); btn.prop('disabled', false); afterAction(data, '退款申请已提交'); },
+                            fail: function () { btn.prop('disabled', false); }
+                        });
+                    }
+                });
+            } else if (act === 'revoke-refund') {
+                if (!confirm('撤销后订单继续按原计划履约，需要时可在详情页再次申请。确认撤销？')) return;
+                huApi({url: '/api/orders/' + ORDER_ID + '/refund/revoke', type: 'POST', data: {},
+                    ok: function (data) { afterAction(data, '退款申请已撤销'); }});
+            } else if (act === 'reorder') {
+                reorder($(this));
             }
+        });
+
+        $('#cMask').on('click', '[data-close]', closeDialog);
+        $('#cMask').on('click', '.hu-chip', function () {
+            $(this).toggleClass('is-active').siblings().removeClass('is-active');
+        });
+        $('#cDlgOk').on('click', function () {
+            submitDialog($(this));
+        });
+
+        $('#orderAlerts').on('click', '[data-scroll-review]', function () {
+            const panel = document.getElementById('reviewPanel');
+            if (panel) panel.scrollIntoView({behavior: 'smooth'});
+        });
+
+        // 贺卡打印：只让打印节点出现在纸上，打完恢复屏显
+        $('#printCard').on('click', function () {
+            document.body.classList.add('hu-print-card');
+            window.print();
+        });
+        $(window).on('afterprint', function () {
+            document.body.classList.remove('hu-print-card');
         });
 
         $('#reviewList').on('click', '[data-star]', function () {
@@ -301,6 +763,34 @@
             });
         });
     });
+
+    /** 再次购买（B24 接线）：把这一单的花礼加回购物车，回执逐条给钳制与跳过原因 */
+    function reorder(btn) {
+        btn.prop('disabled', true);
+        huApi({
+            url: '/api/cart/reorder/' + ORDER_ID, type: 'POST', data: {},
+            ok: function (data, res) {
+                btn.prop('disabled', false);
+                window.huToast(res.notice || '已加回购物车', 'ok');
+                if (res.itemCount != null) $('.hu-cart-count').text(res.itemCount).show();
+                const adjusted = res.adjusted || [];
+                const skipped = res.skipped || [];
+                let html = '';
+                if (adjusted.length) {
+                    html += '<div class="hu-c-report"><b>已按库存调整</b><ul>'
+                        + adjusted.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>';
+                }
+                if (skipped.length) {
+                    html += '<div class="hu-c-report hu-c-report--skip"><b>未能加购</b><ul>'
+                        + skipped.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>';
+                }
+                if (html) html = '<div class="hu-panel hu-panel--pad">'
+                    + '<h3 class="hu-side-title">再次购买回执</h3>' + html + '</div>';
+                $('#reorderReport').html(html);
+            },
+            fail: function () { btn.prop('disabled', false); }
+        });
+    }
 </script>
 </body>
 </html>

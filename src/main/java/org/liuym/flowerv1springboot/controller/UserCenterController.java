@@ -31,6 +31,12 @@ public class UserCenterController {
         return "user/coupons";
     }
 
+    /** 积分明细页（D20） */
+    @GetMapping("/user/points")
+    public String points() {
+        return "user/points";
+    }
+
     @GetMapping("/user/settings")
     public String settings() {
         return "user/settings";

@@ -10,6 +10,10 @@ import org.liuym.flowerv1springboot.model.User;
 public final class CurrentUser {
 
     public static final String SESSION_KEY = "loginUser";
+    /** 本次会话对应的登录设备 token（D18），登录成功时写入 */
+    public static final String DEVICE_TOKEN_KEY = "loginDeviceToken";
+    /** 「记住我」续登失败提示（D19），由 RememberMeFilter 写入、登录页消费后清除 */
+    public static final String REMEMBER_NOTICE_KEY = "rememberMeNotice";
 
     private CurrentUser() {
     }

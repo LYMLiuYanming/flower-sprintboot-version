@@ -1,0 +1,163 @@
+/* f-a.css · 功能批次样式扩展（A-L 分组专用，勿跨组改动本文件） */
+
+/* ============ A 组：商品与检索 ============ */
+
+/* A11 价格区间提示：真实统计值，避免用户以为滑块只能到写死的 599 */
+.hu-pricerange { margin: 10px 0 0; font-size: 12px; color: var(--hu-muted); line-height: 1.6; }
+.hu-pricerange b { color: var(--hu-ink-soft); font-variant-numeric: tabular-nums; }
+
+/* A20/A19 角标：告警与售罄要和「热销/新品」在视觉上分层 */
+.hu-tag--warn { background: rgba(192, 138, 51, .94); }
+.hu-tag--off { background: rgba(16, 22, 35, .72); }
+.hu-tag--rank { background: var(--hu-grad-ink); letter-spacing: .1em; }
+
+/* A14 列表卡片上的花语引用：勾了「已写花语」才出现，不与副标题抢行 */
+.hu-product__lang {
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--hu-muted);
+    display: flex;
+    gap: 6px;
+}
+.hu-product__lang i { color: var(--hu-accent); font-size: 11px; margin-top: 3px; }
+
+/* A24 分类瓦片：图标 + 名称 + 描述 + 在售款数，替代原来只有一行文字的列表 */
+.hu-cattile {
+    display: grid;
+    grid-template-columns: 34px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 12px !important;
+}
+.hu-cattile__icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    display: grid;
+    place-items: center;
+    background: var(--hu-accent-soft);
+    color: var(--hu-accent-deep);
+    font-size: 15px;
+}
+.hu-cattile.is-active .hu-cattile__icon { background: #fff; }
+.hu-cattile__main { min-width: 0; display: block; }
+.hu-cattile__main b { display: block; font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.hu-cattile__main small {
+    display: block;
+    margin-top: 2px;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--hu-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.hu-cattile.is-active .hu-cattile__main small { color: var(--hu-accent-deep); opacity: .8; }
+.hu-cattile__count {
+    font-style: normal;
+    font-size: 11.5px;
+    color: var(--hu-muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.hu-catlist__sub a { padding: 8px 12px 8px 46px; font-size: 13px; }
+.hu-catlist__sub a em { margin-left: auto; font-style: normal; font-size: 11.5px; color: var(--hu-muted); }
+
+/* A10 空结果兜底：说明「为什么给你这些」再递上同类目热卖 */
+.hu-fallback {
+    margin-top: 28px;
+    padding: 22px 22px 26px;
+    background: var(--hu-surface);
+    border: 1px solid var(--hu-line);
+    border-radius: var(--hu-radius-lg);
+    box-shadow: var(--hu-shadow-sm);
+}
+.hu-fallback__head { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+.hu-fallback__head i {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: rgba(192, 138, 51, .12);
+    color: var(--hu-gold);
+    font-size: 16px;
+}
+.hu-fallback__head strong { display: block; font-size: 15px; color: var(--hu-ink); }
+.hu-fallback__head span { display: block; margin-top: 3px; font-size: 12.5px; }
+
+/* A26 首页榜单口径说明 */
+.hu-rank-note { margin: 14px 0 0; font-size: 12px; color: var(--hu-muted); }
+
+/* A14/A17/A18/A16 详情页内容块 */
+.hu-pdp__subtitle { margin: -6px 0 0; font-size: 14.5px; color: var(--hu-ink-soft); letter-spacing: -.01em; }
+.hu-pdp__flowerlang {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    margin: 14px 0 0;
+    padding: 12px 14px;
+    background: var(--hu-accent-soft);
+    border-left: 3px solid var(--hu-accent);
+    border-radius: 0 var(--hu-radius) var(--hu-radius) 0;
+    font-size: 13.5px;
+    line-height: 1.75;
+    color: var(--hu-ink-soft);
+}
+.hu-pdp__flowerlang i { color: var(--hu-accent); margin-top: 3px; font-size: 12px; }
+.hu-pdp__badges { position: static; display: flex; gap: 6px; margin: 14px 0 0; }
+.hu-pdp__badges .hu-tag { backdrop-filter: none; }
+
+.hu-scenes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 18px; }
+.hu-scenes__label { font-size: 12px; color: var(--hu-muted); letter-spacing: .06em; }
+.hu-chip--tight { padding: 5px 11px; font-size: 12.5px; }
+
+.hu-caretip {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 16px 18px;
+    background: var(--hu-surface-alt);
+    border: 1px solid var(--hu-line);
+    border-radius: var(--hu-radius);
+}
+.hu-caretip i { color: var(--hu-accent); font-size: 16px; margin-top: 2px; }
+.hu-caretip p { margin: 0; font-size: 13.5px; line-height: 1.85; color: var(--hu-ink-soft); }
+
+/* A21 下架空态：品牌化面板，而不是白页或裸 404 */
+.hu-offline {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    margin: 22px 0 4px;
+    padding: 20px 22px;
+    background: linear-gradient(145deg, #f7f8fa, var(--hu-accent-soft));
+    border: 1px solid var(--hu-line-strong);
+    border-radius: var(--hu-radius-lg);
+}
+.hu-offline__icon {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    background: #fff;
+    color: var(--hu-muted);
+    font-size: 19px;
+    box-shadow: var(--hu-shadow-sm);
+}
+.hu-offline__main { min-width: 0; }
+.hu-offline__main strong { display: block; font-size: 16px; color: var(--hu-ink); }
+.hu-offline__main p { margin: 6px 0 0; font-size: 13px; line-height: 1.8; color: var(--hu-ink-soft); }
+.hu-offline__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+
+/* A12/A13 推荐位：与主内容拉开层级 */
+.hu-reco { padding-bottom: 4px; }
+
+@media (max-width: 640px) {
+    .hu-cattile { grid-template-columns: 30px 1fr; }
+    .hu-cattile__count { display: none; }
+    .hu-offline { flex-direction: column; }
+}

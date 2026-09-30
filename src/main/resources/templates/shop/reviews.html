@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>晒单广场 · 花语轩 HUAYUXUAN</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<div class="hu-pagehead">
+    <div class="hu-container hu-pagehead__row">
+        <div>
+            <div class="hu-crumb"><a href="/index">首页</a> / <span>晒单广场</span></div>
+            <h1>真实晒单 · 每一束都有人接住</h1>
+            <p class="hu-pagehead__sub">
+                只收录已完成订单的顾客评价，带图与追评都会原样展示；评分与标签占比由服务端实时汇总。
+            </p>
+        </div>
+        <div class="hu-pagehead__aside">
+            <a class="hu-btn hu-btn--ghost" href="/knowledge"><i class="fa fa-book"></i> 花语知识库</a>
+            <a class="hu-btn hu-btn--solid" href="/products"><i class="fa fa-shopping-bag"></i> 去挑一束</a>
+        </div>
+    </div>
+</div>
+
+<div class="hu-container" style="padding-bottom:64px">
+    <!-- 筛选：分类（服务端下发） + 星级 + 有图 + 标签 + 排序 -->
+    <div class="hu-panel hu-sc__toolbar">
+        <div class="hu-sc__row">
+            <span class="hu-sc__label">按品类</span>
+            <div class="hu-chips" id="scCats">
+                <button type="button" class="hu-chip is-active" data-cat="">全部</button>
+                <button type="button" class="hu-chip" th:each="c : ${categories}"
+                        th:attr="data-cat=${c.id}" th:text="${c.name}">玫瑰</button>
+            </div>
+        </div>
+        <div class="hu-sc__row">
+            <span class="hu-sc__label">印象标签</span>
+            <div class="hu-chips" id="scTags"><span class="hu-muted" style="font-size:13px">加载中…</span></div>
+        </div>
+        <div class="hu-sc__row">
+            <span class="hu-sc__label">筛选</span>
+            <div class="hu-chips" id="scStars">
+                <button type="button" class="hu-chip is-active" data-star="0">全部星级</button>
+                <button type="button" class="hu-chip" data-star="5">5 星</button>
+                <button type="button" class="hu-chip" data-star="4">4 星及以上</button>
+            </div>
+            <div class="hu-chips" id="scExtra">
+                <button type="button" class="hu-chip" data-img="1"><i class="fa fa-picture-o"></i> 只看带图</button>
+                <button type="button" class="hu-chip is-active" data-sort="newest">最新在前</button>
+                <button type="button" class="hu-chip" data-sort="rating-desc">评分高在前</button>
+            </div>
+        </div>
+        <div class="hu-sc__foot">
+            <span id="scMeta" class="hu-muted" style="font-size:13px">正在读取晒单…</span>
+            <button type="button" class="hu-btn hu-btn--plain hu-btn--sm" id="scClear">清除筛选</button>
+        </div>
+    </div>
+
+    <div class="hu-sc__grid" id="scGrid"></div>
+
+    <div class="hu-empty" id="scEmpty" hidden>
+        <i class="fa fa-camera-o"></i>
+        <strong>这个条件下还没有晒单</strong>
+        <span style="font-size:14px">换一个品类或星级看看，带图评价会陆续出现</span>
+    </div>
+
+    <div class="hu-sc__more">
+        <button type="button" class="hu-btn hu-btn--ghost" id="scLoad" hidden>加载更多</button>
+    </div>
+</div>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<script th:inline="javascript">
+    var INIT_CAT = /*[[${selectedCategoryId}]]*/ '';
+    var INIT_TAG = /*[[${selectedTag}]]*/ '';
+</script>
+<script>
+    (function ($) {
+        'use strict';
+        var state = {categoryId: INIT_CAT || '', tag: INIT_TAG || '', minRating: null, hasImage: false,
+            sort: 'newest', page: 1, limit: 12, total: 0};
+
+        function esc(s) { return $('<i>').text(s == null ? '' : String(s)).html(); }
+        function safeUrl(u) {
+            if (!u) return '';
+            return u.charAt(0) === '/' || /^https?:\/\//i.test(u) ? u : '';
+        }
+        function starsOf(n) {
+            var s = '';
+            for (var i = 1; i <= 5; i++) s += '<i class="fa fa-star' + (i <= n ? '' : '-o') + '"></i>';
+            return s;
+        }
+        function day(v) { return (v || '').toString().replace('T', ' ').slice(0, 10); }
+
+        /** 标签瓦片：占比来自全站评价，点击即筛选 */
+        function loadTags() {
+            $.getJSON('/api/showcase/tags', function (res) {
+                if (res.code !== 200 || !res.data) return;
+                $('#scTags').html(res.data.map(function (t) {
+                    return '<button type="button" class="hu-chip" data-tag="' + esc(t.code) + '">' + esc(t.label) + '</button>';
+                }).join(''));
+            });
+        }
+
+        function tile(r) {
+            var imgs = (r.images || []).filter(safeUrl).slice(0, 4).map(function (u) {
+                return '<img src="' + esc(u) + '" alt="买家实拍" loading="lazy">';
+            }).join('');
+            var pills = (r.tagLabels || []).slice(0, 3).map(function (t) {
+                return '<span class="hu-rp__pill">' + esc(t) + '</span>';
+            }).join('');
+            return '<article class="hu-sc__card">' +
+                '<a class="hu-sc__prod" href="/product/' + esc(r.productId) + '">' +
+                '<img src="' + esc(safeUrl(r.productImage) || '/img/product-placeholder.svg') + '" alt="' + esc(r.productName) + '" loading="lazy">' +
+                '<span class="hu-sc__prodname">' + esc(r.productName || '') + '</span>' +
+                (r.categoryName ? '<span class="hu-sc__prodcate">' + esc(r.categoryName) + '</span>' : '') +
+                '</a>' +
+                '<div class="hu-sc__body">' +
+                '<div class="hu-sc__head"><span class="hu-sc__who">' + esc(r.userName || '匿名顾客') + '</span>' +
+                '<span class="hu-sc__star">' + starsOf(r.rating) + '</span></div>' +
+                '<p class="hu-sc__text">' + esc(r.content || '这位顾客只留下了图片') + '</p>' +
+                (imgs ? '<div class="hu-sc__imgs">' + imgs + '</div>' : '') +
+                (pills ? '<div class="hu-sc__pills">' + pills + '</div>' : '') +
+                (r.appendContent ? '<p class="hu-sc__appended"><i class="fa fa-reply"></i> 有追评</p>' : '') +
+                '<span class="hu-sc__time">' + day(r.createdAt) + '</span>' +
+                '</div></article>';
+        }
+
+        function load(append) {
+            var params = {page: state.page, limit: state.limit, sort: state.sort};
+            if (state.categoryId) params.categoryId = state.categoryId;
+            if (state.tag) params.tag = state.tag;
+            if (state.minRating) params.minRating = state.minRating;
+            if (state.hasImage) params.hasImage = true;
+            $.getJSON('/api/showcase/stream', params, function (res) {
+                if (res.code !== 200) {
+                    $('#scMeta').text(res.msg || '晒单读取失败');
+                    return;
+                }
+                var list = res.data || [];
+                state.total = Number(res.count || 0);
+                var $grid = $('#scGrid');
+                if (append) $grid.append(list.map(tile).join(''));
+                else $grid.html(list.map(tile).join(''));
+                $('#scEmpty').prop('hidden', state.total > 0);
+                var shown = $grid.children().length;
+                $('#scMeta').text('共 ' + state.total + ' 条晒单，已显示 ' + shown + ' 条');
+                $('#scLoad').prop('hidden', shown >= state.total);
+            });
+        }
+
+        function reset() {
+            state.page = 1;
+            load(false);
+        }
+
+        $(document).ready(function () {
+            loadTags();
+            reset();
+
+            $('#scCats').on('click', '.hu-chip', function () {
+                $('#scCats .hu-chip').removeClass('is-active');
+                $(this).addClass('is-active');
+                state.categoryId = String($(this).data('cat') || '');
+                reset();
+            });
+            $('#scTags').on('click', '.hu-chip', function () {
+                var tag = String($(this).data('tag'));
+                var on = $(this).hasClass('is-active');
+                $('#scTags .hu-chip').removeClass('is-active');
+                state.tag = on ? '' : tag;
+                if (!on) $(this).addClass('is-active');
+                reset();
+            });
+            $('#scStars').on('click', '.hu-chip', function () {
+                var star = Number($(this).data('star'));
+                $('#scStars .hu-chip').removeClass('is-active');
+                $(this).addClass('is-active');
+                state.minRating = star === 0 ? null : star;
+                reset();
+            });
+            $('#scExtra').on('click', '[data-img]', function () {
+                state.hasImage = !state.hasImage;
+                $(this).toggleClass('is-active', state.hasImage);
+                reset();
+            });
+            $('#scExtra').on('click', '[data-sort]', function () {
+                state.sort = String($(this).data('sort'));
+                $('#scExtra [data-sort]').removeClass('is-active');
+                $(this).addClass('is-active');
+                reset();
+            });
+            $('#scClear').on('click', function () {
+                state.categoryId = '';
+                state.tag = '';
+                state.minRating = null;
+                state.hasImage = false;
+                state.sort = 'newest';
+                $('#scCats .hu-chip').removeClass('is-active').first().addClass('is-active');
+                $('#scTags .hu-chip').removeClass('is-active');
+                $('#scStars .hu-chip').removeClass('is-active').first().addClass('is-active');
+                $('#scExtra [data-img]').removeClass('is-active');
+                $('#scExtra [data-sort]').removeClass('is-active');
+                $('#scExtra [data-sort=newest]').addClass('is-active');
+                reset();
+            });
+            $('#scLoad').on('click', function () {
+                state.page += 1;
+                load(true);
+            });
+        });
+    })(jQuery);
+</script>
+</body>
+</html>

@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>消息模板与发送记录 - 花语轩管理后台</title>
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/css/f-u.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
+</head>
+<body>
+<div class="layui-layout layui-layout-admin">
+    <div class="layui-header header" style="background: #211f1a;">
+        <div class="logo"><i class="fas fa-bell"></i> 花语轩管理后台</div>
+        <div class="user-info">
+            <span><i class="fas fa-user-shield"></i> <span th:text="${operator}">管理员</span></span>
+            <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+        </div>
+    </div>
+
+    <div class="layui-side layui-bg-black" style="top: 60px;width: 200px;">
+        <div class="layui-side-scroll">
+            <ul class="layui-nav layui-nav-tree" lay-filter="nav">
+                <li class="layui-nav-item"><a href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a></li>
+                <li class="layui-nav-item"><a href="/admin/order-list"><i class="fas fa-list-alt"></i> 订单列表</a></li>
+                <li class="layui-nav-item layui-nav-itemed">
+                    <a href="javascript:;"><i class="fas fa-comments"></i> 客服与消息</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/ticket-list"><i class="fas fa-ticket-alt"></i> 工单队列</a></dd>
+                        <dd><a href="/admin/message-list"><i class="fas fa-bell"></i> 消息模板与记录</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item"><a href="/admin/audit-list"><i class="fas fa-history"></i> 操作日志</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="layui-body" style="left: 200px;background: #f1f3f6;">
+        <div class="content-body" style="padding: 18px;">
+            <div class="hu-u-admin-cards" id="overviewCards"></div>
+
+            <div class="layui-card">
+                <div class="layui-card-header">
+                    <i class="fas fa-bell"></i> 消息通知中心
+                    <span style="float:right;color:#8a8578;font-size:12px">站内信是唯一出口：短信与邮件通道未开通，本站不外呼任何信息</span>
+                </div>
+                <div class="layui-card-body">
+                    <div class="layui-tab layui-tab-brief" lay-filter="msgTab" style="margin-top:-6px">
+                        <ul class="layui-tab-title">
+                            <li class="layui-this">消息模板</li>
+                            <li>发送记录</li>
+                            <li>延期队列</li>
+                            <li>群发台账</li>
+                            <li>事件接入</li>
+                            <li>定时与归档</li>
+                        </ul>
+                        <div class="layui-tab-content" style="padding-top:14px">
+
+                            <!-- U07 模板 -->
+                            <div class="layui-tab-item layui-show">
+                                <div class="layui-form" style="margin-bottom:12px">
+                                    <div class="layui-inline"><input type="text" id="tKeyword" class="layui-input"
+                                                                    placeholder="模板编码 / 标题" style="width:200px"></div>
+                                    <div class="layui-inline">
+                                        <select id="tCategory" style="width:150px">
+                                            <option value="">全部类别</option>
+                                            <option value="trade">交易提醒</option>
+                                            <option value="marketing">营销活动</option>
+                                            <option value="system">系统通知</option>
+                                            <option value="ticket">客服工单</option>
+                                        </select>
+                                    </div>
+                                    <div class="layui-inline">
+                                        <label class="hu-u-ad-inline"><input type="checkbox" id="tEnabledOnly"> 只看启用</label>
+                                    </div>
+                                    <button class="layui-btn layui-btn-sm" id="tSearch"><i class="fas fa-search"></i> 查询</button>
+                                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="tReset">重置</button>
+                                    <button class="layui-btn layui-btn-sm layui-btn-normal" id="tAdd"><i class="fas fa-plus"></i> 新建模板</button>
+                                </div>
+                                <table class="layui-hide" id="tplTable" lay-filter="tplTable"></table>
+                            </div>
+
+                            <!-- U04/U23 发送记录 -->
+                            <div class="layui-tab-item">
+                                <div class="layui-form" style="margin-bottom:12px">
+                                    <div class="layui-inline"><input type="text" id="rKeyword" class="layui-input"
+                                                                    placeholder="标题 / 正文关键词" style="width:200px"></div>
+                                    <div class="layui-inline">
+                                        <select id="rCategory" style="width:140px">
+                                            <option value="">全部类别</option>
+                                            <option value="trade">交易提醒</option>
+                                            <option value="marketing">营销活动</option>
+                                            <option value="system">系统通知</option>
+                                            <option value="ticket">客服工单</option>
+                                        </select>
+                                    </div>
+                                    <div class="layui-inline">
+                                        <select id="rBiz" style="width:160px"><option value="">全部事件</option></select>
+                                    </div>
+                                    <button class="layui-btn layui-btn-sm" id="rSearch"><i class="fas fa-search"></i> 查询</button>
+                                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="rReset">重置</button>
+                                </div>
+                                <p class="hu-u-ad-note">收件人手机号按站内统一的脱敏口径展示，完整号码不落进页面也不进日志。</p>
+                                <table class="layui-hide" id="recTable" lay-filter="recTable"></table>
+                            </div>
+
+                            <!-- U21 延期队列 -->
+                            <div class="layui-tab-item">
+                                <div class="layui-form" style="margin-bottom:12px">
+                                    <div class="layui-inline">
+                                        <select id="sStatus" style="width:150px">
+                                            <option value="">全部状态</option>
+                                            <option value="pending">待投递</option>
+                                            <option value="sending">投递中</option>
+                                            <option value="sent">已投递</option>
+                                            <option value="failed">投递失败</option>
+                                            <option value="cancelled">已取消</option>
+                                        </select>
+                                    </div>
+                                    <div class="layui-inline">
+                                        <select id="sBiz" style="width:160px"><option value="">全部事件</option></select>
+                                    </div>
+                                    <button class="layui-btn layui-btn-sm" id="sSearch"><i class="fas fa-search"></i> 查询</button>
+                                    <button class="layui-btn layui-btn-sm layui-btn-normal" id="sDispatch">
+                                        <i class="fas fa-play"></i> 立即投递到点的消息
+                                    </button>
+                                </div>
+                                <p class="hu-u-ad-note">投递前用条件 UPDATE 把 status 从 pending 抢成 sending，影响行数 0 就跳过：
+                                    任务重入、进程重启、多点重复点按钮都不会双发。</p>
+                                <div id="schedHost"></div>
+                            </div>
+
+                            <!-- U23 群发台账 -->
+                            <div class="layui-tab-item">
+                                <div class="layui-form" style="margin-bottom:12px">
+                                    <button class="layui-btn layui-btn-sm layui-btn-normal" id="cNew">
+                                        <i class="fas fa-megaphone"></i> 新建群发
+                                    </button>
+                                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="cReload">刷新台账</button>
+                                    <span class="hu-u-ad-note" style="display:inline;margin-left:10px">
+                                        每位用户每天最多 1 条营销消息，周末整段停发（U09/U23）</span>
+                                </div>
+                                <table class="layui-hide" id="campTable" lay-filter="campTable"></table>
+                            </div>
+
+                            <!-- U06/U05 事件接入 -->
+                            <div class="layui-tab-item">
+                                <div class="hu-u-ad-grid2">
+                                    <div>
+                                        <h3 class="hu-u-ad-h">八类事件的近 24 小时</h3>
+                                        <div id="eventHost" class="hu-u-ad-events"></div>
+                                    </div>
+                                    <div>
+                                        <h3 class="hu-u-ad-h">跳转地址越权（U05）</h3>
+                                        <div id="guardHost" class="hu-u-ad-guard"></div>
+                                        <p class="hu-u-ad-note">站内信里的链接只允许站内路径：外链与 javascript: 会被丢成空链接，
+                                            并在这里计一次，方便发现有人在拿通知发钓鱼。</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- U10/U21 任务可见状态 -->
+                            <div class="layui-tab-item">
+                                <div class="layui-form" style="margin-bottom:12px">
+                                    <button class="layui-btn layui-btn-sm layui-btn-normal" id="jRefresh">
+                                        <i class="fas fa-rotate"></i> 刷新台账
+                                    </button>
+                                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="jRetention">
+                                        <i class="fas fa-broom"></i> 立即执行一次保留期清理
+                                    </button>
+                                    <span class="hu-u-ad-note" style="display:inline;margin-left:10px" id="jobHint"></span>
+                                </div>
+                                <div id="jobHost"></div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="layui-footer">© 2026 花语轩鲜花销售系统</div>
+</div>
+
+<script type="text/html" id="tplOp">
+    <a class="layui-btn layui-btn-xs" lay-event="edit"><i class="fas fa-edit"></i> 编辑</a>
+    {{# if (d.enabled) { }}
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="off"><i class="fas fa-ban"></i> 停用</a>
+    {{# } else { }}
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="on"><i class="fas fa-check"></i> 启用</a>
+    {{# } }}
+</script>
+<script type="text/html" id="tplSwitch">
+    {{# if (d.enabled) { }}
+    <span class="hu-u-ad-tag hu-u-ad-tag--ok">启用</span>
+    {{# } else { }}
+    <span class="hu-u-ad-tag hu-u-ad-tag--muted">停用</span>
+    {{# } }}
+</script>
+
+<script th:src="@{/jquery-3.7.1.min.js}"></script>
+<script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+<script th:src="@{/js/admin-common.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'layer', 'form', 'element'], function () {
+        var table = layui.table, layer = layui.layer, form = layui.form;
+        var esc = huAdmin.esc;
+        var B = '/api/admin/messages';
+
+        function fmt(v) { return v ? String(v).replace('T', ' ').slice(0, 16) : '—'; }
+        function card(label, value, tone, note) {
+            return '<div class="hu-u-ad-card hu-u-ad-card--' + (tone || 'muted') + '"><span>' + esc(label) +
+                '</span><strong>' + esc(value) + '</strong><em>' + esc(note || '') + '</em></div>';
+        }
+
+        /* ---------- 概览 ---------- */
+
+        function loadOverview() {
+            huAdmin.request({url: B + '/overview', silent: true, ok: function (res) {
+                var d = res.data || {};
+                $('#overviewCards').html(
+                    card('保留期内消息', d.retained || 0, 'info', '保留 ' + (d.retentionDays || 90) + ' 天，到期归档计数后物理删除') +
+                    card('待投递延期', d.pendingSchedule || 0, d.pendingSchedule > 0 ? 'warn' : 'ok', '到点由任务抢占投递，不会重发') +
+                    card('启用模板', d.templates || 0, 'muted', '缺参时整条不落库，不会发半成品文案') +
+                    card('群发进行中', d.runningCampaigns || 0, 'muted', '单次人群上限 5000 人') +
+                    card('越权跳转 24h', d.guard24h || 0, d.guard24h > 0 ? 'bad' : 'ok', '外链与 javascript: 已丢弃并计数') +
+                    card('归档分桶', d.archivedBuckets || 0, 'muted', (d.archivedTotal || 0) + ' 条已归档计数'));
+            }});
+        }
+
+        /* ---------- U07 模板 ---------- */
+
+        table.render({
+            elem: '#tplTable',
+            url: B + '/templates',
+            where: {category: '', keyword: '', enabledOnly: false},
+            cols: [[
+                {field: 'code', title: '编码', width: 170, templet: function (d) { return '<code>' + esc(d.code) + '</code>'; }},
+                {field: 'categoryLabel', title: '类别', width: 100},
+                {field: 'titleTpl', title: '标题模板', minWidth: 200},
+                {field: 'contentTpl', title: '正文模板', minWidth: 260, templet: function (d) {
+                    var t = String(d.contentTpl || '');
+                    return esc(t.length > 60 ? t.slice(0, 59) + '…' : t);
+                }},
+                {field: 'slots', title: '解析出的槽位', width: 190, templet: function (d) {
+                    return (d.slots || []).length
+                        ? (d.slots || []).map(function (s) { return '<span class="hu-u-ad-chip">' + esc(s) + '</span>'; }).join('')
+                        : '<span style="color:#9aa3af">无变量</span>';
+                }},
+                {field: 'enabled', title: '开关', width: 84, templet: '#tplSwitch'},
+                {field: 'updatedAt', title: '更新时间', width: 148, templet: function (d) { return fmt(d.updatedAt); }},
+                {title: '操作', width: 190, toolbar: '#tplOp', fixed: 'right'}
+            ]],
+            page: true, limit: 20, limits: [20, 50],
+            text: {none: '没有匹配的模板'}
+        });
+
+        $('#tSearch').on('click', function () {
+            table.reload('tplTable', {where: {
+                keyword: $.trim($('#tKeyword').val()),
+                category: $('#tCategory').val(),
+                enabledOnly: $('#tEnabledOnly').prop('checked')
+            }, page: {curr: 1}});
+        });
+        $('#tReset').on('click', function () {
+            $('#tKeyword').val(''); $('#tCategory').val(''); $('#tEnabledOnly').prop('checked', false);
+            form.render('select');
+            table.reload('tplTable', {where: {keyword: '', category: '', enabledOnly: false}});
+        });
+
+        function toggleTpl(row, enabled) {
+            // 启停用查询参数而不是 JSON 体：后端是 @RequestParam，放进 body 会接成 null
+            huAdmin.request({
+                url: B + '/templates/' + row.id + '/toggle?enabled=' + enabled, type: 'POST',
+                ok: function (res) {
+                    if (res.data && res.data.changed === 0) huAdmin.toast('模板已经是这个状态', 'err');
+                    table.reload('tplTable');
+                    loadOverview();
+                }
+            });
+        }
+
+        /** U07 模板表单：槽位与必填变量必须一一对应，服务端在落库前就拦住 */
+        function openTplForm(row) {
+            var v = row || {code: '', category: 'system', titleTpl: '', contentTpl: '', varKeys: '', enabled: true, remark: ''};
+            layer.open({
+                type: 1, title: row ? '编辑模板 · ' + esc(row.code) : '新建模板',
+                area: ['680px', '620px'],
+                content: '<form class="layui-form" style="padding:20px 24px 0">' +
+                    f('模板编码', '<input id="tfCode" class="layui-input" maxlength="40" value="' + esc(v.code) + '"' + (row ? ' readonly' : '') + ' placeholder="与事件名一致，如 order_shipped">') +
+                    f('消息类别', '<select id="tfCategory">' + ['trade|交易提醒', 'marketing|营销活动', 'system|系统通知', 'ticket|客服工单']
+                        .map(function (x) { var p = x.split('|'); return '<option value="' + p[0] + '"' + (v.category === p[0] ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('') + '</select>') +
+                    f('标题模板', '<input id="tfTitle" class="layui-input" maxlength="200" value="' + esc(v.titleTpl) + '" placeholder="订单 {orderNo} 已发货">') +
+                    f('正文模板', '<textarea id="tfContent" class="layui-textarea" rows="5" maxlength="4000">' + esc(v.contentTpl) + '</textarea>') +
+                    f('必填变量', '<input id="tfKeys" class="layui-input" maxlength="300" value="' + esc(v.varKeys) + '" placeholder="逗号分隔，如 orderNo,expressNo">') +
+                    f('备注', '<input id="tfRemark" class="layui-input" maxlength="200" value="' + esc(v.remark || '') + '">') +
+                    f('状态', '<select id="tfEnabled"><option value="true"' + (v.enabled !== false ? ' selected' : '') + '>启用</option>' +
+                        '<option value="false"' + (v.enabled === false ? ' selected' : '') + '>停用</option></select>') +
+                    '<div class="layui-form-item"><div class="layui-input-block">' +
+                    '<button type="button" class="layui-btn" id="tfSubmit">保存</button>' +
+                    '<span style="color:#8a8578;font-size:12px;margin-left:10px">模板里的 {槽位} 必须全部在「必填变量」里声明，缺一个就存不下来</span>' +
+                    '</div></div></form>',
+                success: function () {
+                    form.render('select');
+                    $('#tfSubmit').on('click', function () {
+                        var payload = {
+                            code: $.trim($('#tfCode').val()),
+                            category: $('#tfCategory').val(),
+                            titleTpl: $('#tfTitle').val(),
+                            contentTpl: $('#tfContent').val(),
+                            varKeys: $.trim($('#tfKeys').val()),
+                            enabled: $('#tfEnabled').val() === 'true',
+                            remark: $.trim($('#tfRemark').val())
+                        };
+                        if (!payload.code) { huAdmin.toast('请填写模板编码', 'err'); return; }
+                        huAdmin.request({
+                            url: row ? B + '/templates/' + row.id : B + '/templates',
+                            type: row ? 'PUT' : 'POST',
+                            data: payload,
+                            ok: function () { layer.closeAll('page'); table.reload('tplTable'); loadOverview(); }
+                        });
+                    });
+                }
+            });
+        }
+
+        function f(label, control) {
+            return '<div class="layui-form-item"><label class="layui-form-label">' + label + '</label>' +
+                '<div class="layui-input-block">' + control + '</div></div>';
+        }
+
+        table.on('tool(tplTable)', function (obj) {
+            if (obj.event === 'edit') openTplForm(obj.data);
+            else if (obj.event === 'on') toggleTpl(obj.data, true);
+            else if (obj.event === 'off') toggleTpl(obj.data, false);
+        });
+        $('#tAdd').on('click', function () { openTplForm(null); });
+
+        /* ---------- 发送记录 ---------- */
+
+        table.render({
+            elem: '#recTable',
+            url: B + '/records',
+            where: {category: '', bizType: '', keyword: ''},
+            cols: [[
+                {field: 'categoryLabel', title: '类别', width: 96},
+                {field: 'bizLabel', title: '事件', width: 110},
+                {field: 'title', title: '标题', minWidth: 220},
+                {field: 'content', title: '正文', minWidth: 280, templet: function (d) {
+                    var t = String(d.content || '');
+                    return esc(t.length > 70 ? t.slice(0, 69) + '…' : t);
+                }},
+                {field: 'userPhone', title: '收件人', width: 130, templet: function (d) {
+                    return d.userPhone ? '<code>' + esc(d.userPhone) + '</code>' : '—';
+                }},
+                {field: 'linkUrl', title: '跳转', width: 150, templet: function (d) {
+                    return d.linkUrl ? '<a href="' + esc(d.linkUrl) + '" target="_blank" rel="noopener">' + esc(d.linkUrl) + '</a>'
+                        : '<span style="color:#9aa3af">无链接</span>';
+                }},
+                {field: 'unread', title: '已读', width: 80, templet: function (d) {
+                    return d.unread ? '<span class="hu-u-ad-tag hu-u-ad-tag--warn">未读</span>'
+                        : '<span class="hu-u-ad-tag hu-u-ad-tag--ok">已读</span>';
+                }},
+                {field: 'createdAt', title: '落库时间', width: 150, templet: function (d) { return fmt(d.createdAt); }}
+            ]],
+            page: true, limit: 20, limits: [20, 50, 100],
+            text: {none: '还没有发送记录'}
+        });
+
+        $('#rSearch').on('click', function () {
+            table.reload('recTable', {where: {
+                keyword: $.trim($('#rKeyword').val()),
+                category: $('#rCategory').val(),
+                bizType: $('#rBiz').val()
+            }, page: {curr: 1}});
+        });
+        $('#rReset').on('click', function () {
+            $('#rKeyword').val(''); $('#rCategory').val(''); $('#rBiz').val('');
+            form.render('select');
+            table.reload('recTable', {where: {keyword: '', category: '', bizType: ''}});
+        });
+
+        /* ---------- U21 延期队列 ---------- */
+
+        function loadScheduled() {
+            huAdmin.request({url: B + '/scheduled', data: {status: $('#sStatus').val(), bizType: $('#sBiz').val(), limit: 80},
+                silent: true, ok: function (res) {
+                    var list = res.data || [];
+                    if (!list.length) { $('#schedHost').html('<p class="hu-u-ad-empty">延期队列是空的。</p>'); return; }
+                    $('#schedHost').html('<table class="layui-table"><thead><tr>' +
+                        '<th>事件</th><th>类别</th><th>标题</th><th>到期</th><th>状态</th><th>尝试</th><th>文案定制</th><th>最近失败</th>' +
+                        '</tr></thead><tbody>' + list.map(function (s) {
+                            var tone = s.status === 'failed' ? 'bad' : (s.status === 'sent' ? 'ok'
+                                : (s.status === 'sending' ? 'warn' : 'muted'));
+                            return '<tr><td><code>' + esc(s.bizLabel || s.bizType) + '</code></td>' +
+                                '<td>' + esc(s.category) + '</td><td>' + esc(s.title) + '</td>' +
+                                '<td>' + fmt(s.dueAt) + '</td>' +
+                                '<td><span class="hu-u-ad-tag hu-u-ad-tag--' + tone + '">' + esc(s.statusLabel) + '</span></td>' +
+                                '<td>' + esc(s.attempts) + ' / ' + esc(s.maxAttempts) + '</td>' +
+                                '<td>' + (s.customised ? '按花材定制' : '<span class="hu-u-ad-tag hu-u-ad-tag--warn">未定制</span>') + '</td>' +
+                                '<td>' + esc(s.lastError || '—') + '</td></tr>';
+                        }).join('') + '</tbody></table>');
+                }
+            });
+        }
+
+        $('#sSearch').on('click', loadScheduled);
+        $('#sDispatch').on('click', function () {
+            // limit 是 @RequestParam，必须挂在查询串上
+            huAdmin.request({url: B + '/scheduled/dispatch?limit=200', type: 'POST', ok: function () {
+                loadScheduled(); loadOverview();
+            }});
+        });
+
+        /* ---------- U23 群发台账 ---------- */
+
+        table.render({
+            elem: '#campTable',
+            url: B + '/campaigns',
+            cols: [[
+                {field: 'title', title: '标题', minWidth: 200},
+                {field: 'segmentName', title: '人群', width: 130},
+                {field: 'status', title: '状态', width: 90, templet: function (d) {
+                    var tone = {running: 'warn', done: 'ok', failed: 'bad', draft: 'muted'}[d.status] || 'muted';
+                    return '<span class="hu-u-ad-tag hu-u-ad-tag--' + tone + '">' + esc(d.status) + '</span>';
+                }},
+                {field: 'targetCount', title: '人群', width: 80},
+                {field: 'sentCount', title: '实发', width: 80},
+                {field: 'skippedPref', title: '退订拦', width: 86},
+                {field: 'skippedWeekend', title: '周末停', width: 86},
+                {field: 'skippedCap', title: '当日上限', width: 90},
+                {field: 'skippedDnd', title: '免打扰', width: 86},
+                {field: 'failedCount', title: '失败', width: 76},
+                {field: 'createdBy', title: '操作人', width: 110},
+                {field: 'createdAt', title: '时间', width: 150, templet: function (d) { return fmt(d.createdAt); }},
+                {field: 'errorNote', title: '备注', minWidth: 160}
+            ]],
+            page: true, limit: 20, text: {none: '还没有群发记录'}
+        });
+
+        /**
+         * U23 新建群发：预览与实发共用一次判定。
+         * 先按「预览」算出会被策略拦下多少，再决定要不要真发，避免一上手就打扰五千人。
+         */
+        $('#cNew').on('click', function () {
+            huAdmin.request({url: B + '/segments', silent: true, ok: function (res) {
+                var segs = res.data || [];
+                layer.open({
+                    type: 1, title: '新建群发', area: ['640px', '560px'],
+                    content: '<form class="layui-form" style="padding:20px 24px 0">' +
+                        f('人群', '<select id="bcSegment">' + segs.map(function (s) {
+                            return '<option value="' + esc(s.code) + '">' + esc(s.label) + '（约 ' + esc(s.count) + ' 人）</option>';
+                        }).join('') + '</select>') +
+                        f('标题', '<input id="bcTitle" class="layui-input" maxlength="60" placeholder="营销活动标题">') +
+                        f('正文', '<textarea id="bcContent" class="layui-textarea" rows="4" maxlength="800"></textarea>') +
+                        f('跳转', '<input id="bcLink" class="layui-input" maxlength="40" placeholder="站内路径，如 /products；外链会被丢弃">') +
+                        f('观察窗口', '<input id="bcWindow" class="layui-input" type="number" min="1" max="365" placeholder="仅活跃/沉睡人群生效，默认 30 天">') +
+                        '<div class="layui-form-item"><div class="layui-input-block">' +
+                        '<button type="button" class="layui-btn layui-btn-primary" id="bcPreview"><i class="fas fa-eye"></i> 先预览</button>' +
+                        '<button type="button" class="layui-btn" id="bcRun"><i class="fas fa-paper-plane"></i> 直接发送</button>' +
+                        '<div id="bcResult" class="hu-u-ad-preview"></div>' +
+                        '</div></div></form>',
+                    success: function () {
+                        form.render('select');
+                        function payload(dry) {
+                            return {
+                                title: $.trim($('#bcTitle').val()),
+                                content: $.trim($('#bcContent').val()),
+                                segmentCode: $('#bcSegment').val(),
+                                linkUrl: $.trim($('#bcLink').val()),
+                                windowDays: $('#bcWindow').val() ? Number($('#bcWindow').val()) : null,
+                                dryRun: dry
+                            };
+                        }
+                        function run(dry, btn) {
+                            if (!$.trim($('#bcTitle').val()) || !$.trim($('#bcContent').val())) {
+                                huAdmin.toast('标题与正文都要填', 'err'); return;
+                            }
+                            btn.prop('disabled', true);
+                            huAdmin.request({
+                                url: B + '/broadcast', type: 'POST', data: payload(dry),
+                                ok: function (res) {
+                                    var d = res.data || {};
+                                    btn.prop('disabled', false);
+                                    $('#bcResult').html('<b>' + esc(res.msg || '') + '</b><br>' +
+                                        '人群 ' + esc(d.targetCount) + '｜可发 ' + esc(d.sent) +
+                                        '｜退订 ' + esc(d.skippedPref) + '｜周末 ' + esc(d.skippedWeekend) +
+                                        '｜上限 ' + esc(d.skippedCap) + '｜免打扰 ' + esc(d.skippedDnd) +
+                                        '｜失败 ' + esc(d.failed) +
+                                        (d.dryRun ? '<br>预览不会写入任何消息行' : ''));
+                                    if (!dry) { table.reload('campTable'); loadOverview(); }
+                                },
+                                fail: function () { btn.prop('disabled', false); }
+                            });
+                        }
+                        $('#bcPreview').on('click', function () { run(true, $(this)); });
+                        $('#bcRun').on('click', function () {
+                            var btn = $(this);
+                            layer.confirm('确认向该人群真实发送？每位用户当天只会收到这一条营销消息。', {icon: 3, title: '请确认'},
+                                function (index) { layer.close(index); run(false, btn); });
+                        });
+                    }
+                });
+            }});
+        });
+        $('#cReload').on('click', function () { table.reload('campTable'); });
+
+        /* ---------- U06/U05 事件接入与越权 ---------- */
+
+        function loadEvents() {
+            huAdmin.request({url: B + '/events', silent: true, ok: function (res) {
+                var list = res.data || [];
+                $('#eventHost').html(list.map(function (e) {
+                    return '<div class="hu-u-ad-event"><div><b>' + esc(e.label) + '</b><code>' + esc(e.bizType) + '</code></div>' +
+                        '<div class="hu-u-ad-event__num">' + esc(e.delivered24h) + '<span>条已触达</span></div>' +
+                        '<div class="hu-u-ad-event__note">' + esc(e.note) + '</div></div>';
+                }).join(''));
+            }});
+        }
+
+        function loadGuard() {
+            huAdmin.request({url: B + '/guard', silent: true, ok: function (res) {
+                var d = res.data || {};
+                $('#guardHost').html('<div class="hu-u-ad-guard__row"><span>近 24 小时</span><b>' + esc(d.total24h || 0) + '</b></div>' +
+                    '<div class="hu-u-ad-guard__row"><span>近 7 天</span><b>' + esc(d.total7d || 0) + '</b></div>' +
+                    (d.byReason || []).map(function (r) {
+                        return '<div class="hu-u-ad-guard__row"><span>' + esc(r.reason) + '</span><b>' + esc(r.count) + '</b></div>';
+                    }).join(''));
+            }});
+        }
+
+        /* ---------- U10/U21 任务可见状态 ---------- */
+
+        function loadJobs() {
+            huAdmin.request({url: B + '/jobs', silent: true, ok: function (res) {
+                var d = res.data || {};
+                var jobs = d.jobs || [];
+                $('#jobHint').text(d.registered ? '台账由第一轮 L10 的调度装饰器自动采集' : (d.hint || ''));
+                if (!jobs.length) {
+                    $('#jobHost').html('<p class="hu-u-ad-empty">' + esc(d.hint || '台账里还没有消息中心的任务') + '</p>');
+                    return;
+                }
+                $('#jobHost').html('<table class="layui-table"><thead><tr>' +
+                    '<th>任务</th><th>最近执行</th><th>结果</th><th class="layui-table-num">耗时</th>' +
+                    '<th class="layui-table-num">本轮处理</th><th class="layui-table-num">累计/失败</th><th>健康度</th>' +
+                    '</tr></thead><tbody>' + jobs.map(function (j) {
+                        return '<tr><td><code>' + esc(j.job) + '</code></td>' +
+                            '<td>' + fmt(j.lastRunAt) + '</td>' +
+                            '<td><span class="hu-u-ad-tag hu-u-ad-tag--' + (j.lastOutcome === 'ok' ? 'ok' : 'bad') + '">' + esc(j.lastOutcome) + '</span>' +
+                            (j.lastError ? '<div class="hu-u-ad-err">' + esc(j.lastError) + '</div>' : '') + '</td>' +
+                            '<td class="layui-table-num">' + esc(j.lastDurationMs) + ' ms</td>' +
+                            '<td class="layui-table-num">' + esc(j.lastReported == null ? '未上报' : j.lastReported) + '</td>' +
+                            '<td class="layui-table-num">' + esc(j.runs) + ' / <b style="color:' + (j.failures > 0 ? '#d4380d' : '#666') + '">' + esc(j.failures) + '</b></td>' +
+                            '<td><span class="hu-u-ad-tag hu-u-ad-tag--' + (j.healthy ? 'ok' : 'bad') + '">' + esc(j.healthNote) + '</span></td></tr>';
+                    }).join('') + '</tbody></table>');
+            }});
+        }
+
+        $('#jRefresh').on('click', function () { loadJobs(); });
+        $('#jRetention').on('click', function () {
+            layer.confirm('保留期清理会按「用户 + 月份 + 类别」归档计数后物理删除超期消息，确定现在执行一次？',
+                {icon: 3, title: '请确认'}, function (index) {
+                    layer.close(index);
+                    huAdmin.request({url: B + '/retention/run', type: 'POST', ok: function (res) {
+                        loadOverview();
+                        loadJobs();
+                        layer.alert(res.msg || '已执行', {icon: 1, title: '清理结果'});
+                    }});
+                });
+        });
+
+        function loadBizDict() {
+            loadEvents();
+            $('#rBiz, #sBiz').html('<option value="">全部事件</option>');
+            huAdmin.request({url: B + '/events', silent: true, ok: function (res) {
+                var opts = (res.data || []).map(function (e) {
+                    return '<option value="' + esc(e.bizType) + '">' + esc(e.label) + '</option>';
+                }).join('');
+                $('#rBiz').html('<option value="">全部事件</option>' + opts);
+                $('#sBiz').html('<option value="">全部事件</option>' + opts);
+                form.render('select');
+            }});
+        }
+
+        $(function () {
+            loadOverview();
+            loadBizDict();
+            loadGuard();
+            loadScheduled();
+            loadJobs();
+            window.setInterval(function () { loadJobs(); loadScheduled(); }, 30000);
+        });
+    });
+</script>
+</body>
+</html>

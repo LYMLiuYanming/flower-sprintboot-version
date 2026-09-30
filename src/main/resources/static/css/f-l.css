@@ -1,0 +1,302 @@
+/* f-l.css · 功能批次样式扩展（A-L 分组专用，勿跨组改动本文件）
+   L 组：系统运行台（只读诊断面板）。风格跟随后台的中性灰 + 品牌墨绿，不做复古装饰。 */
+
+.hu-l-page {
+    max-width: 1360px;
+    margin: 0 auto;
+    color: #1f2329;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.hu-l-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.hu-l-head h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: .5px;
+}
+
+.hu-l-head h2 i {
+    color: #0f7b63;
+    margin-right: 8px;
+}
+
+.hu-l-head p {
+    margin: 6px 0 0;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.hu-l-head-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* ---- 概览卡片：一块卡片只回答一个问题 ---- */
+.hu-l-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.hu-l-card {
+    background: #fff;
+    border: 1px solid #ebedf0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    box-shadow: 0 1px 2px rgba(31, 35, 41, .04);
+}
+
+.hu-l-card span {
+    font-size: 12px;
+    color: #8a94a6;
+    letter-spacing: .4px;
+}
+
+.hu-l-card strong {
+    font-size: 19px;
+    font-weight: 600;
+    color: #1f2329;
+}
+
+.hu-l-card em {
+    font-style: normal;
+    font-size: 12px;
+    color: #9aa3af;
+}
+
+.hu-l-card-good strong {
+    color: #0f7b63;
+}
+
+.hu-l-card-warn strong {
+    color: #d48806;
+}
+
+.hu-l-card-bad strong {
+    color: #cf1322;
+}
+
+/* ---- 面板 ---- */
+.hu-l-panel {
+    background: #fff;
+    border: 1px solid #ebedf0;
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(31, 35, 41, .04);
+}
+
+.hu-l-panel h3 {
+    margin: 0 0 12px;
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.hu-l-panel h3 i {
+    color: #0f7b63;
+}
+
+.hu-l-panel h3 small {
+    font-weight: 400;
+    font-size: 12px;
+    color: #9aa3af;
+}
+
+.hu-l-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 16px;
+}
+
+/* ---- 表格：不用 layui table 的异步渲染，纯静态表更好核对字段 ---- */
+.hu-l-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.hu-l-table th,
+.hu-l-table td {
+    padding: 9px 10px;
+    border-bottom: 1px solid #f0f1f3;
+    text-align: left;
+    vertical-align: top;
+}
+
+.hu-l-table th {
+    color: #6b7280;
+    font-weight: 500;
+    background: #fafbfc;
+    white-space: nowrap;
+}
+
+.hu-l-table tbody tr:hover {
+    background: #fafcff;
+}
+
+.hu-l-num {
+    text-align: right !important;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.hu-l-table code {
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+    color: #2f3b52;
+    word-break: break-all;
+}
+
+.hu-l-sql {
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+    color: #5a6472;
+    word-break: break-all;
+    max-width: 420px;
+}
+
+.hu-l-err {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #cf1322;
+    word-break: break-all;
+}
+
+.hu-l-bad {
+    color: #cf1322;
+}
+
+/* ---- 标签 ---- */
+.hu-l-tag {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    background: #f2f3f5;
+    color: #5a6472;
+    white-space: nowrap;
+}
+
+.hu-l-tag-ok {
+    background: #e8f6f1;
+    color: #0f7b63;
+}
+
+.hu-l-tag-warn {
+    background: #fff7e6;
+    color: #d48806;
+}
+
+.hu-l-tag-bad {
+    background: #fff1f0;
+    color: #cf1322;
+}
+
+/* ---- 键值行 / 清单 ---- */
+.hu-l-kv-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 7px 0;
+    border-bottom: 1px dashed #f0f1f3;
+    font-size: 13px;
+}
+
+.hu-l-kv-row span {
+    color: #8a94a6;
+}
+
+.hu-l-kv-row b {
+    font-weight: 500;
+    text-align: right;
+    word-break: break-all;
+}
+
+.hu-l-plan {
+    margin: 10px 0 0;
+    padding-left: 18px;
+    font-size: 12.5px;
+    color: #5a6472;
+}
+
+.hu-l-plan li {
+    padding: 3px 0;
+}
+
+.hu-l-chip {
+    display: inline-block;
+    margin: 0 6px 6px 0;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    background: #f5f6f8;
+    color: #5a6472;
+}
+
+.hu-l-chip-rich {
+    background: #eef4ff;
+    color: #2f5fb3;
+}
+
+.hu-l-chip-plain {
+    background: #f2f3f5;
+    color: #6b7280;
+}
+
+.hu-l-thresholds {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: 12.5px;
+    color: #6b7280;
+    margin-bottom: 10px;
+}
+
+.hu-l-thresholds b {
+    color: #1f2329;
+}
+
+.hu-l-empty {
+    padding: 22px 10px;
+    text-align: center;
+    color: #9aa3af;
+    font-size: 13px;
+    background: #fafbfc;
+    border-radius: 6px;
+}
+
+.hu-l-note {
+    margin: 10px 0 0;
+    font-size: 12px;
+    color: #9aa3af;
+}
+
+@media (max-width: 768px) {
+    .hu-l-panel {
+        padding: 14px;
+    }
+
+    .hu-l-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+}

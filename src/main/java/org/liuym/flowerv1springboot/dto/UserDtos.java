@@ -3,6 +3,7 @@ package org.liuym.flowerv1springboot.dto;
 import jakarta.validation.constraints.*;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public class UserDtos {
@@ -64,5 +65,30 @@ public class UserDtos {
     public record ResetPasswordRequest(
             @Size(min = 8, max = 32, message = "初始密码长度需为 8-32 位") String newPassword,
             @NotBlank(message = "请填写重置理由") @Size(max = 200) String reason) {
+    }
+
+    /**
+     * 地址智能识别（D10）：前端把整段文本传上来，服务端回拆好的字段供用户核对
+     */
+    public record AddressParseRequest(
+            @NotBlank(message = "请粘贴要识别的地址文本") @Size(max = 500, message = "识别文本不超过 500 字") String raw) {
+    }
+
+    /**
+     * 批量删除收货地址（D08）
+     */
+    public record AddressBatchDeleteRequest(
+            @NotEmpty(message = "请选择要删除的地址") List<UUID> ids) {
+    }
+
+    /**
+     * 账户注销申请（D16）：需带确认口令，避免误触与会话劫持下的静默注销
+     */
+    public record DeletionRequest(
+            @NotBlank(message = "请输入登录密码以确认注销") String password) {
+    }
+
+    public record ExportRequest(
+            @NotBlank(message = "请选择导出类型") @Pattern(regexp = "^(orders|favorites|addresses)$", message = "导出类型不合法") String type) {
     }
 }

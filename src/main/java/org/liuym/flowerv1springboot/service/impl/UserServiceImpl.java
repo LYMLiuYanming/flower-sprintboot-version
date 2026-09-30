@@ -1,5 +1,6 @@
 package org.liuym.flowerv1springboot.service.impl;
 
+import org.liuym.flowerv1springboot.common.AccountPolicy;
 import org.liuym.flowerv1springboot.common.BusinessException;
 import org.liuym.flowerv1springboot.dto.UserDtos;
 import org.liuym.flowerv1springboot.model.User;
@@ -8,6 +9,7 @@ import org.liuym.flowerv1springboot.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -235,10 +237,37 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public void validateRegistration(String username, String rawPassword, String phone, String email) {
+        // 用户名格式（D01）
+        String usernameErr = AccountPolicy.usernameError(username);
+        if (usernameErr != null) {
+            throw new BusinessException(usernameErr);
+        }
+        // 手机号格式（D02）
+        String phoneErr = AccountPolicy.phoneError(phone);
+        if (phoneErr != null) {
+            throw new BusinessException(phoneErr);
+        }
+        // 密码强度（D03）
+        String passwordErr = AccountPolicy.passwordError(rawPassword, username);
+        if (passwordErr != null) {
+            throw new BusinessException(passwordErr);
+        }
+        if (email != null && !email.isBlank() && email.length() > 100) {
+            throw new BusinessException("邮箱长度超限");
+        }
+    }
+
+    @Override
     @Transactional
     public User updateProfile(UUID id, UserDtos.ProfileRequest form) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> BusinessException.notFound("用户不存在"));
+        // 手机号在服务端再做一次强校验，防止绕过 @Valid
+        String phoneErr = AccountPolicy.phoneError(form.phone());
+        if (phoneErr != null) {
+            throw new BusinessException(phoneErr);
+        }
         if (form.phone() != null && !form.phone().equals(user.getPhone())
                 && userRepository.existsByPhone(form.phone())) {
             throw new BusinessException("手机号已被其他账号使用");
@@ -267,6 +296,16 @@ public class UserServiceImpl implements UserService {
         if (oldRawPassword != null && oldRawPassword.equals(newRawPassword)) {
             throw new BusinessException("新密码不能与原密码相同");
         }
+        // 已加密存储时，明文比对可能漏掉「旧密码=新密码」，再用 matches 兜一次
+        if (user.getPassword() != null && user.getPassword().startsWith(BCRYPT_PREFIX)
+                && passwordEncoder.matches(newRawPassword, user.getPassword())) {
+            throw new BusinessException("新密码不能与原密码相同");
+        }
+        // 新密码强度（D03/D04）
+        String passwordErr = AccountPolicy.passwordError(newRawPassword, user.getUsername());
+        if (passwordErr != null) {
+            throw new BusinessException(passwordErr);
+        }
         user.setPassword(passwordEncoder.encode(newRawPassword));
         user.setMustChangePassword(false);
         userRepository.save(user);
@@ -288,6 +327,50 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void touchLastLogin(UUID id) {
         userRepository.updateLastLoginTime(id, LocalDateTime.now());
+    }
+
+    @Override
+    @Transactional
+    public void requestDeletion(UUID id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound("用户不存在"));
+        if (!User.TYPE_CUSTOMER.equals(user.getUserType())) {
+            throw new BusinessException("仅普通账号可自助注销，管理员账号请联系系统");
+        }
+        if (User.STATUS_DELETED.equals(user.getStatus())) {
+            throw new BusinessException("该账号已完成注销");
+        }
+        // 幂等：已在冷静期内不刷新申请时间，避免反复点击把冷静期无限延后
+        if (user.getDeletionRequestedAt() != null) {
+            return;
+        }
+        userRepository.markDeletionRequested(id, LocalDateTime.now());
+    }
+
+    @Override
+    @Transactional
+    public void cancelDeletion(UUID id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound("用户不存在"));
+        if (User.STATUS_DELETED.equals(user.getStatus())) {
+            throw new BusinessException("账号已注销完成，无法撤销，请联系客服");
+        }
+        userRepository.cancelDeletionRequest(id);
+    }
+
+    /**
+     * 每天凌晨扫描冷静期已届满的注销账号做匿名化。软删除：只置终态 + 抹掉可识别信息，保留行与历史订单外键。
+     */
+    @Override
+    @Scheduled(cron = "${account.deletion-sweep-cron:0 30 3 * * ?}")
+    @Transactional
+    public int processExpiredDeletions() {
+        LocalDateTime deadline = LocalDateTime.now().minusDays(AccountPolicy.DELETION_COOLDOWN_DAYS);
+        List<User> expired = userRepository.findDeletionExpired(deadline);
+        for (User user : expired) {
+            userRepository.anonymizeForDeletion(user.getId());
+        }
+        return expired.size();
     }
 
     /**

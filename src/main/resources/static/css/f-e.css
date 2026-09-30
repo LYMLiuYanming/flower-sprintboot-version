@@ -1,0 +1,431 @@
+/* f-e.css · 功能批次样式扩展（A-L 分组专用，勿跨组改动本文件） */
+/* E 组：优惠券与营销（E01–E20）。券卡片本体沿用 theme.css 的 .hu-coupon，这里只补营销页共用的块 */
+
+/* ---------- 通用 ---------- */
+.hu-e-page {
+    padding: 32px 0 80px;
+}
+
+.hu-e-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 2px 0;
+}
+
+.hu-e-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    border-radius: var(--hu-radius-pill);
+    border: 1px solid var(--hu-line);
+    background: var(--hu-surface-alt);
+    color: var(--hu-muted-strong);
+    font-size: 11.5px;
+    letter-spacing: .01em;
+    font-weight: 600;
+}
+
+.hu-e-tag--accent {
+    border-color: var(--hu-accent-soft);
+    background: var(--hu-accent-soft);
+    color: var(--hu-accent-deep);
+}
+
+.hu-e-tag--warn {
+    border-color: #f6e2c7;
+    background: #fdf6ec;
+    color: var(--hu-warn-text);
+}
+
+.hu-e-ladder {
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--hu-accent-deep);
+    background: var(--hu-accent-soft);
+    border-radius: var(--hu-radius);
+    padding: 6px 10px;
+    margin: 2px 0;
+}
+
+.hu-e-hint {
+    margin: 10px 0 0;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--hu-muted);
+}
+
+.hu-e-hint--bad {
+    color: var(--hu-danger-text);
+}
+
+.hu-e-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 18px;
+    border-radius: var(--hu-radius-lg);
+    border: 1px solid var(--hu-line);
+    background: var(--hu-surface-alt);
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--hu-muted-strong);
+}
+
+.hu-e-note--warn {
+    border-color: #f3ddb0;
+    background: #fdf8ee;
+    color: var(--hu-warn-text);
+}
+
+.hu-e-note i {
+    margin-top: 2px;
+}
+
+/* 统计条：会员页、邀请页、券包页共用，避免每页各写一套字号 */
+.hu-e-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.hu-e-stat {
+    padding: 14px 16px;
+    border: 1px solid var(--hu-line);
+    border-radius: var(--hu-radius-lg);
+    background: var(--hu-surface);
+}
+
+.hu-e-stat span {
+    display: block;
+    font-size: 12px;
+    color: var(--hu-muted);
+}
+
+.hu-e-stat b {
+    display: block;
+    margin-top: 4px;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    color: var(--hu-ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.hu-e-tablewrap {
+    overflow-x: auto;
+}
+
+.hu-e-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.hu-e-table th,
+.hu-e-table td {
+    text-align: left;
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--hu-line);
+    white-space: nowrap;
+}
+
+.hu-e-table th {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--hu-muted);
+    background: var(--hu-surface-alt);
+}
+
+.hu-e-table td {
+    color: var(--hu-ink-soft);
+    font-variant-numeric: tabular-nums;
+}
+
+.hu-e-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 22px;
+}
+
+/* ---------- E10 领券中心 ---------- */
+.hu-coupons--center {
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+}
+
+.hu-e-slots {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    margin-top: 26px;
+}
+
+.hu-e-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px 18px;
+    border-radius: var(--hu-radius-lg);
+    border: 1px solid var(--hu-accent-soft);
+    background: linear-gradient(120deg, var(--hu-accent-soft) 0%, #fff 70%);
+}
+
+.hu-e-slot strong {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -.015em;
+    color: var(--hu-accent-deep);
+}
+
+.hu-e-slot span {
+    font-size: 12.5px;
+    color: var(--hu-muted-strong);
+    line-height: 1.6;
+}
+
+.hu-e-slot .hu-link {
+    align-self: flex-start;
+    font-size: 12.5px;
+}
+
+/* ---------- E06/E07 券包 ---------- */
+.hu-e-remind {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 0 22px 4px;
+    padding: 12px 16px;
+    border-radius: var(--hu-radius);
+    background: #fdf8ee;
+    border: 1px solid #f3ddb0;
+    color: var(--hu-warn-text);
+    font-size: 13px;
+}
+
+.hu-e-expire {
+    font-weight: 600;
+    color: var(--hu-warn-text);
+}
+
+.hu-e-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.hu-e-token {
+    font-family: var(--hu-font-display);
+    letter-spacing: .16em;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--hu-ink);
+}
+
+.hu-e-transfer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--hu-line);
+}
+
+.hu-e-transfer-row:last-child {
+    border-bottom: 0;
+}
+
+/* ---------- E16 邀请 ---------- */
+.hu-e-invite {
+    display: grid;
+    gap: 16px;
+}
+
+.hu-e-invite__code,
+.hu-e-invite__link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.hu-e-invite__label {
+    font-size: 12px;
+    color: var(--hu-muted);
+    min-width: 56px;
+}
+
+.hu-e-invite__code strong {
+    font-family: var(--hu-font-display);
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: .2em;
+    color: var(--hu-accent-deep);
+}
+
+.hu-e-invite__url {
+    flex: 1 1 260px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 8px 12px;
+    border-radius: var(--hu-radius);
+    background: var(--hu-surface-alt);
+    border: 1px solid var(--hu-line);
+    color: var(--hu-ink-soft);
+    font-size: 12.5px;
+}
+
+.hu-e-steps {
+    display: grid;
+    gap: 10px;
+    margin: 4px 0 0;
+    padding: 16px 18px;
+    list-style: none;
+    border-radius: var(--hu-radius-lg);
+    background: var(--hu-surface-alt);
+    border: 1px solid var(--hu-line);
+}
+
+.hu-e-steps li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13.5px;
+    color: var(--hu-ink-soft);
+}
+
+.hu-e-steps b {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--hu-ink);
+    color: #fff;
+    font-size: 12px;
+    flex: 0 0 auto;
+}
+
+.hu-e-bind {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.hu-e-bind input {
+    flex: 1 1 220px;
+    padding: 11px 14px;
+    border: 1px solid var(--hu-line-strong);
+    border-radius: var(--hu-radius);
+    font-size: 14px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    background: #fff;
+    color: var(--hu-ink);
+}
+
+.hu-e-bind input:focus-visible {
+    outline: none;
+    box-shadow: var(--hu-focus-soft);
+    border-color: var(--hu-accent);
+}
+
+/* ---------- E17/E18 会员 ---------- */
+.hu-e-member__badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 14px;
+    border-radius: var(--hu-radius-pill);
+    background: #eef1f4;
+    color: var(--hu-muted-strong);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.hu-e-member__badge.is-member {
+    background: var(--hu-grad-ink);
+    color: #f6e7c6;
+}
+
+.hu-e-member__rate {
+    font-family: var(--hu-font-display);
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    color: var(--hu-accent);
+    white-space: nowrap;
+}
+
+.hu-e-openbox {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+    padding: 18px 20px;
+    border-radius: var(--hu-radius-lg);
+    border: 1px solid var(--hu-line);
+    background: var(--hu-surface-alt);
+}
+
+.hu-e-openbox__text strong {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--hu-ink);
+}
+
+.hu-e-openbox__text p {
+    margin: 5px 0 0;
+    font-size: 12.5px;
+    color: var(--hu-muted);
+}
+
+.hu-e-openbox__btns {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.hu-e-benefits {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.hu-e-benefits li {
+    position: relative;
+    padding-left: 20px;
+    font-size: 13.5px;
+    line-height: 1.75;
+    color: var(--hu-ink-soft);
+}
+
+.hu-e-benefits li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 9px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--hu-accent);
+}
+
+@media (max-width: 720px) {
+    .hu-e-invite__code strong {
+        font-size: 24px;
+        letter-spacing: .14em;
+    }
+
+    .hu-e-openbox {
+        align-items: flex-start;
+    }
+}

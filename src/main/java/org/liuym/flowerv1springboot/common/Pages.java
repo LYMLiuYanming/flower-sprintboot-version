@@ -32,6 +32,11 @@ public final class Pages {
         return Math.min(Math.max(page, 1), MAX_PAGE) - 1;
     }
 
+    /** 对外暴露钳制后的单页大小，响应里回传的 pageSize 必须与实际一致 */
+    public static int sizeOf(int limit) {
+        return size(limit);
+    }
+
     private static int size(int limit) {
         return Math.min(Math.max(limit, 1), MAX_SIZE);
     }

@@ -34,28 +34,7 @@
 <div class="hu-container">
     <div class="hu-account">
         <!-- 左侧账户栏 -->
-        <aside>
-            <div class="hu-panel hu-idcard">
-                <div class="hu-idcard__avatar" id="avatar"><i class="fa fa-user"></i></div>
-                <div style="min-width:0">
-                    <div class="hu-idcard__name" id="sideName" th:text="${loginUser?.fullName ?: '用户'}">用户名</div>
-                    <div class="hu-idcard__meta" id="sidePhone" th:text="${loginUser?.phone}">手机号</div>
-                </div>
-            </div>
-            <div class="hu-panel hu-panel--pad hu-side-sticky">
-                <h3 class="hu-side-title">账户导航</h3>
-                <ul class="hu-navtabs">
-                    <li><a href="/user/profile" class="is-active"><i class="fa fa-user-o"></i>个人资料</a></li>
-                    <li><a href="/user/orders"><i class="fa fa-file-text-o"></i>我的订单</a></li>
-                    <li><a href="/user/favorites"><i class="fa fa-heart-o"></i>我的收藏</a></li>
-                    <li><a href="/user/coupons"><i class="fa fa-ticket"></i>我的优惠券</a></li>
-                    <li><a href="/user/addresses"><i class="fa fa-map-marker"></i>收货地址</a></li>
-                    <li><a href="/user/settings"><i class="fa fa-cog"></i>账号设置</a></li>
-                    <li><a href="/cart"><i class="fa fa-shopping-bag"></i>购物车</a></li>
-                    <li><a href="/auth/logout" style="color:var(--hu-clay)"><i class="fa fa-sign-out"></i>退出登录</a></li>
-                </ul>
-            </div>
-        </aside>
+        <aside th:replace="~{common/account-nav :: accountNav('profile')}"></aside>
 
         <!-- 右侧内容 -->
         <div>
@@ -145,6 +124,10 @@
                                 <div class="hu-field">
                                     <label for="newPassword">新密码</label>
                                     <input type="password" id="newPassword" class="hu-input" placeholder="8-32 位，含字母与数字" autocomplete="new-password">
+                                    <div class="hu-strength" aria-hidden="true">
+                                        <div class="hu-strength__bars"><i></i><i></i><i></i><i></i></div>
+                                        <span class="hu-strength__label" id="newPwdStrengthText">强度：—</span>
+                                    </div>
                                     <div class="hu-field__err"></div>
                                 </div>
                                 <div class="hu-field">
@@ -166,6 +149,7 @@
 </div>
 
 <div th:replace="~{common/footer :: footer}"></div>
+<div th:replace="~{common/avatar :: avatarSync}"></div>
 
 <script>
     var PROFILE_API = '/auth/api/user/profile';
@@ -217,9 +201,8 @@
         var name = user.fullName || user.username || '';
         $('#sideName').text(name || '用户');
         $('#sidePhone').text(user.phone || '');
-        if (name) {
-            $('#avatar').html($('<span>').text(name.charAt(0)));
-        }
+        // D05：头像首字与底色统一由服务端算好后回填，避免各页各写一套 charAt(0)
+        if (window.huSyncAvatar) window.huSyncAvatar(user);
     }
 
     function validateProfile() {
@@ -236,12 +219,40 @@
 
     function validatePassword() {
         var pwd = $('#newPassword').val();
+        var old = $('#oldPassword').val();
         var ok = true;
-        ok = setErr($('#oldPassword'), $('#oldPassword').val() ? '' : '请输入原密码') && ok;
+        ok = setErr($('#oldPassword'), old ? '' : '请输入原密码') && ok;
         ok = setErr($('#newPassword'), /^(?=.*[A-Za-z])(?=.*\d).{8,32}$/.test(pwd) ? '' : '新密码需为 8-32 位且同时包含字母和数字') && ok;
-        ok = setErr($('#confirmPassword'), $('#confirmPassword').val() === pwd ? '' : '两次输入的密码不一致') && ok;
+        // D04：客户端先挡一道「新密码=原密码」，服务端仍会二次校验
+        ok = setErr($('#newPassword'), (old && old === pwd) ? '新密码不能与原密码相同' : (/^(?=.*[A-Za-z])(?=.*\d).{8,32}$/.test(pwd) ? '' : '新密码需为 8-32 位且同时包含字母和数字')) && ok;
+        ok = setErr($('#confirmPassword'), $('#confirmPassword').val() === pwd && pwd ? '' : '两次输入的密码不一致') && ok;
         return ok;
     }
+
+    /* ---------- D03 新密码强度条：与 AccountPolicy.evaluatePassword 打分思路一致 ---------- */
+    function renderNewPwdStrength() {
+        var v = $('#newPassword').val() || '';
+        var username = $('#username').val() || '';
+        var cats = 0;
+        if (/[a-z]/.test(v)) cats++;
+        if (/[A-Z]/.test(v)) cats++;
+        if (/\d/.test(v)) cats++;
+        if (/[^A-Za-z0-9]/.test(v)) cats++;
+        var level, text, cls;
+        if (!v) { level = 0; text = '—'; }
+        else if (v.length < 8 || v.length > 32) { level = 1; text = '太短'; }
+        else if (cats < 2) { level = 1; text = '弱'; }
+        else if (v.length >= 12 && cats >= 3) { level = 4; text = '强'; }
+        else if (v.length >= 10 && cats >= 2) { level = 3; text = '中'; }
+        else { level = 2; text = '一般'; }
+        cls = level >= 4 ? 'is-on-strong' : level >= 3 ? 'is-on-mid' : 'is-on-weak';
+        var $bars = $('#newPassword').closest('.hu-field').find('.hu-strength__bars i');
+        $bars.removeClass('is-on-weak is-on-mid is-on-strong');
+        $bars.slice(0, level).addClass(cls);
+        $('#newPwdStrengthText').text('强度：' + text);
+    }
+
+    $('#newPassword').on('input', renderNewPwdStrength);
 
     function loadProfile() {
         huApi({url: PROFILE_API, ok: renderProfile});

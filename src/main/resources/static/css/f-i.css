@@ -1,0 +1,230 @@
+/* f-i.css · 功能批次样式扩展（A-L 分组专用，勿跨组改动本文件） */
+/* I 组：地图 / 天气 / 花田（I01-I16）。只补 theme.css 没有的组件，配色一律走 --hu-* 令牌 */
+
+/* ---------- I06 地图工具条与暗色底图 ---------- */
+.hu-maptools { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.hu-maptools .hu-chip { font-size: 12.5px; padding: 6px 11px; }
+
+.hu-mapwrap--dark .hu-panel {
+    background: #131a26;
+    border-color: #232d3d;
+    color: #dfe5ee;
+}
+.hu-mapwrap--dark .hu-panel--pad { box-shadow: 0 18px 40px -26px rgba(0, 0, 0, .8); }
+.hu-mapwrap--dark .hu-muted,
+.hu-mapwrap--dark .hu-side-title,
+.hu-mapwrap--dark .hu-rank__val,
+.hu-mapwrap--dark .hu-origin__stats { color: #8b97ab; }
+.hu-mapwrap--dark .hu-origin,
+.hu-mapwrap--dark .hu-seg { background: #18202e; border-color: #26334a; }
+.hu-mapwrap--dark .hu-origin__main b,
+.hu-mapwrap--dark .hu-seg b { color: #eef2f8; }
+.hu-mapwrap--dark .hu-origin__main em,
+.hu-mapwrap--dark .hu-seg em { color: #a9b5c8; }
+.hu-mapwrap--dark .hu-input,
+.hu-mapwrap--dark .hu-select { background: #0e141f; border-color: #2a3648; color: #e7ecf3; }
+.hu-mapwrap--dark .hu-chip { background: #18202e; border-color: #2a3648; color: #c5cfdd; }
+.hu-mapwrap--dark .hu-chip.is-active { background: var(--hu-accent); border-color: var(--hu-accent); color: #fff; }
+.hu-mapwrap--dark .hu-map { border-color: #232d3d; }
+.hu-mapwrap--dark .hu-dtable__table th { background: #18202e; color: #cfd8e6; }
+.hu-mapwrap--dark .hu-dtable__table td { border-color: #232d3d; color: #dfe5ee; }
+
+/* 推荐门店的标记加一圈描边，密集城区里也能一眼认出第一顺位 */
+.hu-pin--recommend { box-shadow: 0 0 0 3px rgba(217, 140, 58, .35), 0 6px 14px -6px rgba(0, 0, 0, .5); }
+.hu-pin--recommend em {
+    position: absolute; right: -6px; top: -6px; font-style: normal; font-size: 10px;
+    background: #d98c3a; color: #fff; border-radius: 999px; padding: 0 5px; line-height: 15px;
+}
+
+/* ---------- I04 路线分段图例 ---------- */
+.hu-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+.hu-legend__item {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--hu-muted);
+    background: var(--hu-surface-alt); border: 1px solid var(--hu-line); border-radius: var(--hu-radius-pill);
+    padding: 3px 10px 3px 8px;
+}
+.hu-legend__item i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.hu-legend__item em { font-style: normal; color: var(--hu-ink-soft); }
+.hu-seg__real {
+    font-style: normal; font-size: 10.5px; margin-left: 6px; padding: 1px 5px; border-radius: 4px;
+    background: var(--hu-accent-soft); color: var(--hu-accent-deep);
+}
+
+/* ---------- I05 省份下钻 ---------- */
+.hu-provinces { max-height: 132px; overflow-y: auto; scrollbar-width: thin; }
+.hu-provinces .hu-chip { font-size: 12px; padding: 4px 9px; }
+.hu-provinces .hu-chip i {
+    font-style: normal; margin-left: 6px; font-size: 11px; opacity: .7; font-variant-numeric: tabular-nums;
+}
+
+/* ---------- I02 产地详情与关联商品 ---------- */
+.hu-odetail { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--hu-line-strong); }
+.hu-odetail__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.hu-odetail__head b { font-size: 15px; font-weight: 600; }
+.hu-odetail__head span { font-size: 12px; color: var(--hu-muted); }
+.hu-odetail__meta { font-size: 12px; color: var(--hu-muted); margin: 6px 0 0; font-variant-numeric: tabular-nums; }
+.hu-odetail__story { font-size: 13px; color: var(--hu-ink-soft); margin: 10px 0 0; line-height: 1.7; }
+.hu-odetail__feature { font-size: 12.5px; color: var(--hu-accent-deep); margin: 8px 0 0; }
+.hu-odetail__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.hu-odetail__item {
+    display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: var(--hu-radius);
+    border: 1px solid var(--hu-line); background: var(--hu-surface); transition: border-color .18s var(--hu-ease),
+    transform .18s var(--hu-ease);
+}
+.hu-odetail__item:hover { border-color: var(--hu-accent); transform: translateY(-2px); }
+.hu-odetail__item img { width: 100%; height: 74px; object-fit: cover; border-radius: 6px; }
+.hu-odetail__noimg {
+    height: 74px; display: flex; align-items: center; justify-content: center; border-radius: 6px;
+    background: var(--hu-surface-alt); color: var(--hu-line-strong); font-size: 20px;
+}
+.hu-odetail__item b { font-size: 12.5px; font-weight: 600; color: var(--hu-ink); line-height: 1.4; }
+.hu-odetail__item em { font-style: normal; font-size: 12px; color: var(--hu-accent-deep); font-variant-numeric: tabular-nums; }
+
+/* ---------- I07 数据兜底列表 ---------- */
+.hu-dtable { max-height: 52vh; overflow: auto; scrollbar-width: thin; }
+.hu-dtable__table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.hu-dtable__table th {
+    position: sticky; top: 0; z-index: 1; text-align: left; font-weight: 600; color: var(--hu-ink-soft);
+    background: var(--hu-surface-alt); padding: 7px 8px; white-space: nowrap;
+}
+.hu-dtable__table td { padding: 7px 8px; border-top: 1px solid var(--hu-line); color: var(--hu-ink); }
+.hu-dtable__table tbody tr:hover td { background: rgba(15, 123, 99, .04); }
+
+/* ---------- I08 预报 ---------- */
+.hu-forecast { display: flex; flex-direction: column; gap: 8px; }
+.hu-forecast__day {
+    display: grid; grid-template-columns: auto auto 1fr; align-items: baseline; gap: 4px 10px;
+    padding: 9px 11px; border-radius: var(--hu-radius); border: 1px solid var(--hu-line); background: var(--hu-surface-alt);
+}
+.hu-forecast__day b { font-size: 13px; }
+.hu-forecast__day span { font-size: 12px; color: var(--hu-muted); font-variant-numeric: tabular-nums; }
+.hu-forecast__day em { grid-column: 1 / -1; font-style: normal; font-size: 12.5px; color: var(--hu-ink-soft); }
+.hu-forecast__day--caution { border-color: rgba(217, 140, 58, .45); background: rgba(217, 140, 58, .07); }
+.hu-forecast__day--risk { border-color: rgba(193, 91, 107, .5); background: rgba(193, 91, 107, .07); }
+.hu-weather__care { font-size: 12.5px; color: var(--hu-accent-deep); margin: 4px 0 0; }
+.hu-weather__none { font-size: 13px; color: var(--hu-muted); margin: 0; }
+
+/* ---------- I11 地块切换 ---------- */
+.hu-slots { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 18px; }
+.hu-slots .hu-chip em {
+    font-style: normal; margin-left: 7px; font-size: 11px; opacity: .75;
+}
+.hu-slots__note { font-size: 12px; color: var(--hu-muted); margin-left: 4px; }
+
+/* ---------- I10 养护建议 ---------- */
+.hu-care {
+    font-size: 13px; color: var(--hu-ink-soft); margin: 10px 0 0; padding: 10px 12px;
+    border-left: 3px solid var(--hu-accent); background: var(--hu-accent-soft); border-radius: 0 8px 8px 0;
+}
+.hu-garden__giftstate { font-size: 12.5px; color: #b0651a; margin: 8px 0 0; }
+
+/* ---------- I14 成长曲线 ---------- */
+.hu-curve { width: 100%; }
+.hu-curve__svg { width: 100%; height: auto; display: block; }
+.hu-curve__need { font-size: 9px; fill: #c08a33; }
+
+/* ---------- I12 兑换记录 ---------- */
+.hu-exchanges { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.hu-exchanges__row {
+    display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: start;
+    padding: 11px 12px; border: 1px solid var(--hu-line); border-radius: var(--hu-radius); background: var(--hu-surface);
+}
+.hu-exchanges__row > i { color: var(--hu-accent); font-size: 15px; margin-top: 2px; }
+.hu-exchanges__row b { font-size: 13.5px; }
+.hu-exchanges__row small { display: block; font-size: 12px; color: var(--hu-muted); margin-top: 2px; }
+.hu-exchanges__row em { display: block; font-style: normal; font-size: 12.5px; color: var(--hu-accent-deep); margin-top: 4px; }
+.hu-exchanges__msg { margin: 6px 0 0; font-size: 12.5px; color: var(--hu-ink-soft); }
+.hu-exchanges__side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; font-size: 12px; }
+.hu-exchanges__side a { color: var(--hu-accent-deep); }
+.hu-tag {
+    font-size: 11px; padding: 2px 7px; border-radius: var(--hu-radius-pill);
+    background: var(--hu-surface-alt); border: 1px solid var(--hu-line); color: var(--hu-muted);
+}
+.hu-tag--ok { background: var(--hu-accent-soft); border-color: rgba(15, 123, 99, .3); color: var(--hu-accent-deep); }
+.hu-tag--warn { background: rgba(217, 140, 58, .12); border-color: rgba(217, 140, 58, .4); color: #a86416; }
+
+/* ---------- I13 待确认的花 ---------- */
+.hu-gifts { display: flex; flex-direction: column; gap: 10px; }
+.hu-gifts__row {
+    display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center;
+    padding: 11px 12px; border: 1px solid rgba(15, 123, 99, .28); border-radius: var(--hu-radius);
+    background: var(--hu-accent-soft);
+}
+.hu-gifts__row > i { font-size: 15px; color: var(--hu-accent-deep); }
+.hu-gifts__row b { font-size: 13.5px; }
+.hu-gifts__row small { display: block; font-size: 12px; color: var(--hu-muted); }
+.hu-gifts__row em { display: block; font-style: normal; font-size: 12.5px; color: var(--hu-ink-soft); margin-top: 3px; }
+.hu-gifts__acts { display: flex; gap: 8px; }
+
+/* ---------- I15 门店卡片 ---------- */
+.hu-stores { display: flex; flex-direction: column; gap: 12px; max-height: 62vh; overflow-y: auto; padding-right: 4px; scrollbar-width: thin; }
+.hu-store {
+    position: relative; display: flex; flex-direction: column; gap: 5px; padding: 14px 15px;
+    border: 1px solid var(--hu-line); border-radius: var(--hu-radius-lg); background: var(--hu-surface);
+    transition: border-color .2s var(--hu-ease), box-shadow .2s var(--hu-ease);
+}
+.hu-store:hover { border-color: var(--hu-accent); box-shadow: var(--hu-shadow); }
+.hu-store.is-recommended { border-color: rgba(15, 123, 99, .55); background: linear-gradient(180deg, rgba(15, 123, 99, .06), transparent 60%); }
+.hu-store__head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hu-store__head b { font-size: 14.5px; font-weight: 600; }
+.hu-store__badge {
+    font-size: 11px; padding: 2px 8px; border-radius: var(--hu-radius-pill);
+    background: var(--hu-grad-accent); color: #fff;
+}
+.hu-store__km { margin-left: auto; font-size: 12px; color: var(--hu-accent-deep); font-variant-numeric: tabular-nums; }
+.hu-store__addr { font-size: 13px; color: var(--hu-ink-soft); margin: 0; }
+.hu-store__addr i { color: var(--hu-clay); margin-right: 5px; }
+.hu-store__meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--hu-muted); margin: 0; }
+.hu-store__meta i { margin-right: 4px; opacity: .7; }
+.hu-store__ready { font-size: 12.5px; color: var(--hu-accent-deep); margin: 2px 0 0; }
+.hu-store__feature { font-size: 12.5px; color: var(--hu-ink-soft); margin: 0; }
+.hu-store__cta {
+    align-self: flex-start; margin-top: 6px; font-size: 12.5px; color: var(--hu-accent-deep);
+    border-bottom: 1px solid transparent;
+}
+.hu-store__cta:hover { border-bottom-color: var(--hu-accent); }
+
+/* ---------- I06 标记样式选择器 ---------- */
+.hu-pinrow { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 9px; }
+.hu-pinrow > span { font-size: 12px; color: var(--hu-muted); width: 62px; flex: 0 0 auto; }
+.hu-pinopt {
+    width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 9px; border: 1.5px solid transparent; color: #fff; font-size: 12.5px; cursor: pointer;
+    transition: transform .16s var(--hu-ease), box-shadow .16s var(--hu-ease);
+}
+.hu-pinopt:hover { transform: translateY(-1px); }
+.hu-pinopt.is-active { border-color: var(--hu-ink); box-shadow: 0 0 0 2px rgba(15, 123, 99, .2); }
+.hu-mapwrap--dark .hu-pinopt.is-active { border-color: #e7ecf3; }
+
+/* ---------- I16 外部依赖体检行 ---------- */
+.hu-mapdiag {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px;
+    font-size: 11.5px; line-height: 1.6; margin: 0;
+}
+.hu-mapdiag i { color: var(--hu-accent); margin-right: 3px; }
+.hu-mapdiag__issue { font-style: normal; color: #a86416; }
+.hu-mapwrap--dark .hu-mapdiag__issue { color: #e0a862; }
+
+/* ---------- I02 产地配图（由后台 I01 维护） ---------- */
+.hu-odetail__hero {
+    margin: 10px 0 0; border-radius: var(--hu-radius); overflow: hidden; border: 1px solid var(--hu-line);
+    background: var(--hu-surface-alt);
+}
+.hu-odetail__hero img { display: block; width: 100%; height: 124px; object-fit: cover; }
+
+/* ---------- 表单提示行：门店地址输入与转赠寄语字数计数器共用 ---------- */
+.hu-field__hint { font-size: 11.5px; color: var(--hu-muted); margin-top: 5px; line-height: 1.5; }
+.hu-mapwrap--dark .hu-field__hint { color: #8b97ab; }
+
+/* ---------- I12 券包联动小结 ---------- */
+.hu-garden__pack {
+    font-size: 12.5px; color: var(--hu-ink-soft); margin: 12px 0 0; padding: 9px 11px;
+    border-radius: var(--hu-radius); border: 1px dashed var(--hu-line-strong); background: var(--hu-surface-alt);
+}
+.hu-garden__pack i { color: var(--hu-accent); margin-right: 5px; }
+.hu-garden__pack a { color: var(--hu-accent-deep); }
+
+@media (max-width: 1080px) {
+    .hu-odetail__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hu-stores { max-height: none; }
+}

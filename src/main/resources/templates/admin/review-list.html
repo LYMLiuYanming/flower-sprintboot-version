@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>评价审核 - 花语轩管理后台</title>
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
+    <style>
+        body {background: #f1f1f1;}
+        /* 审核台顶部指标：颜色取 admin-theme 的暖色系，与其它后台卡片对齐 */
+        .rv-stats {display: flex;flex-wrap: wrap;gap: 12px;margin: 4px 0 14px;}
+        .rv-stat {flex: 1 1 180px;background: #fff;border: 1px solid #e8e3d9;border-radius: 6px;
+            padding: 12px 16px;position: relative;overflow: hidden;}
+        .rv-stat::before {content: "";position: absolute;left: 0;top: 0;bottom: 0;width: 3px;background: #b7b3ac;}
+        .rv-stat b {display: block;font-size: 22px;color: #211f1a;font-weight: 700;letter-spacing: -.5px;}
+        .rv-stat span {font-size: 12px;color: #8a8578;}
+        .rv-stat.is-primary::before {background: #1c4b8a;}
+        .rv-stat.is-warn::before {background: #b3897a;}
+        .rv-stat.is-danger::before {background: #d46b08;}
+        .rv-stat.is-muted::before {background: #8c8c8c;}
+        /* 评价内容：主文本 + 标签 + 追评/回复时间线，全部在单元格里，行内滚动避免撑破表格 */
+        .rv-content {display: block;color: #211f1a;font-size: 13px;line-height: 1.65;}
+        .rv-content--empty {color: #a9a49a;font-style: italic;}
+        .rv-tags {margin-top: 4px;}
+        .rv-tags span {display: inline-block;background: #f3f1ea;border-radius: 3px;
+            padding: 1px 6px;margin: 1px 3px 1px 0;font-size: 11.5px;color: #5b5a54;}
+        .rv-imgs {display: flex;flex-wrap: wrap;gap: 3px;margin-top: 5px;}
+        .rv-imgs img {width: 34px;height: 34px;object-fit: cover;border-radius: 3px;
+            border: 1px solid #eee;cursor: zoom-in;}
+        .rv-tl {display: block;margin-top: 6px;padding: 6px 8px;border-left: 2px solid #dcd6c8;
+            background: #faf9f4;font-size: 12px;color: #4b4842;line-height: 1.6;}
+        .rv-tl b {color: #1c4b8a;font-weight: 600;}
+        .rv-tl--reply {border-left-color: #b3897a;background: #fdf8f5;}
+        .rv-state {padding: 3px 8px;border-radius: 3px;font-size: 12px;white-space: nowrap;display: inline-block;}
+        .rv-state--on {background: #f6ffed;color: #52c41a;}
+        .rv-state--off {background: #fff7e6;color: #d46b08;}
+        .rv-who {display: block;color: #211f1a;}
+        .rv-who small {color: #8a8578;margin-left: 4px;}
+        .rv-product {display: flex;align-items: center;gap: 8px;}
+        .rv-product img {width: 40px;height: 40px;object-fit: cover;border-radius: 3px;border: 1px solid #eee;flex: 0 0 auto;}
+        .rv-product__name {display: block;color: #211f1a;font-size: 13px;line-height: 1.4;}
+        .rv-product__cat {font-size: 11.5px;color: #8a8578;}
+        .rv-rating i {color: #d9a05b;font-size: 12px;}
+        .rv-rating i.fa-star-o {color: #d5d0c4;}
+        .rv-reason {color: #d46b08;font-size: 12px;margin-top: 4px;}
+    </style>
+</head>
+<body>
+<div class="layui-layout layui-layout-admin">
+    <div class="layui-header header" style="background: #211f1a;">
+        <div class="logo"><i class="fas fa-leaf"></i> 花语轩管理后台</div>
+        <div class="user-info">
+            <span><i class="fas fa-user-circle"></i> 管理员</span>
+            <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+        </div>
+    </div>
+
+    <div class="layui-side layui-bg-black" style="top: 60px;width: 200px;">
+        <div class="layui-side-scroll">
+            <ul class="layui-nav layui-nav-tree" lay-filter="nav">
+                <li class="layui-nav-item"><a href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a></li>
+                <li class="layui-nav-item">
+                    <a href="javascript:;"><i class="fas fa-th"></i> 商品管理</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/product-list"><i class="fas fa-box"></i> 商品列表</a></dd>
+                        <dd><a href="/admin/category-list"><i class="fas fa-tags"></i> 分类管理</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item">
+                    <a href="javascript:;"><i class="fas fa-shopping-cart"></i> 订单管理</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/order-list"><i class="fas fa-list-alt"></i> 订单列表</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item">
+                    <a href="javascript:;"><i class="fas fa-users"></i> 用户管理</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/user-list"><i class="fas fa-user"></i> 用户列表</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item layui-nav-itemed">
+                    <a href="javascript:;"><i class="fas fa-cog"></i> 系统设置</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/banner-list"><i class="fas fa-image"></i> 轮播图管理</a></dd>
+                        <dd><a href="/admin/notice-list"><i class="fas fa-bullhorn"></i> 公告管理</a></dd>
+                        <dd><a href="/admin/article-list"><i class="fas fa-book"></i> 知识库</a></dd>
+                        <dd class="layui-this"><a href="/admin/review-list"><i class="fas fa-star-half-alt"></i> 评价审核</a></dd>
+                        <dd><a href="/admin/coupon-list"><i class="fas fa-ticket-alt"></i> 优惠券</a></dd>
+                        <dd><a href="/admin/audit-list"><i class="fas fa-history"></i> 操作日志</a></dd>
+                    </dl>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="layui-body" style="left: 200px;">
+        <div class="content-body" style="padding: 20px;">
+            <div class="layui-card">
+                <div class="layui-card-header">
+                    <i class="fas fa-star-half-alt"></i> 评价审核 · 商家回复
+                    <span style="float:right;color:#8a8578;font-size:12px" id="rvMeta">正在读取…</span>
+                    <button class="layui-btn layui-btn-xs layui-btn-normal" style="float:right;margin-right:12px"
+                            onclick="huReviewRecalc()">
+                        <i class="fas fa-sync-alt"></i> 重算商品评分
+                    </button>
+                </div>
+                <div class="layui-card-body">
+                    <!-- 顶部指标：总数 / 展示中 / 待回复 / 已隐藏 -->
+                    <div class="rv-stats" id="rvStats">
+                        <div class="rv-stat is-primary"><b id="statTotal">—</b><span>累计评价</span></div>
+                        <div class="rv-stat"><b id="statVisible">—</b><span>前台展示中</span></div>
+                        <div class="rv-stat is-warn"><b id="statUnreplied">—</b><span>待商家回复</span></div>
+                        <div class="rv-stat is-danger"><b id="statHidden">—</b><span>已隐藏</span></div>
+                    </div>
+
+                    <!-- 筛选：状态 / 星级下限 / 商品 / 关键词 -->
+                    <div class="layui-form" style="margin-bottom:12px">
+                        <div class="layui-inline">
+                            <select id="rvVisible" style="width:150px">
+                                <option value="">全部状态</option>
+                                <option value="true">展示中</option>
+                                <option value="false">已隐藏</option>
+                            </select>
+                        </div>
+                        <div class="layui-inline">
+                            <select id="rvRating" style="width:160px">
+                                <option value="">全部星级</option>
+                                <option value="5">仅 5 星</option>
+                                <option value="4">4 星及以上</option>
+                                <option value="3">3 星及以上</option>
+                                <option value="2">2 星及以上</option>
+                                <option value="1">1 星及以上</option>
+                            </select>
+                        </div>
+                        <div class="layui-inline">
+                            <input type="text" id="rvProduct" class="layui-input" placeholder="商品 UUID（可留空）"
+                                   style="width:280px">
+                        </div>
+                        <div class="layui-inline">
+                            <input type="text" id="rvKeyword" class="layui-input"
+                                   placeholder="评价 / 商品 / 回复关键词" style="width:220px">
+                        </div>
+                        <button class="layui-btn layui-btn-sm" id="rvSearch"><i class="fas fa-search"></i> 查询</button>
+                        <button class="layui-btn layui-btn-sm layui-btn-primary" id="rvReset">重置</button>
+                    </div>
+                    <table class="layui-hide" id="reviewTable" lay-filter="reviewTable"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="layui-footer">© 2024 花语轩鲜花销售系统 - 版权所有</div>
+</div>
+
+<script type="text/html" id="userTpl">
+    <span class="rv-who">{{ d.anonymous ? '匿名顾客' : huAdmin.esc(d.userName || '顾客') }}
+        {{# if(d.anonymous) { }}<small><i class="fas fa-user-secret"></i> 已脱敏</small>{{# } }}
+    </span>
+</script>
+
+<script type="text/html" id="stateTpl">
+    {{# if(d.visible) { }}
+    <span class="rv-state rv-state--on"><i class="fas fa-eye"></i> 展示中</span>
+    {{# } else { }}
+    <span class="rv-state rv-state--off"><i class="fas fa-eye-slash"></i> 已隐藏</span>
+    {{# if(d.hiddenReason) { }}<div class="rv-reason" title="{{huAdmin.esc(d.hiddenReason)}}">
+        理由：{{huAdmin.esc(d.hiddenReason.length > 18 ? d.hiddenReason.slice(0,17)+'…' : d.hiddenReason)}}</div>{{# } }}
+    {{# } }}
+</script>
+
+<script type="text/html" id="operateTpl">
+    {{# if(!d.reply) { }}
+    <a class="layui-btn layui-btn-xs" lay-event="reply"><i class="fas fa-comment-dots"></i> 回复</a>
+    {{# } else { }}
+    <a class="layui-btn layui-btn-xs layui-btn-primary" lay-event="reply"><i class="fas fa-edit"></i> 修改回复</a>
+    {{# } }}
+    {{# if(d.visible) { }}
+    <a class="layui-btn layui-btn-warm layui-btn-xs" lay-event="hide"><i class="fas fa-eye-slash"></i> 隐藏</a>
+    {{# } else { }}
+    <a class="layui-btn layui-btn-xs" lay-event="show"><i class="fas fa-eye"></i> 恢复展示</a>
+    {{# } }}
+    <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del"><i class="fas fa-trash"></i> 删除</a>
+    <a class="layui-btn layui-btn-xs layui-btn-primary" lay-event="audit"><i class="fas fa-history"></i> 留痕</a>
+</script>
+
+<script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+<script th:src="@{/jquery-3.7.1.min.js}"></script>
+<script th:src="@{/js/admin-common.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'layer', 'form'], function () {
+        var table = layui.table;
+        var layer = layui.layer;
+        var esc = huAdmin.esc;
+
+        function starsOf(n) {
+            var s = '';
+            for (var i = 1; i <= 5; i++) s += '<i class="fa fa-star' + (i <= n ? '' : '-o') + '"></i>';
+            return s;
+        }
+
+        function safeUrl(u) {
+            return huAdmin.safeUrl(u);
+        }
+
+        /** 时间线：追评在前、商家回复在后，与前台展示顺序一致；两者都空就不渲染 */
+        function timeline(row) {
+            var parts = [];
+            if (row.appendContent) {
+                parts.push('<span class="rv-tl"><b>买家追评</b> · ' + huDay(row.appendAt) + '<br>'
+                    + esc(row.appendContent)
+                    + ((row.appendImages && row.appendImages.length)
+                        ? renderShots(row.appendImages) : '')
+                    + '</span>');
+            }
+            if (row.reply) {
+                parts.push('<span class="rv-tl rv-tl--reply"><b>花语轩回复</b> · '
+                    + esc(row.replyByName || '花艺师') + ' · ' + huDay(row.replyAt) + '<br>'
+                    + esc(row.reply) + '</span>');
+            }
+            return parts.join('');
+        }
+
+        function renderShots(list) {
+            if (!list || !list.length) return '';
+            return '<div class="rv-imgs">' + list.slice(0, 6).filter(safeUrl).map(function (u) {
+                return '<img src="' + esc(u) + '" data-zoom="' + esc(u) + '" alt="实拍图">';
+            }).join('') + '</div>';
+        }
+
+        function huDay(v) {
+            return (v || '').toString().replace('T', ' ').slice(0, 16);
+        }
+
+        function reload() {
+            var productId = $('#rvProduct').val();
+            var uuidOk = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(productId || '');
+            var minRating = $('#rvRating').val();
+            var visible = $('#rvVisible').val();
+            // Integer / Boolean / UUID 参数只在有值时发送，Spring 对空串反序列化成 UUID 会 400
+            var where = {keyword: $.trim($('#rvKeyword').val())};
+            if (minRating) where.minRating = minRating;
+            if (visible) where.visible = visible;
+            if (uuidOk) where.productId = productId;
+            table.reload('reviewTable', {where: where, page: {curr: 1}});
+        }
+
+        function refreshStats() {
+            huAdmin.request({
+                url: '/api/admin/reviews/todo', type: 'GET', silent: true,
+                ok: function (res) {
+                    var d = res.data || {};
+                    $('#statTotal').text(d.total || 0);
+                    $('#statVisible').text(d.visible || 0);
+                    $('#statUnreplied').text(d.unreplied || 0);
+                    $('#statHidden').text(d.hidden || 0);
+                    $('#rvMeta').text('展示中 ' + (d.visible || 0) + ' · 待回复 ' + (d.unreplied || 0)
+                        + ' · 已隐藏 ' + (d.hidden || 0));
+                }
+            });
+        }
+
+        table.render({
+            elem: '#reviewTable',
+            url: '/api/admin/reviews',
+            where: {keyword: ''},
+            cols: [[
+                {field: 'userName', title: '顾客', width: 130, templet: '#userTpl'},
+                {field: 'productName', title: '商品', width: 220, templet: function (d) {
+                    var img = safeUrl(d.productImage) || '/img/product-placeholder.svg';
+                    return '<div class="rv-product"><img src="' + esc(img) + '" alt="">'
+                        + '<span><a class="rv-product__name" href="/product/' + esc(d.productId)
+                        + '" target="_blank">' + esc(d.productName || '商品已删除') + '</a>'
+                        + (d.categoryName ? '<span class="rv-product__cat">' + esc(d.categoryName) + '</span>' : '')
+                        + '</span></div>';
+                }},
+                {field: 'rating', title: '评分', width: 118, templet: function (d) {
+                    return '<span class="rv-rating">' + starsOf(d.rating) + ' <b>' + d.rating + '</b></span>';
+                }},
+                {field: 'content', title: '评价内容', minWidth: 320, templet: function (d) {
+                    var tags = (d.tagLabels || []).length
+                        ? '<div class="rv-tags">' + d.tagLabels.map(function (t) {
+                            return '<span>' + esc(t) + '</span>';
+                        }).join('') + '</div>' : '';
+                    return '<span class="rv-content' + (d.content ? '' : ' rv-content--empty') + '">'
+                        + esc(d.content || '这位顾客没有留下文字') + '</span>'
+                        + tags + renderShots(d.images) + timeline(d);
+                }},
+                {field: 'visible', title: '状态', width: 148, templet: '#stateTpl'},
+                {field: 'createdAt', title: '时间', width: 148, templet: function (d) {
+                    return huDay(d.createdAt);
+                }},
+                {title: '操作', width: 260, toolbar: '#operateTpl', fixed: 'right'}
+            ]],
+            page: {limits: [10, 20, 30, 50], limit: 10},
+            done: function () {
+                refreshStats();
+            }
+        });
+
+        // 图片缩放：单元格里只放 34px 缩略，点击看原图，避免后台表格被大图撑破
+        $(document).on('click', '[data-zoom]', function () {
+            var src = $(this).attr('data-zoom');
+            if (!safeUrl(src)) return;
+            layer.open({type: 1, title: false, closeBtn: 1, area: ['auto', 'auto'], shadeClose: true,
+                content: '<img src="' + src + '" style="max-width:640px;max-height:80vh;display:block">'});
+        });
+
+        $('#rvSearch').on('click', reload);
+        $('#rvReset').on('click', function () {
+            $('#rvVisible').val('');
+            $('#rvRating').val('');
+            $('#rvProduct').val('');
+            $('#rvKeyword').val('');
+            reload();
+        });
+
+        /** 商家回复：过一遍前端最短长度，服务端仍会剥标签并再校验 */
+        function openReply(row) {
+            layer.prompt({
+                title: (row.reply ? '修改回复' : '回复评价') + ' · ' + (row.productName || '')
+                    + '（会同步展示在评价下方）',
+                formType: 2, value: row.reply || '', area: ['520px', '160px']
+            }, function (content, index) {
+                if (!content || content.trim().length < 2) {
+                    huAdmin.toast('回复至少写 2 个字', 'err'); return;
+                }
+                huAdmin.request({
+                    url: '/api/admin/reviews/' + row.id + '/reply', type: 'POST',
+                    data: {content: content},
+                    ok: function () { layer.close(index); reload(); }
+                });
+            });
+        }
+
+        /** 隐藏 / 恢复：理由过一遍脱敏后再入服务端；理由同时写评价行与审计日志（F08） */
+        function openModeration(row, targetVisible) {
+            layer.prompt({
+                title: (targetVisible ? '恢复展示' : '隐藏该评价') + '的理由（会写入审计留痕）',
+                formType: 2, area: ['520px', '120px']
+            }, function (reason, index) {
+                huAdmin.request({
+                    url: '/api/admin/reviews/' + row.id + '/moderation', type: 'POST',
+                    data: {visible: targetVisible, reason: reason || ''},
+                    ok: function () { layer.close(index); reload(); }
+                });
+            });
+        }
+
+        /** 留痕：按当前评价 id 拉它上面发生过哪些后台动作 */
+        function openAudit(row) {
+            huAdmin.request({
+                url: '/api/admin/reviews/' + row.id + '/audit', type: 'GET', silent: true,
+                ok: function (res) {
+                    var list = res.data || [];
+                    var html;
+                    if (!list.length) {
+                        html = '<div style="padding:16px;color:#8a8578">这条评价还没有后台操作留痕</div>';
+                    } else {
+                        html = '<div style="padding:12px">'
+                            + list.map(function (l) {
+                                return '<div style="border-bottom:1px dashed #e8e3d9;padding:8px 0">'
+                                    + '<b style="color:#1c4b8a">' + esc(l.action || '') + '</b>'
+                                    + ' · ' + esc(l.operatorName || '未知')
+                                    + ' · ' + huDay(l.createdAt)
+                                    + '<div style="color:#4b4842;font-size:12px;margin-top:4px;word-break:break-all">'
+                                    + esc(l.detail || '') + '</div></div>';
+                            }).join('') + '</div>';
+                    }
+                    layer.open({type: 1, title: '评价留痕 · ' + (row.productName || ''),
+                        area: ['640px', '70%'], content: html, shadeClose: true});
+                }
+            });
+        }
+
+        table.on('tool(reviewTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'reply') {
+                openReply(row);
+            } else if (obj.event === 'hide') {
+                openModeration(row, false);
+            } else if (obj.event === 'show') {
+                openModeration(row, true);
+            } else if (obj.event === 'audit') {
+                openAudit(row);
+            } else if (obj.event === 'del') {
+                layer.prompt({
+                    title: '删除这条评价前请写一段理由（会写入审计，删除不可撤销）',
+                    formType: 2, area: ['520px', '120px']
+                }, function (reason, promptIndex) {
+                    layer.close(promptIndex);
+                    huAdmin.request({
+                        url: '/api/admin/reviews/' + row.id + '?reason=' + encodeURIComponent(reason || ''),
+                        type: 'DELETE',
+                        ok: reload
+                    });
+                });
+            }
+        });
+
+        /** F09 修复：productId 留空即让服务端扫计数不一致的商品并逐个回写 */
+        window.huReviewRecalc = function () {
+            layer.confirm('将扫描评分/评价数与真实评价不一致的商品并重新回写，是否继续？',
+                {icon: 3, title: '重算商品评分'}, function (index) {
+                    huAdmin.request({
+                        url: '/api/admin/reviews/recalc', type: 'POST', silent: true,
+                        ok: function (res) {
+                            layer.close(index);
+                            huAdmin.toast(res.msg || '重算完成');
+                            reload();
+                        }
+                    });
+                });
+        };
+
+        refreshStats();
+    });
+</script>
+</body>
+</html>

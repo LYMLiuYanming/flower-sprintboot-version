@@ -21,8 +21,11 @@
     </div>
 </div>
 
-<div class="hu-container" style="padding-bottom:80px">
-    <div class="hu-result-meta" style="margin-top:30px">
+<div class="hu-container">
+    <div class="hu-account">
+        <aside th:replace="~{common/account-nav :: accountNav('favorites')}"></aside>
+        <div>
+    <div class="hu-result-meta" style="margin-top:0">
         <span id="favMeta">正在载入…</span>
         <button type="button" class="hu-chip hu-chip--ghost" id="addAllBtn" style="display:none">
             <i class="fa fa-shopping-bag"></i> 全部加入购物车
@@ -32,13 +35,40 @@
         </a>
     </div>
 
+    <!-- D11 分类筛选 + 排序，D12 有货优先：全部走 /api/favorites 查询参数，服务端过滤排序 -->
+    <div class="hu-favbar">
+        <div class="hu-favbar__group">
+            <label class="hu-favbar__label">分类</label>
+            <select id="favCategory" class="hu-select hu-select--sm">
+                <option value="">全部分类</option>
+            </select>
+        </div>
+        <div class="hu-favbar__group">
+            <label class="hu-favbar__label">排序</label>
+            <select id="favSort" class="hu-select hu-select--sm">
+                <option value="newest">最近收藏</option>
+                <option value="price-asc">价格从低到高</option>
+                <option value="price-desc">价格从高到低</option>
+                <option value="sales">销量优先</option>
+            </select>
+        </div>
+        <label class="hu-check hu-favbar__stock">
+            <input type="checkbox" id="favInStock"> 只看有货
+        </label>
+        <button type="button" class="hu-chip hu-chip--ghost" id="favReset" style="margin-left:auto;display:none">
+            <i class="fa fa-undo"></i> 重置筛选
+        </button>
+    </div>
+
     <div id="favGrid" class="hu-product-grid"></div>
 
     <div id="favEmpty" class="hu-empty" style="display:none">
         <i class="fa fa-heart-o"></i>
-        <strong>收藏夹还是空的</strong>
-        <span style="font-size:14px">逛到喜欢的花礼，点击卡片右上角的心形就能收进来</span>
+        <strong id="favEmptyTitle">收藏夹还是空的</strong>
+        <span style="font-size:14px" id="favEmptyTip">逛到喜欢的花礼，点击卡片右上角的心形就能收进来</span>
         <a href="/products" class="hu-btn hu-btn--solid hu-btn--sm" style="margin-top:18px">去挑一束</a>
+    </div>
+        </div>
     </div>
 </div>
 
@@ -47,9 +77,23 @@
 <script th:inline="javascript">
     const PLACEHOLDER = /*[[@{/img/product-placeholder.svg}]]*/ '/img/product-placeholder.svg';
     let favorites = [];
+    let totalCount = 0;
 
     function esc(s) {
         return $('<i>').text(s == null ? '' : String(s)).html();
+    }
+
+    function currentFilter() {
+        return {
+            categoryId: $('#favCategory').val() || '',
+            sort: $('#favSort').val() || 'newest',
+            inStock: $('#favInStock').is(':checked')
+        };
+    }
+
+    function filterActive() {
+        var f = currentFilter();
+        return !!f.categoryId || f.inStock || f.sort !== 'newest';
     }
 
     function price(v) {
@@ -72,18 +116,24 @@
 
     function render() {
         favorites = favorites || [];
-        $('#favTotal').text(favorites.length);
+        $('#favTotal').text(totalCount);
         if (!favorites.length) {
             $('#favGrid').html('');
-            $('#favMeta').text('共 0 件收藏');
+            $('#favMeta').text(totalCount ? '当前筛选条件下没有匹配的收藏' : '共 0 件收藏');
             $('#addAllBtn').hide();
+            $('#favReset').toggle(filterActive());
+            $('#favEmptyTitle').text(totalCount ? '没有符合条件的收藏' : '收藏夹还是空的');
+            $('#favEmptyTip').text(totalCount ? '换个分类或取消「只看有货」再看看' : '逛到喜欢的花礼，点击卡片右上角的心形就能收进来');
             $('#favEmpty').show();
             return;
         }
         const offline = favorites.filter(f => !f.product || f.product.isActive === false).length;
-        $('#favMeta').html('共 <b>' + favorites.length + '</b> 件收藏' +
-            (offline ? '，其中 ' + offline + ' 件已下架' : ''));
+        var meta = filterActive()
+            ? '筛选出 <b>' + favorites.length + '</b> 件（全部 ' + totalCount + ' 件）'
+            : '共 <b>' + favorites.length + '</b> 件收藏';
+        $('#favMeta').html(meta + (offline && !currentFilter().inStock ? '，其中 ' + offline + ' 件已下架' : ''));
         $('#addAllBtn').toggle(favorites.length > offline);
+        $('#favReset').toggle(filterActive());
         $('#favEmpty').hide();
 
         let html = '';
@@ -115,13 +165,35 @@
         $('#favGrid').html(html);
     }
 
+    /* D11：分类下拉只列出收藏里真实出现过的分类，避免选了没结果的空项 */
+    function loadCategories() {
+        huApi({
+            url: '/api/categories/active',
+            ok: function (list) {
+                var present = {};
+                favorites.forEach(function (f) { if (f.product && f.product.category) present[f.product.category.id] = f.product.category.name; });
+                var $sel = $('#favCategory');
+                var keep = $sel.val();
+                $sel.find('option:not(:first)').remove();
+                (list || []).forEach(function (c) {
+                    if (present[c.id]) $sel.append('<option value="' + esc(c.id) + '">' + esc(c.name) + '</option>');
+                });
+                if (keep) $sel.val(keep);
+            }
+        });
+    }
+
     function load() {
         renderSkeletons();
+        var f = currentFilter();
         huApi({
             url: '/api/favorites',
+            data: f,
             ok: function (data) {
                 favorites = data || [];
+                totalCount = favorites.length;
                 render();
+                loadCategories();
             },
             fail: function () {
                 $('#favGrid').html('');
@@ -133,6 +205,16 @@
     $(document).ready(function () {
         load();
 
+        /* D11/D12：分类、排序、只看有货任一变化即向服务端重新取数 */
+        $('#favCategory, #favSort').on('change', load);
+        $('#favInStock').on('change', load);
+        $('#favReset').on('click', function () {
+            $('#favCategory').val('');
+            $('#favSort').val('newest');
+            $('#favInStock').prop('checked', false);
+            load();
+        });
+
         $('#favGrid').on('click', '[data-add]', function (e) {
             e.preventDefault();
             huAddToCart($(this).data('add'));
@@ -143,6 +225,7 @@
             const id = String($(this).data('favorite'));
             setTimeout(function () {
                 favorites = favorites.filter(f => !f.product || String(f.product.id) !== id);
+                totalCount = Math.max(0, totalCount - 1);
                 render();
             }, 260);
         });

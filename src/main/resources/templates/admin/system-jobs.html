@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统运行台 - 花语轩管理后台</title>
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/css/f-l.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
+</head>
+<body>
+<div class="layui-layout layui-layout-admin">
+    <div class="layui-header header" style="background: #211f1a;">
+        <div class="logo"><i class="fas fa-server"></i> 花语轩管理后台</div>
+        <div class="user-info">
+            <span><i class="fas fa-user-shield"></i> <span th:text="${operator}">管理员</span></span>
+            <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+        </div>
+    </div>
+
+    <div class="layui-side layui-bg-black" style="top: 60px;width: 200px;">
+        <div class="layui-side-scroll">
+            <ul class="layui-nav layui-nav-tree" lay-filter="nav">
+                <li class="layui-nav-item"><a href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a></li>
+                <li class="layui-nav-item"><a href="/admin/order-list"><i class="fas fa-list-alt"></i> 订单列表</a></li>
+                <li class="layui-nav-item"><a href="/admin/audit-list"><i class="fas fa-user-edit"></i> 操作日志</a></li>
+                <li class="layui-nav-item layui-nav-itemed">
+                    <a href="/admin/system-jobs"><i class="fas fa-heartbeat"></i> 系统运行台</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="layui-body" style="left: 200px;top: 60px;background: #f5f6f8;padding: 18px;">
+        <div class="hu-l-page">
+            <div class="hu-l-head">
+                <div>
+                    <h2><i class="fas fa-heartbeat"></i> 系统运行台</h2>
+                    <p>定时任务台账、SQL 观测、外部依赖降级、缓存与限流阈值——只读面板，数据都在本进程内存里。</p>
+                </div>
+                <div class="hu-l-head-actions">
+                    <button type="button" class="layui-btn layui-btn-primary" id="hu-l-recheck">
+                        <i class="fas fa-stethoscope"></i> 立即自检
+                    </button>
+                    <button type="button" class="layui-btn" id="hu-l-refresh">
+                        <i class="fas fa-rotate"></i> 刷新面板
+                    </button>
+                </div>
+            </div>
+
+            <div class="hu-l-cards" id="hu-l-cards"></div>
+
+            <div class="hu-l-panel" id="hu-l-selfcheck" hidden>
+                <h3><i class="fas fa-clipboard-check"></i> 启动自检结果</h3>
+                <div id="hu-l-selfcheck-body"></div>
+            </div>
+
+            <div class="hu-l-panel">
+                <h3><i class="fas fa-clock"></i> 定时任务台账
+                    <small>台账启动于 <span id="hu-l-tracker-start">-</span>；「处理条数」需任务侧上报，未上报时留空</small>
+                </h3>
+                <table class="hu-l-table" id="hu-l-jobs">
+                    <thead>
+                    <tr>
+                        <th>任务</th>
+                        <th>最近执行</th>
+                        <th class="hu-l-num">本次耗时</th>
+                        <th class="hu-l-num">平均/最长</th>
+                        <th>结果</th>
+                        <th class="hu-l-num">SQL 条数</th>
+                        <th class="hu-l-num">处理条数</th>
+                        <th class="hu-l-num">累计/失败</th>
+                        <th>健康度</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div class="hu-l-empty" id="hu-l-jobs-empty" hidden>
+                    还没采到任何执行记录。调度任务的周期是分钟级，稍等一会儿再刷新；
+                    若长时间为空，说明线程池装饰器没挂上（见概览里的「采集器」一栏）。
+                </div>
+            </div>
+
+            <div class="hu-l-panel">
+                <h3><i class="fas fa-database"></i> 慢请求与 N+1 线索
+                    <small>只保留触发阈值的记录；SQL 已归一成形，字面量显示为 ?</small>
+                </h3>
+                <div class="hu-l-thresholds" id="hu-l-sql-thresholds"></div>
+                <table class="hu-l-table" id="hu-l-sql">
+                    <thead>
+                    <tr>
+                        <th>接口</th>
+                        <th class="hu-l-num">请求耗时</th>
+                        <th class="hu-l-num">SQL 条数</th>
+                        <th class="hu-l-num">SQL 耗时</th>
+                        <th class="hu-l-num">最慢一条</th>
+                        <th class="hu-l-num">重复次数</th>
+                        <th>标记</th>
+                        <th>重复的 SQL 形状</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div class="hu-l-empty" id="hu-l-sql-empty" hidden>
+                    暂时没有超过阈值的请求。这面板是空的比满的好。
+                </div>
+            </div>
+
+            <div class="hu-l-grid">
+                <div class="hu-l-panel">
+                    <h3><i class="fas fa-plug"></i> 外部依赖（高德）</h3>
+                    <div id="hu-l-deps" class="hu-l-kv"></div>
+                </div>
+                <div class="hu-l-panel">
+                    <h3><i class="fas fa-broom"></i> 缓存失效清单
+                        <button type="button" class="layui-btn layui-btn-xs" id="hu-l-cache-refresh">全部刷新</button>
+                    </h3>
+                    <div id="hu-l-cache" class="hu-l-kv"></div>
+                </div>
+            </div>
+
+            <div class="hu-l-grid">
+                <div class="hu-l-panel">
+                    <h3><i class="fas fa-traffic-light"></i> 限流规则</h3>
+                    <div id="hu-l-rules"></div>
+                </div>
+                <div class="hu-l-panel">
+                    <h3><i class="fas fa-shield-alt"></i> 富文本白名单在册字段</h3>
+                    <div id="hu-l-rich" class="hu-l-tags"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/jquery-3.7.1.min.js}"></script>
+<script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+<script>
+    (function () {
+        var base = '';
+        var B = {
+            overview: '/api/admin/diagnostics/overview',
+            sql: '/api/admin/diagnostics/sql',
+            jobs: '/api/admin/diagnostics/jobs',
+            deps: '/api/admin/diagnostics/deps',
+            cache: '/api/admin/diagnostics/cache',
+            rules: '/api/admin/diagnostics/rate-limit',
+            rich: '/api/admin/diagnostics/rich-text',
+            refresh: '/api/admin/diagnostics/cache/refresh',
+            check: '/api/admin/system/check'
+        };
+
+        function esc(v) {
+            if (v === null || v === undefined) return '-';
+            return String(v).replace(/[&<>"']/g, function (c) {
+                return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c];
+            });
+        }
+
+        function ms(v) {
+            if (v === null || v === undefined) return '-';
+            var n = Number(v);
+            if (!isFinite(n)) return '-';
+            return n >= 1000 ? (n / 1000).toFixed(1) + ' s' : n + ' ms';
+        }
+
+        function time(v) {
+            return v ? String(v).replace('T', ' ').substring(0, 19) : '-';
+        }
+
+        function card(label, value, note, tone) {
+            return '<div class="hu-l-card hu-l-card-' + (tone || 'neutral') + '">'
+                    + '<span>' + esc(label) + '</span><strong>' + esc(value) + '</strong>'
+                    + '<em>' + esc(note || '') + '</em></div>';
+        }
+
+        function kv(rows) {
+            return rows.map(function (r) {
+                return '<div class="hu-l-kv-row"><span>' + esc(r[0]) + '</span><b>' + r[1] + '</b></div>';
+            }).join('');
+        }
+
+        function loadOverview() {
+            $.getJSON(B.overview, function (res) {
+                if (!res || res.code !== 200) return;
+                var d = res.data;
+                var jobs = d.jobs || {};
+                var circuit = d.circuit || {};
+                var rl = d.rateLimit || {};
+                var html = [];
+                html.push(card('定时任务', (jobs.jobs || 0) + ' 个', '失败 ' + (jobs.totalFailures || 0) + ' 次',
+                        (jobs.unhealthy || 0) > 0 ? 'warn' : 'good'));
+                html.push(card('采集器', d.jobCollectorAttached ? '已挂载' : '未挂载',
+                        d.jobCollectorAttached ? '台账在实时累积' : '检查调度线程池是否被替换',
+                        d.jobCollectorAttached ? 'good' : 'bad'));
+                html.push(card('高德依赖', circuit.state === 'CLOSED' ? '正常' : (circuit.state || '未知'),
+                        '挡下 ' + (circuit.blockedCalls || 0) + ' 次外呼',
+                        circuit.state === 'OPEN' ? 'bad' : (circuit.state === 'HALF_OPEN' ? 'warn' : 'good')));
+                html.push(card('疑似慢请求', (d.sqlSuspects || 0) + ' 条',
+                        '阈值 ' + ((d.sql || {}).warnSqlCount || '-') + ' 条 SQL / ' + ((d.sql || {}).warnRequestMs || '-') + 'ms',
+                        (d.sqlSuspects || 0) > 0 ? 'warn' : 'good'));
+                html.push(card('限流', rl.enabled ? '生效中' : '已关闭', '规则 ' + (rl.rules || 0) + ' 条 / key ' + (rl.trackedKeys || 0),
+                        rl.enabled ? 'good' : 'warn'));
+                html.push(card('缓存', (d.cache && d.cache.caches ? d.cache.caches.length : 0) + ' 张',
+                        '白名单字段 ' + (d.richTextFields || 0) + ' 个', 'neutral'));
+                $('#hu-l-cards').html(html.join(''));
+                $('#hu-l-tracker-start').text(time(jobs.trackerStartedAt));
+            });
+        }
+
+        function loadJobs() {
+            $.getJSON(B.jobs, function (res) {
+                var rows = (res && res.code === 200 ? res.data : []) || [];
+                var body = rows.map(function (r) {
+                    return '<tr>'
+                            + '<td><code>' + esc(r.job) + '</code></td>'
+                            + '<td>' + time(r.lastRunAt) + '</td>'
+                            + '<td class="hu-l-num">' + ms(r.lastDurationMs) + '</td>'
+                            + '<td class="hu-l-num">' + ms(r.avgDurationMs) + ' / ' + ms(r.maxDurationMs) + '</td>'
+                            + '<td><span class="hu-l-tag hu-l-tag-' + (r.lastOutcome === 'ok' ? 'ok' : 'bad') + '">'
+                            + esc(r.lastOutcome) + '</span>' + (r.lastError ? '<div class="hu-l-err">' + esc(r.lastError) + '</div>' : '') + '</td>'
+                            + '<td class="hu-l-num">' + esc(r.lastSqlCount) + '</td>'
+                            + '<td class="hu-l-num">' + esc(r.lastReported === null ? '-' : r.lastReported) + '</td>'
+                            + '<td class="hu-l-num">' + esc(r.runs) + ' / <b class="' + (r.failures > 0 ? 'hu-l-bad' : '') + '">' + esc(r.failures) + '</b></td>'
+                            + '<td><span class="hu-l-tag hu-l-tag-' + (r.healthy ? 'ok' : 'bad') + '">' + esc(r.healthNote) + '</span></td>'
+                            + '</tr>';
+                }).join('');
+                $('#hu-l-jobs tbody').html(body);
+                $('#hu-l-jobs-empty').toggle(rows.length === 0);
+            });
+        }
+
+        function loadSql() {
+            $.getJSON(B.sql, function (res) {
+                if (!res || res.code !== 200) return;
+                var d = res.data;
+                $('#hu-l-sql-thresholds').html(
+                        '<span>SQL 条数 ≥ <b>' + esc(d.warnSqlCount) + '</b></span>'
+                        + '<span>单条区间 ≥ <b>' + esc(d.warnSqlMs) + 'ms</b></span>'
+                        + '<span>请求 ≥ <b>' + esc(d.warnRequestMs) + 'ms</b></span>'
+                        + '<span>同形重复 ≥ <b>' + esc(d.repeatThreshold) + '</b> 次判疑似 N+1</span>');
+                var rows = d.recent || [];
+                var body = rows.map(function (r) {
+                    var flags = [];
+                    if (r.nPlusOneSuspect) flags.push('<span class="hu-l-tag hu-l-tag-warn">疑似 N+1</span>');
+                    if (r.slowSqlSuspect) flags.push('<span class="hu-l-tag hu-l-tag-bad">慢 SQL</span>');
+                    if (!flags.length) flags.push('<span class="hu-l-tag">超阈值</span>');
+                    return '<tr>'
+                            + '<td><code>' + esc(r.method) + ' ' + esc(r.path) + '</code></td>'
+                            + '<td class="hu-l-num">' + esc(r.requestMs) + ' ms</td>'
+                            + '<td class="hu-l-num">' + esc(r.sqlCount) + '</td>'
+                            + '<td class="hu-l-num">' + esc(r.sqlMs) + ' ms</td>'
+                            + '<td class="hu-l-num">' + esc(r.slowestSqlMs) + ' ms</td>'
+                            + '<td class="hu-l-num">' + esc(r.topRepeat) + '</td>'
+                            + '<td>' + flags.join(' ') + '</td>'
+                            + '<td class="hu-l-sql" title="' + esc(r.topShape) + '">' + esc((r.topShape || '').substring(0, 90)) + '</td>'
+                            + '</tr>';
+                }).join('');
+                $('#hu-l-sql tbody').html(body);
+                $('#hu-l-sql-empty').toggle(rows.length === 0);
+            });
+        }
+
+        function loadDeps() {
+            $.getJSON(B.deps, function (res) {
+                if (!res || res.code !== 200) return;
+                var d = res.data;
+                var c = d.circuit || {};
+                $('#hu-l-deps').html(kv([
+                    ['密钥', d.amapConfigured ? '<span class="hu-l-tag hu-l-tag-ok">已配置</span>' : '<span class="hu-l-tag">未配置，走文字降级</span>'],
+                    ['熔断状态', '<span class="hu-l-tag hu-l-tag-' + (c.state === 'CLOSED' ? 'ok' : 'bad') + '">' + esc(c.state) + '</span>'],
+                    ['连续失败', esc(c.consecutiveFailures) + ' / 阈值 ' + esc(c.failureThreshold)],
+                    ['累计失败 / 熔断次数', esc(c.totalFailures) + ' / ' + esc(c.trips)],
+                    ['挡下的外呼', esc(c.blockedCalls) + ' 次（等于省下的配额）'],
+                    ['降级剩余', esc(c.openRemainingMs) + ' ms（阈值 ' + esc(c.openSeconds) + ' 秒）'],
+                    ['缓存查询', esc(d.lookups) + ' 次，命中 ' + esc(d.hitRate) + '%'],
+                    ['最近一次失败', d.lastIssue ? esc(d.lastIssue) : '无']
+                ]));
+            });
+        }
+
+        function loadCache() {
+            $.getJSON(B.cache, function (res) {
+                if (!res || res.code !== 200) return;
+                var d = res.data;
+                var plan = Object.keys(d.plan || {}).map(function (k) {
+                    return '<li><code>' + esc(k) + '</code> → ' + esc((d.plan[k] || []).join(' , ') || '（无）') + '</li>';
+                }).join('');
+                var sizes = Object.keys(d.sizes || {}).map(function (k) {
+                    return '<span class="hu-l-chip">' + esc(k) + ' · ' + esc(d.sizes[k]) + '</span>';
+                }).join('');
+                $('#hu-l-cache').html('<div class="hu-l-kv-row"><span>当前条目</span><b>' + (sizes || '-') + '</b></div>'
+                        + '<ul class="hu-l-plan">' + plan + '</ul>');
+            });
+        }
+
+        function loadRules() {
+            $.getJSON(B.rules, function (res) {
+                if (!res || res.code !== 200) return;
+                var d = res.data;
+                var rows = (d.rules || []).map(function (r) {
+                    return '<tr><td><code>' + esc(r.pattern) + '</code></td>'
+                            + '<td>' + esc(r.scope === 'USER' ? '按登录用户' : '按来源 IP') + '</td>'
+                            + '<td class="hu-l-num">' + esc(r.capacity) + '</td>'
+                            + '<td class="hu-l-num">' + esc(r.refillPerSecond) + '/s</td>'
+                            + '<td>' + esc(r.message) + '</td></tr>';
+                }).join('');
+                $('#hu-l-rules').html('<table class="hu-l-table"><thead><tr><th>入口</th><th>计数维度</th>'
+                        + '<th class="hu-l-num">突发</th><th class="hu-l-num">稳态</th><th>提示语</th></tr></thead>'
+                        + '<tbody>' + rows + '</tbody></table>'
+                        + '<p class="hu-l-note">被拒时返回 429 + Retry-After；全局开关 app.rate-limit.enabled。</p>');
+            });
+        }
+
+        function loadRich() {
+            $.getJSON(B.rich, function (res) {
+                if (!res || res.code !== 200) return;
+                var fields = res.data.fields || {};
+                $('#hu-l-rich').html(Object.keys(fields).map(function (k) {
+                    return '<span class="hu-l-chip hu-l-chip-' + (fields[k] === 'RICH' ? 'rich' : 'plain') + '">'
+                            + esc(k) + ' · ' + (fields[k] === 'RICH' ? '白名单标签' : '剥离标签') + '</span>';
+                }).join(''));
+            });
+        }
+
+        function recheck() {
+            $.ajax({url: B.check, type: 'POST', dataType: 'json'}).done(function (res) {
+                if (!res || res.code !== 200) return;
+                var d = res.data;
+                var rows = (d.checks || []).map(function (c) {
+                    return '<tr><td>' + esc(c.name) + '</td>'
+                            + '<td><span class="hu-l-tag hu-l-tag-' + (c.status === 'ok' ? 'ok' : (c.status === 'warn' ? 'warn' : 'bad')) + '">'
+                            + esc(c.status) + '</span></td><td>' + esc(c.detail) + '</td></tr>';
+                }).join('');
+                $('#hu-l-selfcheck-body').html('<table class="hu-l-table"><thead><tr><th>检查项</th><th>状态</th><th>说明</th></tr></thead>'
+                        + '<tbody>' + rows + '</tbody></table>');
+                $('#hu-l-selfcheck').prop('hidden', false);
+            });
+        }
+
+        function loadAll() {
+            loadOverview();
+            loadJobs();
+            loadSql();
+            loadDeps();
+            loadCache();
+            loadRules();
+            loadRich();
+        }
+
+        $(function () {
+            loadAll();
+            $('#hu-l-refresh').on('click', loadAll);
+            $('#hu-l-recheck').on('click', recheck);
+            $('#hu-l-cache-refresh').on('click', function () {
+                $.ajax({url: B.refresh, type: 'POST', dataType: 'json'}).done(function () {
+                    layui.layer.msg('本地缓存已清空');
+                    loadCache();
+                });
+            });
+            // 台账与 SQL 观测都是内存数据，页面开着就 20 秒追一次，不用手动点
+            window.setInterval(loadAll, 20000);
+        });
+    })();
+</script>
+</body>
+</html>

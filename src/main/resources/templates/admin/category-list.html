@@ -6,6 +6,7 @@
     <title>分类管理 - 花语轩</title>
     <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/css/f-g.css}" rel="stylesheet">
     <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
     <style>
         * {margin: 0;padding: 0;}
@@ -21,6 +22,9 @@
         .btn-add {background: #6f7d5c !important;color: white !important;}
         .btn-add:hover {background: #454f39 !important;}
         .cat-icon i {font-size: 16px;color: #6f7d5c;}
+        /* 挂载商品数直接决定「能不能删」，颜色要把风险点出来 */
+        .has-goods {color: #454f39;font-weight: 600;}
+        .no-goods {color: #a8a294;}
     </style>
 </head>
 <body>
@@ -58,6 +62,7 @@
     <script type="text/html" id="toolbar">
         <div class="layui-btn-container">
             <button class="layui-btn layui-btn-sm layui-btn-danger" lay-event="batchDel"><i class="fas fa-trash"></i> 批量删除</button>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="cols"><i class="fas fa-columns"></i> 列设置</button>
         </div>
     </script>
 
@@ -67,7 +72,10 @@
     </script>
 
     <script type="text/html" id="iconBar">
-        <span class="cat-icon"><i class="fa {{d.icon || 'fa-folder'}}"></i></span>
+        <!-- 图标名存的是去前缀后的类名（leaf / heart），前台按 fa fa-<name> 拼类名，这里同一口径预览 -->
+        <span class="cat-icon" title="{{huAdmin.esc(d.icon || 'leaf')}}">
+            <i class="fas fa-{{huAdmin.esc(d.icon || 'leaf')}}"></i>
+        </span>
     </script>
 
     <script type="text/html" id="statusBar">
@@ -76,32 +84,57 @@
 
     <script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
     <script th:src="@{/jquery-3.7.1.min.js}"></script>
+    <script th:src="@{/js/site.js}"></script>
     <script th:src="@{/js/admin-common.js}"></script>
+    <script th:src="@{/js/hu-admin-ui.js}"></script>
     <script th:inline="none">
         layui.use(['table', 'form', 'layer'], function(){
             var table = layui.table;
             var form = layui.form;
             var layer = layui.layer;
+            var TABLE = 'categoryTable';
+            var COLS_KEY = 'category-list';
+            var state = huAdmin.listState('category');
+            /* 商品挂载数：删除守卫与「能不能删」的预判都读它，一次取回不逐行 count */
+            var productCounts = {};
 
-            table.render({
-                elem: '#categoryTable',
-                url: '/api/admin/categories',
-                page: true,
-                limit: 10,
-                toolbar: '#toolbar',
-                defaultToolbar: ['filter', 'exports'],
-                cols: [[
+            huAdmin.request({
+                url: '/api/admin/categories/product-counts', type: 'GET', silent: true,
+                ok: function (res) { productCounts = (res && res.data) || {}; table.reload(TABLE); }
+            });
+
+            var COLS = [
                     {type: 'checkbox', fixed: 'left'},
                     {field: 'name', title: '分类名称', fixed: 'left', minWidth: 140},
                     {field: 'description', title: '描述', minWidth: 200},
                     {field: 'icon', title: '图标', width: 70, templet: '#iconBar', align: 'center'},
+                    {field: 'productCount', title: '挂载商品', width: 100, align: 'center', templet: function (d) {
+                        var n = Number(productCounts[d.id] || 0);
+                        return n ? '<span class="has-goods">' + n + ' 款</span>' : '<span class="no-goods">0 款</span>';
+                    }},
                     {field: 'sortOrder', title: '排序', width: 90, edit: 'text', align: 'center'},
                     {field: 'isActive', title: '状态', width: 110, templet: '#statusBar', align: 'center'},
                     {field: 'createdAt', title: '创建时间', width: 170, templet: function (d) {
                         return d.createdAt ? new Date(d.createdAt).toLocaleString() : '-';
                     }},
                     {fixed: 'right', title: '操作', toolbar: '#operateBar', width: 148}
-                ]]
+            ];
+            huAdminUI.applyHidden(COLS, COLS_KEY);
+
+            /* G29/G30：分页大小可选 + 页码跳转，空态与错误态用全站同一套模板 */
+            var hooks = huAdminUI.tableHooks(TABLE, {url: '/api/admin/categories', state: state});
+
+            table.render({
+                elem: '#' + TABLE,
+                url: '/api/admin/categories',
+                page: huAdminUI.pageConfig(state, {limits: [10, 20, 30, 50]}),
+                limit: state.limit(10),
+                limits: [10, 20, 30, 50],
+                done: hooks.done,
+                error: hooks.error,
+                toolbar: '#toolbar',
+                defaultToolbar: [],
+                cols: [COLS]
             });
 
             form.on('submit(search)', function(data){
@@ -149,8 +182,7 @@
 
             table.on('tool(categoryTable)', function(obj){
                 if (obj.event === 'del'){
-                    huAdmin.confirmDelete('确定删除分类「' + obj.data.name + '」？分类下若仍有商品将无法删除。',
-                        '/api/admin/categories/' + obj.data.id, function(){ obj.del(); });
+                    guardDelete(obj);
                 } else if (obj.event === 'edit'){
                     layer.open({
                         type: 2, title: '编辑分类', area: ['560px', '480px'],
@@ -159,27 +191,110 @@
                 }
             });
 
+            /**
+             * A25：删除前先问服务端要影响面，把「禁止删除」显示成下一步动作（改挂 / 停用 / 处理子分类），
+             * 而不是等运营点了确定才吃一个红叉
+             */
+            function guardDelete(obj) {
+                huAdmin.request({
+                    url: '/api/admin/categories/' + obj.data.id + '/impact', type: 'GET', silent: true,
+                    ok: function (res) {
+                        var d = res.data || {};
+                        if (d.deletable) {
+                            layer.confirm(huAdmin.esc(d.hint || ('确定删除分类「' + obj.data.name + '」？')),
+                                {icon: 3, title: '可以删除'}, function (index) {
+                                    layer.close(index);
+                                    doDelete(obj);
+                                });
+                            return;
+                        }
+                        var actions = (d.actions || []).map(function (a) { return '<li>' + huAdmin.esc(a) + '</li>'; }).join('');
+                        layer.open({
+                            type: 1, title: '无法删除：' + huAdmin.esc(obj.data.name), area: ['440px', 'auto'],
+                            content: '<div style="padding:18px 22px;line-height:1.9;font-size:13px">'
+                                + huAdmin.esc(d.hint || '该分类下仍有商品或子分类。')
+                                + '<ul style="margin:10px 0 0 18px;color:#454f39">' + actions + '</ul></div>',
+                            btn: d.actions && d.actions.length ? ['去商品管理改挂', '改为停用分类', '知道了'] : ['知道了'],
+                            btn1: function (index) {
+                                layer.close(index);
+                                location.href = '/admin/product-list';
+                            },
+                            btn2: function (index) {
+                                layer.close(index);
+                                huAdmin.request({
+                                    url: '/api/admin/categories/' + obj.data.id + '/status?isActive=false',
+                                    type: 'PATCH', silent: true,
+                                    ok: function () { layer.msg('分类已停用，前台导航不再显示', {icon: 1}); table.reload('categoryTable'); }
+                                });
+                            }
+                        });
+                    },
+                    fail: function () {
+                        /* 影响面拿不到时退回服务端守卫：宁可多一次确认，也不要盲删 */
+                        doDelete(obj);
+                    }
+                });
+            }
+
+            function doDelete(obj) {
+                huAdmin.request({
+                    url: '/api/admin/categories/' + obj.data.id, type: 'DELETE',
+                    ok: function () { layer.msg('删除成功', {icon: 1}); obj.del(); },
+                    fail: function (res) {
+                        layer.alert(res && res.msg ? res.msg : '删除失败', {icon: 5, title: '服务端拒绝删除'});
+                        table.reload('categoryTable');
+                    }
+                });
+            }
+
             table.on('toolbar(categoryTable)', function(obj){
+                if (obj.event === 'cols') {
+                    huAdminUI.openColumnPicker('categoryTable', COLS, COLS_KEY);
+                    return;
+                }
                 if (obj.event !== 'batchDel') return;
                 var rows = table.checkStatus('categoryTable').data;
                 if (!rows.length) { layer.msg('请先勾选记录', {icon: 7}); return; }
-                layer.confirm('确定删除选中的 ' + rows.length + ' 个分类？含商品的分类会被跳过。', {icon: 3}, function(index){
-                    layer.close(index);
-                    // 分类没有批量接口，按勾选顺序逐条删除并汇总结果
-                    var done = 0, failed = 0;
-                    rows.forEach(function(row){
-                        huAdmin.request({
-                            url: '/api/admin/categories/' + row.id, type: 'DELETE', silent: true,
-                            ok: function(){ done++; },
-                            fail: function(){ failed++; },
-                            always: function(){
-                                if (done + failed === rows.length) {
-                                    layer.msg('已删除 ' + done + ' 个' + (failed ? '，' + failed + ' 个未删除' : ''), {icon: failed ? 5 : 1});
+                var withGoods = rows.filter(function (row) {
+                    return Number(productCounts[row.id] || 0) > 0;
+                }).length;
+                /* G32：批量删除点名后果——带商品的会被服务端拒，不会静默跳过 */
+                huAdminUI.confirmDanger({
+                    title: '确认批量删除 ' + rows.length + ' 个分类',
+                    subject: '将删除「' + rows.slice(0, 4).map(function (r) { return r.name; }).join('、')
+                        + (rows.length > 4 ? ' 等 ' + rows.length + ' 个' : '') + '」分类',
+                    consequences: [
+                        withGoods ? '其中 ' + withGoods + ' 个分类下仍挂着商品，服务端会拒绝删除，这些分类保持原样。'
+                            : '所选分类下都没有商品，可以删除。',
+                        '删除后的分类不再出现在前台导航与筛选里，已建商品的分类字段会失去归属。',
+                        '逐条执行结果会汇总提示，操作写入审计日志。'
+                    ],
+                    confirmText: '确认删除',
+                    onOk: function () {
+                        // 分类没有批量接口，按勾选顺序逐条删除并汇总结果
+                        var done = 0, failed = 0, messages = [];
+                        rows.forEach(function (row) {
+                            huAdmin.request({
+                                url: '/api/admin/categories/' + row.id, type: 'DELETE', silent: true,
+                                ok: function () { done++; },
+                                fail: function (res) { failed++; messages.push(row.name + '：' + ((res && res.msg) || '未删除')); },
+                                always: function () {
+                                    if (done + failed !== rows.length) return;
+                                    var detail = messages.length
+                                        ? '<div style="max-height:220px;overflow:auto;font-size:12.5px;line-height:1.9">'
+                                        + messages.map(function (m) { return '<div>' + huAdmin.esc(m) + '</div>'; }).join('')
+                                        + '</div>' : '';
+                                    layer.open({
+                                        type: 1, title: '批量删除结果：成功 ' + done + ' 个，未删除 ' + failed + ' 个',
+                                        area: ['460px', 'auto'],
+                                        content: '<div class="fg-receipt">' + (detail || '所选分类均已删除。') + '</div>',
+                                        btn: ['知道了']
+                                    });
                                     table.reload('categoryTable');
                                 }
-                            }
+                            });
                         });
-                    });
+                    }
                 });
             });
 

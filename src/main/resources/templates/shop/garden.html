@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>我的花田 · 花语轩</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<div class="hu-pagehead">
+    <div class="hu-container hu-pagehead__row">
+        <div>
+            <div class="hu-crumb"><a href="/index">首页</a> / <a href="/user/profile">个人中心</a> / <span>我的花田</span></div>
+            <h1>我的花田</h1>
+            <p class="hu-pagehead__sub">每天浇一次水，看它从种子长到盛开，然后把这束花送给重要的人</p>
+        </div>
+        <div class="hu-pagehead__aside">
+            <span class="hu-muted" style="font-size:13px">连续培育</span>
+            <div class="hu-num" id="streakHero" style="font-size:26px">0 天</div>
+        </div>
+    </div>
+</div>
+
+<div class="hu-container">
+    <div class="hu-account">
+        <aside th:replace="~{common/account-nav :: accountNav('garden')}"></aside>
+
+        <div>
+            <!-- I11：多块地。会员解锁第 2 块，两块地各自计次与连续培育 -->
+            <div class="hu-slots" id="slotTabs"></div>
+
+            <div class="hu-garden">
+                <!-- 左：植株与操作 -->
+                <section class="hu-panel hu-panel--pad hu-garden__stage">
+                    <div id="plantEmpty" class="hu-empty" style="display:none">
+                        <i class="fa fa-leaf"></i>
+                        <strong id="emptyTitle">这块地还空着</strong>
+                        <span style="font-size:14px" id="emptyHint">从右侧挑一种花苗种下，今天的天气就会开始帮它长</span>
+                    </div>
+
+                    <div id="plantLocked" class="hu-empty" style="display:none">
+                        <i class="fa fa-lock"></i>
+                        <strong>这块地尚未解锁</strong>
+                        <span style="font-size:14px" id="lockedHint"></span>
+                        <a href="/user/member" class="hu-btn hu-btn--solid hu-btn--sm" style="margin-top:14px">了解会员</a>
+                    </div>
+
+                    <div id="plantBody" style="display:none">
+                        <div class="hu-plant" id="plant" data-stage="seed">
+                            <svg viewBox="0 0 200 220" role="img" aria-label="花苗生长示意">
+                                <defs>
+                                    <linearGradient id="soil" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#8d6f57"/>
+                                        <stop offset="100%" stop-color="#5f4a38"/>
+                                    </linearGradient>
+                                </defs>
+                                <ellipse cx="100" cy="196" rx="62" ry="13" fill="url(#soil)"/>
+                                <ellipse cx="100" cy="191" rx="62" ry="11" fill="#a5825f"/>
+                                <g class="hu-plant__stem">
+                                    <path d="M100 190 C 100 160 100 130 100 104" stroke="#2f7a5b" stroke-width="5"
+                                          fill="none" stroke-linecap="round"/>
+                                </g>
+                                <g class="hu-plant__leaf hu-plant__leaf--l">
+                                    <path d="M100 158 C 74 150 62 132 60 118 C 82 118 98 134 100 152 Z" fill="#3f8f68"/>
+                                </g>
+                                <g class="hu-plant__leaf hu-plant__leaf--r">
+                                    <path d="M100 142 C 126 134 138 116 140 102 C 118 102 102 118 100 136 Z" fill="#4ea277"/>
+                                </g>
+                                <g class="hu-plant__bud">
+                                    <ellipse cx="100" cy="98" rx="13" ry="17" fill="#e8b7c8"/>
+                                    <path d="M92 92 Q100 78 108 92 Z" fill="#d78ea6"/>
+                                </g>
+                                <g class="hu-plant__bloom">
+                                    <g fill="#e0647f">
+                                        <ellipse cx="100" cy="66" rx="13" ry="19"/>
+                                        <ellipse cx="100" cy="102" rx="13" ry="19"/>
+                                        <ellipse cx="82" cy="84" rx="19" ry="13"/>
+                                        <ellipse cx="118" cy="84" rx="19" ry="13"/>
+                                    </g>
+                                    <circle cx="100" cy="84" r="11" fill="#f3c14b"/>
+                                </g>
+                            </svg>
+                            <div class="hu-plant__drop" id="drop" style="display:none"><i class="fa fa-tint"></i></div>
+                        </div>
+
+                        <div class="hu-garden__meta">
+                            <h2 id="plantName">—</h2>
+                            <p class="hu-muted" style="font-size:13px;margin:2px 0 14px" id="plantOrigin"></p>
+                            <div class="hu-garden__bar">
+                                <i id="plantBar" style="width:0%"></i>
+                            </div>
+                            <div class="hu-garden__progress">
+                                <span id="plantStageText">—</span>
+                                <span class="hu-muted" id="plantGrowth">0 / 0</span>
+                            </div>
+                            <p class="hu-garden__estimate" id="plantEstimate"></p>
+                            <p class="hu-garden__warning" id="plantWarning" style="display:none"></p>
+                            <p class="hu-garden__giftstate" id="plantGiftState" style="display:none"></p>
+                        </div>
+
+                        <div class="hu-garden__actions">
+                            <button type="button" class="hu-btn hu-btn--solid" id="waterBtn">
+                                <i class="fa fa-tint"></i>&nbsp;浇一次水
+                            </button>
+                            <span class="hu-garden__dots" id="waterDots"></span>
+                            <button type="button" class="hu-btn hu-btn--ghost" id="redeemBtn" style="display:none">
+                                <i class="fa fa-gift"></i>&nbsp;兑换优惠券
+                            </button>
+                            <button type="button" class="hu-btn hu-btn--ghost" id="giftBtn" style="display:none">
+                                <i class="fa fa-share-square-o"></i>&nbsp;送给好友
+                            </button>
+                            <button type="button" class="hu-btn hu-btn--ghost" id="cancelGiftBtn" style="display:none">
+                                <i class="fa fa-undo"></i>&nbsp;撤回转赠
+                            </button>
+                        </div>
+                        <p class="hu-muted" style="font-size:12px;margin-top:12px" id="waterHint"></p>
+                    </div>
+                </section>
+
+                <!-- 右：天气、曲线、花苗与成就 -->
+                <div class="hu-garden__side">
+                    <section class="hu-panel hu-panel--pad">
+                        <h3 class="hu-side-title" style="margin-top:0">今日天气加成
+                            <span class="hu-muted" style="font-size:12px;font-weight:400" id="weatherTag"></span></h3>
+                        <div id="weatherBox" class="hu-muted" style="font-size:13px">正在读取…</div>
+                        <!-- I09/I16：降级说明与缓存来源，取不到实时天气时也不留空白 -->
+                        <p class="hu-weather__notice" id="weatherNotice" style="display:none"></p>
+                        <!-- I10：养护建议随天气与花苗习性变 -->
+                        <p class="hu-care" id="careNote"></p>
+                    </section>
+
+                    <!-- I08：今日 + 未来 3 日的配送建议，文案由服务端按 FlowerCarePolicy 算好 -->
+                    <section class="hu-panel hu-panel--pad">
+                        <h3 class="hu-side-title" style="margin-top:0">配送建议 · 今日与未来三日
+                            <span class="hu-muted" style="font-size:12px;font-weight:400" id="forecastCity"></span></h3>
+                        <div id="forecastBox" class="hu-fc"></div>
+                        <p class="hu-muted" style="font-size:12px;margin:8px 0 0" id="forecastNote"></p>
+                    </section>
+
+                    <!-- I14：成长曲线 -->
+                    <section class="hu-panel hu-panel--pad">
+                        <h3 class="hu-side-title" style="margin-top:0">成长曲线
+                            <span class="hu-muted" style="font-size:12px;font-weight:400" id="curveCount"></span></h3>
+                        <div id="curveBox" class="hu-curve"></div>
+                        <p class="hu-muted" style="font-size:12px;margin:8px 0 0" id="curveNote"></p>
+                    </section>
+
+                    <section class="hu-panel hu-panel--pad" id="seedPanel" style="display:none">
+                        <h3 class="hu-side-title" style="margin-top:0">选一种花苗种下</h3>
+                        <div id="seedList" class="hu-seeds"></div>
+                    </section>
+
+                    <!-- I13：别人送给我的花，确认收下才发券 -->
+                    <section class="hu-panel hu-panel--pad" id="inboxPanel" style="display:none">
+                        <h3 class="hu-side-title" style="margin-top:0">待你确认的花</h3>
+                        <div id="inboxList" class="hu-gifts"></div>
+                    </section>
+
+                    <!-- I12：兑换与转赠记录 + 券包联动 -->
+                    <section class="hu-panel hu-panel--pad">
+                        <h3 class="hu-side-title" style="margin-top:0">兑换记录
+                            <a href="/user/coupons" class="hu-muted" style="font-size:12px;font-weight:400">去券包 ›</a></h3>
+                        <div class="hu-garden__stat">
+                            <div><b id="statMature">0</b><span>已开花</span></div>
+                            <div><b id="statGift">0</b><span>已送人</span></div>
+                            <div><b id="statReceive">0</b><span>收到赠花</span></div>
+                        </div>
+                        <div id="exchangeList" class="hu-exchanges"></div>
+                        <div id="receivedList" class="hu-received"></div>
+                        <!-- I12：兑换出来的券在券包里还剩几张可用，数字现读自券包 -->
+                        <p class="hu-garden__pack" id="couponPack" style="display:none"></p>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 转赠弹窗（I13：寄语 + 对方确认后到账） -->
+<div class="hu-mask" id="giftMask">
+    <div class="hu-panel hu-dialog hu-dialog--sm" role="dialog" aria-modal="true" aria-labelledby="giftTitle">
+        <div class="hu-panel-head">
+            <div>
+                <h2 id="giftTitle">把这束花送给好友</h2>
+                <p>对方点「收下」之后，券才会进入 TA 的券包</p>
+            </div>
+            <button type="button" class="hu-icon-btn" id="giftCancel" title="关闭"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="hu-panel__body">
+            <div class="hu-field">
+                <label for="giftUser">好友用户名<span class="hu-field__req">*</span></label>
+                <input type="text" id="giftUser" class="hu-input" placeholder="例如 testuser" maxlength="50">
+                <div class="hu-field__err"></div>
+            </div>
+            <div class="hu-field">
+                <label for="giftMsg">寄语（可选）</label>
+                <textarea id="giftMsg" class="hu-textarea" rows="3" maxlength="200"
+                          placeholder="花是我养的，第一束送给你。"></textarea>
+                <div class="hu-field__hint"><span id="giftCount">0</span>/200</div>
+            </div>
+            <p class="hu-muted" style="font-size:12px;margin:0 0 10px">
+                送出后可以在对方确认前撤回；对方婉拒的话，花会退回你的花田，仍可自己兑换。
+            </p>
+            <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:6px">
+                <button type="button" class="hu-btn hu-btn--ghost" id="giftClose">取消</button>
+                <button type="button" class="hu-btn hu-btn--solid" id="giftSend">确认送出</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<script th:inline="javascript">
+    const STAGE_TEXT = {seed: '播种发芽', sprout: '抽枝长叶', bud: '含苞', bloom: '盛开'};
+    let home = null;
+    let slot = 1;   // 当前查看的地块（I11）
+
+    function esc(v) {
+        return window.huEscape(v == null ? '' : String(v));
+    }
+
+    function render() {
+        const plot = home && home.plot;
+        const slots = (home && home.slots) || [];
+        renderSlots();
+        $('#streakHero').text(((plot && plot.streakDays) || 0) + ' 天');
+        $('#statMature').text(home && home.matured ? home.matured : 0);
+        $('#statGift').text(home && home.gifted ? home.gifted : 0);
+        $('#statReceive').text(home && home.receivedCount ? home.receivedCount : 0);
+        renderWeather();
+        renderForecast();
+        renderCare();
+        renderCurve();
+        renderExchanges();
+        renderReceived();
+        renderPack();
+        renderInbox();
+
+        const locked = slots.filter(function (s) { return s.slotNo === slot && s.locked; })[0];
+        if (locked && !locked.plot) {
+            $('#plantLocked').show();
+            $('#plantEmpty').hide();
+            $('#plantBody').hide();
+            $('#seedPanel').hide();
+            $('#lockedHint').text(locked.lockedNote || '会员可解锁第 2 块地');
+            return;
+        }
+        $('#plantLocked').hide();
+
+        if (!plot) {
+            $('#plantEmpty').show();
+            $('#emptyTitle').text('这块地还空着');
+            $('#plantBody').hide();
+            $('#seedPanel').show();
+            renderSeeds();
+            return;
+        }
+        $('#plantEmpty').hide();
+        $('#plantBody').show();
+        $('#seedPanel').hide();
+
+        $('#plant').attr('data-stage', plot.stage);
+        $('#plantName').text(plot.seedName);
+        $('#plantOrigin').text((plot.slotName ? plot.slotName + ' · ' : '')
+            + (plot.originName ? '产地 · ' + plot.originName + ' 种源' : '')
+            + (plot.sowedAt ? ' · ' + plot.sowedAt + ' 种下' : ''));
+        $('#plantBar').css('width', Math.max(2, plot.percent) + '%');
+        $('#plantStageText').text((STAGE_TEXT[plot.stage] || plot.stage)
+            + (plot.status === 'mature' || plot.status === 'redeemed' || plot.status === 'gifted' ? ' · 已成熟' : ''));
+        $('#plantGrowth').text(plot.growth + ' / ' + plot.needGrowth);
+        $('#plantEstimate').text(plot.estimate || '');
+        $('#plantWarning').toggle(!!plot.warning).text(plot.warning || '');
+        const gifting = plot.giftState === 'pending';
+        $('#plantGiftState').toggle(!!plot.giftStateLabel).text(plot.giftStateLabel || '');
+
+        const left = plot.waterLeft == null ? 0 : plot.waterLeft;
+        const dots = [];
+        for (let i = 0; i < (home.waterPerDay || 3); i++) {
+            dots.push('<i class="' + (i < left ? 'is-left' : '') + '"></i>');
+        }
+        $('#waterDots').html(dots.join(''));
+        $('#waterBtn').prop('disabled', left <= 0 || gifting)
+            .html('<i class="fa fa-tint"></i>&nbsp;' + (left > 0 ? '再浇 ' + left + ' 次' : '今天浇过了'));
+        const mature = plot.status === 'mature';
+        $('#redeemBtn').toggle(mature);
+        $('#giftBtn').toggle(mature);
+        $('#cancelGiftBtn').toggle(gifting);
+        $('#waterHint').text('每次浇水 +6 点成长值，连续培育每天再 +2（最多 +6），晴天补光照、雨天补水润；'
+            + '超过 2 天不管，成长值每天回落 4 点。两块地各自计次。');
+    }
+
+    function renderSlots() {
+        const slots = (home && home.slots) || [];
+        if (!slots.length) {
+            $('#slotTabs').html('<span class="hu-chip is-active">1 号地</span>');
+            return;
+        }
+        $('#slotTabs').html(slots.map(function (s) {
+            return '<button type="button" class="hu-chip' + (s.slotNo === slot ? ' is-active' : '') + '"'
+                + ' data-slot="' + s.slotNo + '">'
+                + '<i class="fa ' + (s.locked ? 'fa-lock' : (s.plot ? 'fa-seedling' : 'fa-plus')) + '"></i> '
+                + esc(s.name) + (s.plot ? '<em>' + esc(s.plot.seedName) + '</em>' : '') + '</button>';
+        }).join('') + (home.vip === false
+            ? '<span class="hu-slots__note">会员可同时养 ' + (home.slotsAllowed + 1) + ' 株</span>' : ''));
+    }
+
+    function renderWeather() {
+        const card = home && home.weather;
+        const bonus = home && home.bonus;
+        const state = home && home.weatherState;
+        const notice = (state && state.note) || '';
+        $('#weatherTag').text(card
+            ? (state && state.cached ? '· 本地缓存 ' + ((state.cacheMinutes || 10)) + ' 分钟' : '· 实时')
+            : '');
+        // 降级时原因已经写进 weatherBox，这里只补「数据来源」那一句，避免同一句话出现两遍
+        $('#weatherNotice').toggle(!!(card && notice)).text(card ? notice : '');
+        if (!card) {
+            // I09：外部接口取不到也要给人话，而不是空白或一串技术词
+            $('#weatherBox').html('<p class="hu-weather__none">'
+                + esc(notice || '暂时取不到实时天气，已按城市气候常态给出建议，不影响浇水与兑换。') + '</p>');
+            return;
+        }
+        const tags = [];
+        if (bonus) {
+            if (bonus.sun) tags.push('<span class="hu-bonus hu-bonus--sun">光照 +' + bonus.sun + '</span>');
+            if (bonus.water) tags.push('<span class="hu-bonus hu-bonus--rain">水润 +' + bonus.water + '</span>');
+            if (bonus.stress) tags.push('<span class="hu-bonus hu-bonus--stress">受压 −' + bonus.stress + '</span>');
+        }
+        $('#weatherBox').html('<div class="hu-weather hu-weather--' + esc(card.level) + '">' +
+            '<b>' + esc(card.weather) + ' ' + esc(card.temperature) + '℃</b>' +
+            '<span>' + tags.join('') + '</span>' +
+            '<p>' + esc((bonus && bonus.note) || (card.tips && card.tips[0]) || '') + '</p></div>');
+    }
+
+    /** 预报的一天（I08）：等级色阶与文案都来自服务端的 FlowerCarePolicy.advise，这里只排版 */
+    function dayCell(d) {
+        const temp = d.dayTemp == null ? '—' : d.dayTemp + '℃';
+        const night = d.nightTemp == null ? '' : ' / ' + d.nightTemp + '℃';
+        const sky = (d.weather || '') + (d.nightWeather && d.nightWeather !== d.weather ? '转' + d.nightWeather : '');
+        return '<div class="hu-fc__day hu-fc__day--' + esc(d.level || 'good') + (d.today ? ' is-today' : '') + '">'
+            + '<b>' + esc(d.label) + '</b>'
+            + '<span>' + esc(sky) + '</span>'
+            + '<em>' + esc(temp) + esc(night) + '</em>'
+            + '<p>' + esc(d.headline || '')
+            + (d.deliveryNote ? '<i class="hu-fc__note">' + esc(d.deliveryNote) + '</i>' : '')
+            + (d.coldChain ? '<i class="hu-fc__cold"><i class="fa fa-snowflake-o"></i>建议冷链</i>' : '')
+            + '</p></div>';
+    }
+
+    /** 今日 + 未来 3 日（I08）：今天优先用实况（比预报准），实况缺失时才用预报里那一行 */
+    function renderForecast() {
+        const fc = home && home.forecast;
+        const days = (fc && fc.days) || [];
+        const card = home && home.weather;
+        const state = home && home.weatherState;
+        $('#forecastCity').text((fc && fc.city) ? '· ' + fc.city : '');
+        const cells = [];
+        const future = days.filter(function (d) { return !d.today; }).slice(0, 3);
+        const todayRow = days.filter(function (d) { return d.today; })[0];
+        if (card) {
+            cells.push(dayCell({
+                label: '今天', weather: card.weather, nightWeather: null, dayTemp: card.temperature,
+                nightTemp: null, level: card.level, headline: card.headline,
+                deliveryNote: (card.tips && card.tips[0]) || '', coldChain: card.recommendColdChain, today: true
+            }));
+        } else if (todayRow) {
+            cells.push(dayCell(todayRow));
+        }
+        future.forEach(function (d) {
+            cells.push(dayCell(d));
+        });
+        if (!cells.length) {
+            $('#forecastBox').html('<p class="hu-weather__none">'
+                + esc((fc && fc.note) || (state && state.note)
+                    || '暂时取不到未来几天的天气，按当前实况安排配送即可。') + '</p>');
+        } else {
+            $('#forecastBox').html(cells.join(''));
+        }
+        $('#forecastNote').text(cells.length && fc && fc.reportTime
+            ? '预报发布于 ' + fc.reportTime + '，配送时段以下单时的实时天气复核为准。'
+            : (cells.length ? '' : ((fc && fc.note) || '')));
+    }
+
+    /** 养护建议（I10）：服务端按「花苗习性 + 当日天气」算好，前端只负责显示 */
+    function renderCare() {
+        $('#careNote').text(home && home.careNote ? home.careNote : '');
+    }
+
+    /** 成长曲线（I14）：把服务端流水画成折线，点上标出浇水 / 回落 / 开花 */
+    function renderCurve() {
+        const curve = home && home.curve;
+        const points = (curve && curve.points) || [];
+        $('#curveCount').text(points.length ? '· 共 ' + points.length + ' 条记录' : '');
+        $('#curveNote').text((curve && curve.note) || '');
+        if (points.length < 2) {
+            $('#curveBox').html('<p class="hu-muted" style="font-size:12.5px;margin:0">'
+                + (points.length ? '再浇一次水就能看到曲线走势' : '种下花苗后，这里会记录每一次浇水与回落') + '</p>');
+            return;
+        }
+        const w = 320, h = 118, pad = 8, axis = 14;
+        const need = Math.max(1, curve.needGrowth || 100);
+        const max = Math.max(need, Math.max.apply(null, points.map(function (p) { return p.growth || 0; })));
+        const stepX = (w - pad * 2) / (points.length - 1);
+        // I14：曲线是自绘 SVG，不引外部图表库；纵轴按「成熟阈值」和历史峰值取较大者，避免成熟线被裁掉
+        const yOf = function (value) {
+            return h - axis - (Math.max(0, value || 0) / max) * (h - axis - pad);
+        };
+        const xOf = function (i) {
+            return pad + i * stepX;
+        };
+        const path = points.map(function (p, i) {
+            return (i ? 'L' : 'M') + xOf(i).toFixed(1) + ' ' + yOf(p.growth).toFixed(1);
+        }).join(' ');
+        const lastX = xOf(points.length - 1).toFixed(1);
+        const area = path + ' L' + lastX + ' ' + (h - axis) + ' L' + pad.toFixed(1) + ' ' + (h - axis) + ' Z';
+        const dots = points.map(function (p, i) {
+            const color = p.source === 'decay' ? '#c15b6b' : (p.source === 'mature' ? '#c08a33' : '#0f7b63');
+            return '<circle cx="' + xOf(i).toFixed(1) + '" cy="' + yOf(p.growth).toFixed(1) + '" r="3" fill="' + color + '">'
+                + '<title>' + esc(p.at) + ' · ' + esc(p.growth) + ' 点（' + esc(sourceText(p.source))
+                + (p.delta ? ' ' + (p.delta > 0 ? '+' : '') + p.delta : '') + '）</title></circle>';
+        }).join('');
+        const needY = yOf(need);
+        const firstAt = String(points[0].at || '').slice(5, 16);
+        const lastAt = String(points[points.length - 1].at || '').slice(5, 16);
+        $('#curveBox').html('<svg viewBox="0 0 ' + w + ' ' + h + '" class="hu-curve__svg" role="img" aria-label="成长曲线">'
+            + '<path d="' + area + '" fill="rgba(15, 123, 99, .08)" stroke="none"/>'
+            + '<line x1="' + pad + '" y1="' + (h - axis) + '" x2="' + (w - pad) + '" y2="' + (h - axis)
+            + '" class="hu-curve__axisline"/>'
+            + '<line x1="' + pad + '" y1="' + needY.toFixed(1) + '" x2="' + (w - pad) + '" y2="' + needY.toFixed(1)
+            + '" stroke="#c08a33" stroke-dasharray="4 4" stroke-width="1"/>'
+            + '<text x="' + (w - pad) + '" y="' + (needY - 3).toFixed(1) + '" text-anchor="end" class="hu-curve__need">成熟 ' + need + '</text>'
+            + '<path d="' + path + '" fill="none" stroke="#0f7b63" stroke-width="2" stroke-linejoin="round"/>'
+            + dots
+            + '<text x="' + pad + '" y="' + (h - 3) + '" class="hu-curve__axis">' + esc(firstAt) + '</text>'
+            + '<text x="' + (w - pad) + '" y="' + (h - 3) + '" text-anchor="end" class="hu-curve__axis">' + esc(lastAt) + '</text>'
+            + '</svg>');
+    }
+
+    function sourceText(source) {
+        return source === 'water' ? '浇水' : source === 'decay' ? '闲置回落' : source === 'mature' ? '开花'
+            : source === 'redeem' ? '兑换' : source === 'gift' ? '转赠' : '播种';
+    }
+
+    function renderSeeds() {
+        const seeds = (home && home.seeds) || [];
+        $('#seedList').html(seeds.map(function (s) {
+            return '<button type="button" class="hu-seed" data-seed="' + esc(s.code) + '"'
+                + (s.plantable === false ? ' disabled' : '') + '>' +
+                '<i class="fa ' + esc(s.icon) + '"></i>' +
+                '<b>' + esc(s.name) + '</b>' +
+                '<small>成熟需 ' + s.needGrowth + ' 点 · ' + esc(s.rewardText) + '</small>' +
+                '<em>' + esc(s.note) + '</em></button>';
+        }).join('') || '<p class="hu-muted" style="font-size:13px">暂无可种花苗</p>');
+    }
+
+    /** 兑换记录（I12）：券状态由服务端现读券包，这里只做展示与跳转 */
+    function renderExchanges() {
+        const rows = (home && home.exchanges) || [];
+        $('#exchangeList').html(rows.length ? rows.map(function (r) {
+            const stateText = r.type === 'gift'
+                ? (r.state === 'pending' ? '等对方确认' : r.state === 'declined' ? '对方婉拒'
+                    : r.state === 'canceled' ? '已撤回' : '对方已收下')
+                : '已兑换';
+            const coupon = r.couponState === 'unused' ? '<span class="hu-tag hu-tag--ok">券可用</span>'
+                : r.couponState === 'used' ? '<span class="hu-tag">已使用</span>'
+                    : r.couponState === 'expired' ? '<span class="hu-tag hu-tag--warn">已过期</span>'
+                        : r.couponState === 'missing' ? '<span class="hu-tag hu-tag--warn">未到账</span>' : '';
+            return '<div class="hu-exchanges__row"><i class="fa ' + (r.type === 'gift' ? 'fa-share-square-o' : 'fa-gift') + '"></i>'
+                + '<div><b>' + esc(r.seedName) + '</b>'
+                + '<small>' + esc(r.at) + ' · ' + esc(r.slotNo ? r.slotNo + ' 号地' : '') + ' · ' + stateText
+                + (r.receiverName && r.type === 'gift' ? ' · 给 ' + esc(r.receiverName) : '') + '</small>'
+                + (r.couponName ? '<em>' + esc(r.couponName) + (r.amount ? ' ¥' + window.huMoney(r.amount) : '') + '</em>' : '')
+                // I12：券码只在自己兑换的那笔出现（转赠的券在对方名下，服务端已经不下发）
+                + (r.couponCode ? '<code class="hu-fc__code">' + esc(r.couponCode) + '</code>' : '')
+                + (r.message ? '<p class="hu-exchanges__msg">「' + esc(r.message) + '」</p>' : '') + '</div>'
+                + '<div class="hu-exchanges__side">' + coupon
+                + (r.userCouponId ? '<a href="/user/coupons">去券包 ›</a>' : '') + '</div></div>';
+        }).join('') : '<p class="hu-muted" style="font-size:12.5px;margin-top:12px">还没有兑换记录，养熟第一束花试试</p>');
+    }
+
+    /** 券包联动（I12）：花田不回写券的状态，这两个数由服务端现读券包，页面只负责转述 */
+    function renderPack() {
+        const total = (home && home.gardenCoupons) || 0;
+        const usable = (home && home.gardenCouponsUsable) || 0;
+        if (!total) {
+            $('#couponPack').hide().empty();
+            return;
+        }
+        $('#couponPack').show().html('<i class="fa fa-ticket"></i> 花田兑换的券共 ' + total + ' 张，其中 '
+            + usable + ' 张仍可使用 · <a href="/user/coupons">去券包</a>');
+    }
+
+    function renderReceived() {
+        const list = (home && home.received) || [];
+        $('#receivedList').html(list.length ? list.map(function (r) {
+            return '<div class="hu-received__row"><i class="fa fa-gift"></i>' +
+                '<div><b>' + esc(r.seedName) + '</b><small>' + esc(r.fromUsername) + ' 送给你的 · ' + esc(r.at) + '</small>' +
+                (r.message ? '<em>「' + esc(r.message) + '」</em>' : '') + '</div></div>';
+        }).join('') : '');
+    }
+
+    /** 待确认的转赠（I13）：mine=true 表示别人送我的，可以收下或婉拒 */
+    function renderInbox() {
+        const rows = (home && home.pendingGifts) || [];
+        const inbox = rows.filter(function (r) { return r.mine; });
+        $('#inboxPanel').toggle(inbox.length > 0);
+        $('#inboxList').html(inbox.map(function (r) {
+            return '<div class="hu-gifts__row"><i class="fa ' + esc(r.icon || 'fa-leaf') + '"></i>'
+                + '<div><b>' + esc(r.seedName) + '</b><small>' + esc(r.fromName) + ' 送给你的 · ' + esc(r.at) + '</small>'
+                + (r.message ? '<em>「' + esc(r.message) + '」</em>' : '') + '</div>'
+                + '<div class="hu-gifts__acts">'
+                + '<button type="button" class="hu-btn hu-btn--solid hu-btn--sm" data-accept="' + esc(r.exchangeId) + '">收下</button>'
+                + '<button type="button" class="hu-btn hu-btn--ghost hu-btn--sm" data-decline="' + esc(r.exchangeId) + '">婉拒</button>'
+                + '</div></div>';
+        }).join(''));
+    }
+
+    function reload() {
+        huApi({
+            url: '/api/garden/home',
+            data: {slot: slot},
+            ok: function (data) {
+                home = data || {};
+                slot = home.slotNo || slot;
+                render();
+            },
+            fail: function () {
+                $('#weatherBox').text('花田数据读取失败');
+            }
+        });
+    }
+
+    function splash() {
+        $('#drop').stop(true, true).css({display: 'block', opacity: 1, top: '18%'}).animate({top: '78%', opacity: 0}, 620, function () {
+            $(this).hide();
+        });
+        $('#plant').addClass('is-sway');
+        setTimeout(function () {
+            $('#plant').removeClass('is-sway');
+        }, 900);
+    }
+
+    $(function () {
+        reload();
+
+        $('#slotTabs').on('click', '.hu-chip', function () {
+            slot = Number($(this).data('slot')) || 1;
+            reload();
+        });
+
+        $('#seedList').on('click', '.hu-seed', function () {
+            const code = $(this).data('seed');
+            huApi({
+                url: '/api/garden/plant', type: 'POST', data: {seedCode: code, slotNo: slot},
+                ok: function (data) {
+                    window.huToast(data.msg || '已种下', 'ok');
+                    reload();
+                }
+            });
+        });
+
+        $('#waterBtn').on('click', function () {
+            splash();
+            huApi({
+                url: '/api/garden/water', type: 'POST', data: {slotNo: slot},
+                ok: function (data) {
+                    window.huToast(data.msg || '浇水成功', 'ok');
+                    reload();
+                },
+                fail: function () {
+                    $('#drop').hide();
+                }
+            });
+        });
+
+        $('#redeemBtn').on('click', function () {
+            huApi({
+                url: '/api/garden/redeem', type: 'POST', data: {slotNo: slot},
+                ok: function (data) {
+                    window.huToast(data.msg || '兑换成功', 'ok');
+                    setTimeout(reload, 800);
+                }
+            });
+        });
+
+        $('#giftBtn').on('click', function () {
+            $('#giftMask').addClass('is-open');
+            $('#giftUser').trigger('focus');
+        });
+        $('#giftCancel, #giftClose').on('click', function () {
+            $('#giftMask').removeClass('is-open');
+        });
+        $('#giftMsg').on('input', function () {
+            $('#giftCount').text($(this).val().length);
+        });
+        $('#giftSend').on('click', function () {
+            const username = $('#giftUser').val();
+            if (!username || !username.trim()) {
+                $('#giftUser').closest('.hu-field').find('.hu-field__err').text('请填写好友用户名');
+                return;
+            }
+            huApi({
+                url: '/api/garden/gift', type: 'POST',
+                data: {username: username.trim(), message: $('#giftMsg').val(), slotNo: slot},
+                ok: function (data) {
+                    $('#giftMask').removeClass('is-open');
+                    window.huToast(data.msg || '已送出', 'ok');
+                    setTimeout(reload, 600);
+                }
+            });
+        });
+
+        // 撤回的是「我送出去、还等对方确认」那一笔，按当前地块从待确认列表里找流水号
+        $('#cancelGiftBtn').on('click', function () {
+            const row = ((home && home.pendingGifts) || []).filter(function (g) {
+                return !g.mine && g.exchangeId && g.slotNo === slot;
+            })[0];
+            if (!row) {
+                window.huToast('没找到待确认的转赠记录', 'err');
+                return;
+            }
+            huApi({
+                url: '/api/garden/gift/cancel', type: 'POST', data: {exchangeId: row.exchangeId},
+                ok: function (data) {
+                    window.huToast(data.msg || '已撤回', 'ok');
+                    reload();
+                }
+            });
+        });
+
+        $('#inboxList').on('click', '[data-accept]', function () {
+            huApi({
+                url: '/api/garden/gift/accept', type: 'POST', data: {exchangeId: $(this).data('accept')},
+                ok: function (data) {
+                    window.huToast(data.msg || '已收下', 'ok');
+                    reload();
+                }
+            });
+        });
+        $('#inboxList').on('click', '[data-decline]', function () {
+            huApi({
+                url: '/api/garden/gift/decline', type: 'POST', data: {exchangeId: $(this).data('decline')},
+                ok: function (data) {
+                    window.huToast(data.msg || '已婉拒', 'ok');
+                    reload();
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@ import org.liuym.flowerv1springboot.config.CacheConfig;
 import org.liuym.flowerv1springboot.model.OrderStatus;
 import org.liuym.flowerv1springboot.repository.*;
 import org.liuym.flowerv1springboot.service.StatsService;
+import org.liuym.flowerv1springboot.vo.StatsViews;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
@@ -12,18 +13,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
 @Transactional(readOnly = true)
 public class StatsServiceImpl implements StatsService {
 
-    private static final List<OrderStatus> PAID_STATUSES = List.of(OrderStatus.PAID, OrderStatus.PROCESSING,
-            OrderStatus.SHIPPED, OrderStatus.DELIVERED, OrderStatus.COMPLETED);
+    /** 成交口径：与看板/报表完全一致，取消与退款不算成交 */
+    private static final List<OrderStatus> DEAL_STATUSES = OrderStatus.DEAL_STATUSES;
 
     /** status 列由 OrderStatusConverter 以小写 code 存储，原生 SQL 聚合需按同样的字面量比对 */
-    private static final List<String> PAID_STATUS_CODES = PAID_STATUSES.stream().map(OrderStatus::getCode).toList();
+    private static final List<String> DEAL_STATUS_CODES = DEAL_STATUSES.stream().map(OrderStatus::getCode).toList();
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
@@ -47,8 +47,10 @@ public class StatsServiceImpl implements StatsService {
     }
 
     @Override
-    @Cacheable(cacheNames = CacheConfig.STATS)
+    @Cacheable(cacheNames = CacheConfig.STATS, key = "'legacy:overview'")
     public Map<String, Object> overview() {
+        BigDecimal paidAmount = orderRepository.sumPayAmount(DEAL_STATUSES);
+        long paidCount = orderRepository.countByStatusIn(DEAL_STATUSES);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("productCount", productRepository.count());
         data.put("activeProductCount", productRepository.countByIsActiveTrue());
@@ -56,19 +58,22 @@ public class StatsServiceImpl implements StatsService {
         data.put("userCount", userRepository.count());
         data.put("orderCount", orderRepository.count());
         data.put("pendingOrderCount", orderRepository.countByStatus(OrderStatus.PENDING));
-        data.put("paidOrderCount", orderRepository.countByStatusIn(PAID_STATUSES));
-        data.put("paidAmount", orderRepository.sumPayAmount(PAID_STATUSES));
+        data.put("paidOrderCount", paidCount);
+        data.put("paidAmount", paidAmount);
+        data.put("avgOrderAmount", StatsViews.ratio(paidAmount, paidCount));
+        data.put("refundOrderCount", orderRepository.countByStatus(OrderStatus.REFUNDED));
+        data.put("cancelOrderCount", orderRepository.countByStatus(OrderStatus.CANCELLED));
         data.put("bannerCount", bannerRepository.count());
         data.put("noticeCount", noticeRepository.count());
         return data;
     }
 
     @Override
-    @Cacheable(cacheNames = CacheConfig.STATS)
+    @Cacheable(cacheNames = CacheConfig.STATS, key = "'legacy:trend:' + #p0")
     public List<Map<String, Object>> salesTrend(int days) {
         int span = Math.max(1, Math.min(days, 90));
         LocalDate from = LocalDate.now().minusDays(span - 1L);
-        List<Object[]> rows = orderRepository.sumDailyPaid(from.atStartOfDay(), PAID_STATUS_CODES);
+        List<Object[]> rows = orderRepository.sumDailyPaid(from.atStartOfDay(), DEAL_STATUS_CODES);
 
         Map<String, Object[]> indexed = new HashMap<>();
         for (Object[] row : rows) {
@@ -89,10 +94,10 @@ public class StatsServiceImpl implements StatsService {
     }
 
     @Override
-    @Cacheable(cacheNames = CacheConfig.STATS)
+    @Cacheable(cacheNames = CacheConfig.STATS, key = "'legacy:top-products:' + #p0")
     public List<Map<String, Object>> topProducts(int limit) {
         List<Map<String, Object>> list = new ArrayList<>();
-        for (Object[] row : orderRepository.topProducts(PAID_STATUSES, PageRequest.of(0, clamp(limit)))) {
+        for (Object[] row : orderRepository.topProducts(DEAL_STATUSES, PageRequest.of(0, clamp(limit)))) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("productId", row[0]);
             item.put("productName", row[1]);
@@ -104,10 +109,10 @@ public class StatsServiceImpl implements StatsService {
     }
 
     @Override
-    @Cacheable(cacheNames = CacheConfig.STATS)
+    @Cacheable(cacheNames = CacheConfig.STATS, key = "'legacy:top-spenders:' + #p0")
     public List<Map<String, Object>> topSpenders(int limit) {
         List<Map<String, Object>> list = new ArrayList<>();
-        for (Object[] row : orderRepository.topSpenders(PAID_STATUSES, PageRequest.of(0, clamp(limit)))) {
+        for (Object[] row : orderRepository.topSpenders(DEAL_STATUSES, PageRequest.of(0, clamp(limit)))) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("userId", row[0]);
             item.put("username", row[1]);

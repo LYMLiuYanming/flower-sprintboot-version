@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--
+  账户导航：个人中心各页与购物车共用同一份，active 决定高亮项。
+  各页此前各写一份侧栏是「我的收藏」条目在某些页面消失的根因，改为一处维护。
+-->
+<aside th:fragment="accountNav(active)" class="hu-account-nav" aria-label="账户导航">
+    <div class="hu-panel hu-idcard">
+        <div class="hu-idcard__avatar" id="avatar" aria-hidden="true"
+             th:text="${loginUser != null and !#strings.isEmpty(loginUser.fullName)} ? ${#strings.substring(loginUser.fullName, 0, 1)} : '花'">花</div>
+        <div style="min-width:0">
+            <div class="hu-idcard__name" id="sideName" th:text="${loginUser != null ? loginUser.fullName : '顾客'}">用户名</div>
+            <div class="hu-idcard__meta" id="sidePhone"
+                 th:text="${loginUser != null and !#strings.isEmpty(loginUser.phone)} ? ${loginUser.phone} : '未绑定手机号'">手机号</div>
+        </div>
+    </div>
+    <div class="hu-panel hu-panel--pad hu-side-sticky">
+        <h3 class="hu-side-title" id="huAccountNavTitle">账户导航</h3>
+        <ul class="hu-navtabs" role="list" aria-labelledby="huAccountNavTitle">
+            <li><a href="/user/profile" th:classappend="${active == 'profile'} ? ' is-active'"
+                   th:attr="aria-current=${active == 'profile' ? 'page' : null}">
+                <i class="fa fa-user-o" aria-hidden="true"></i>个人资料</a></li>
+            <li><a href="/user/orders" th:classappend="${active == 'orders'} ? ' is-active'"
+                   th:attr="aria-current=${active == 'orders' ? 'page' : null}">
+                <i class="fa fa-file-text-o" aria-hidden="true"></i>我的订单</a></li>
+            <li><a href="/user/favorites" th:classappend="${active == 'favorites'} ? ' is-active'"
+                   th:attr="aria-current=${active == 'favorites' ? 'page' : null}">
+                <i class="fa fa-heart-o" aria-hidden="true"></i>我的收藏</a></li>
+            <li><a href="/user/coupons" th:classappend="${active == 'coupons'} ? ' is-active'"
+                   th:attr="aria-current=${active == 'coupons' ? 'page' : null}">
+                <i class="fa fa-ticket" aria-hidden="true"></i>我的优惠券</a></li>
+            <li><a href="/user/addresses" th:classappend="${active == 'addresses'} ? ' is-active'"
+                   th:attr="aria-current=${active == 'addresses' ? 'page' : null}">
+                <i class="fa fa-map-marker" aria-hidden="true"></i>收货地址</a></li>
+            <li><a href="/garden" th:classappend="${active == 'garden'} ? ' is-active'"
+                   th:attr="aria-current=${active == 'garden' ? 'page' : null}">
+                <i class="fa fa-leaf" aria-hidden="true"></i>我的花田</a></li>
+            <li><a href="/user/settings" th:classappend="${active == 'settings'} ? ' is-active'"
+                   th:attr="aria-current=${active == 'settings' ? 'page' : null}">
+                <i class="fa fa-cog" aria-hidden="true"></i>账号设置</a></li>
+            <li><a href="/cart" th:classappend="${active == 'cart'} ? ' is-active'"
+                   th:attr="aria-current=${active == 'cart' ? 'page' : null}">
+                <i class="fa fa-shopping-bag" aria-hidden="true"></i>购物车</a></li>
+            <li><a href="/auth/logout" class="hu-navtabs__out"><i class="fa fa-sign-out" aria-hidden="true"></i>退出登录</a></li>
+        </ul>
+    </div>
+</aside>
+</body>
+</html>

@@ -1,0 +1,639 @@
+/* f-j.css · 功能批次样式扩展（A-L 分组专用，勿跨组改动本文件） */
+
+/* ============ J 组：立体展台与媒体 ============ */
+
+/* ---------- J01/J05-J08/J12 立体展台面板 ---------- */
+.hu-stage {
+    --hu-stage-bg: radial-gradient(120% 90% at 50% 12%, #1d2534 0%, #121824 46%, #0a0e16 100%);
+    position: relative;
+    margin: 0 0 24px;
+    padding: 0;
+    border: 1px solid var(--hu-line);
+    border-radius: var(--hu-radius-lg);
+    background: var(--hu-surface);
+    box-shadow: var(--hu-shadow);
+    overflow: hidden;
+}
+
+.hu-stage__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 14px 20px;
+    padding: 20px 22px 16px;
+    border-bottom: 1px solid var(--hu-line);
+}
+
+.hu-stage__heading { min-width: 0; flex: 1 1 260px; }
+
+.hu-stage__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .16em;
+    color: var(--hu-accent);
+    text-transform: uppercase;
+}
+
+.hu-stage__title {
+    margin: 6px 0 2px;
+    font-family: var(--hu-font-display);
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    color: var(--hu-ink);
+}
+
+.hu-stage__hintline {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--hu-muted);
+}
+
+/* Tab 用胶囊组，和详情页的 .hu-tabs 下划线区分开：这里切的是「同一块画面的两种呈现」 */
+.hu-stage__switch {
+    display: inline-flex;
+    gap: 3px;
+    padding: 4px;
+    border-radius: var(--hu-radius-pill);
+    background: var(--hu-surface-alt);
+    border: 1px solid var(--hu-line);
+}
+
+.hu-stage__tab {
+    appearance: none;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--hu-muted);
+    padding: 8px 16px;
+    border-radius: var(--hu-radius-pill);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color .2s var(--hu-ease), background .2s var(--hu-ease);
+}
+
+.hu-stage__tab:hover { color: var(--hu-ink); }
+
+.hu-stage__tab.is-active {
+    background: var(--hu-grad-ink);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 6px 16px -8px rgba(16, 22, 35, .6);
+}
+
+.hu-stage__tab:focus-visible {
+    outline: 2px solid var(--hu-accent);
+    outline-offset: 2px;
+}
+
+.hu-stage__tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    flex: 0 1 auto;
+}
+
+.hu-stage__speed {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 12px;
+    color: var(--hu-muted);
+    padding: 5px 12px 5px 10px;
+    border: 1px solid var(--hu-line);
+    border-radius: var(--hu-radius-pill);
+    background: var(--hu-surface-alt);
+}
+
+.hu-stage__speedlabel i { color: var(--hu-accent); margin-right: 4px; }
+
+.hu-stage__speed input[type="range"] {
+    width: 96px;
+    accent-color: var(--hu-accent);
+    cursor: pointer;
+}
+
+.hu-stage__speed input[type="range"]:focus-visible {
+    outline: 2px solid var(--hu-accent);
+    outline-offset: 3px;
+}
+
+.hu-stage__modes {
+    display: inline-flex;
+    border: 1px solid var(--hu-line);
+    border-radius: var(--hu-radius-pill);
+    overflow: hidden;
+    background: var(--hu-surface-alt);
+}
+
+.hu-stage__mode,
+.hu-stage__tool {
+    appearance: none;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 12.5px;
+    color: var(--hu-muted);
+    padding: 7px 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color .18s var(--hu-ease), background .18s var(--hu-ease);
+}
+
+.hu-stage__mode + .hu-stage__mode { border-left: 1px solid var(--hu-line); }
+
+.hu-stage__mode:hover,
+.hu-stage__tool:hover { color: var(--hu-ink); background: rgba(15, 123, 99, .06); }
+
+.hu-stage__mode.is-active {
+    background: var(--hu-accent);
+    color: #fff;
+    font-weight: 600;
+}
+
+.hu-stage__tool {
+    border: 1px solid var(--hu-line);
+    border-radius: var(--hu-radius-pill);
+    background: var(--hu-surface-alt);
+}
+
+.hu-stage__tool i { color: var(--hu-accent); margin-right: 5px; }
+
+.hu-stage__mode:focus-visible,
+.hu-stage__tool:focus-visible {
+    outline: 2px solid var(--hu-accent);
+    outline-offset: 2px;
+}
+
+.hu-stage__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(210px, .4fr);
+    gap: 20px;
+    padding: 20px 22px 24px;
+}
+
+/* 影棚底色：暗背景下 CC0 花束的玻璃与花瓣层次才出得来，同时给透明 canvas 一个稳定的视觉落点 */
+.hu-stage__viewport {
+    position: relative;
+    min-height: 420px;
+    border-radius: var(--hu-radius);
+    background: var(--hu-stage-bg);
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.hu-stage__viewport::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 34%;
+    background: linear-gradient(to top, rgba(0, 0, 0, .38), transparent);
+    pointer-events: none;
+}
+
+.hu-stage__canvas {
+    position: absolute;
+    inset: 0;
+    /* 单指旋转、双指缩放不能顺带滚页面（J06） */
+    touch-action: none;
+    cursor: grab;
+    border-radius: var(--hu-radius);
+    outline: none;
+}
+
+.hu-stage__canvas.is-grabbing { cursor: grabbing; }
+
+.hu-stage__canvas:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--hu-accent), inset 0 0 24px rgba(15, 123, 99, .28);
+}
+
+.hu-stage.is-kbd .hu-stage__viewport::before {
+    content: '键盘模式：方向键环绕 · +/− 缩放 · 0 复位';
+    position: absolute;
+    z-index: 2;
+    left: 14px;
+    bottom: 12px;
+    padding: 5px 11px;
+    border-radius: var(--hu-radius-pill);
+    background: rgba(16, 22, 35, .72);
+    color: #e7ecf3;
+    font-size: 11.5px;
+    letter-spacing: .02em;
+    pointer-events: none;
+}
+
+.hu-stage__overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 24px;
+    text-align: center;
+    background: rgba(10, 14, 22, .72);
+    backdrop-filter: blur(2px);
+}
+
+.hu-stage__overlay[data-state="ready"],
+.hu-stage__overlay[hidden] { display: none; }
+
+.hu-stage__progress {
+    width: min(280px, 70%);
+    height: 4px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, .14);
+    overflow: hidden;
+}
+
+.hu-stage__progress > i {
+    display: block;
+    width: 8%;
+    height: 100%;
+    border-radius: 4px;
+    background: var(--hu-grad-accent);
+    transition: width .25s var(--hu-ease);
+}
+
+.hu-stage__progress > i.is-indeterminate {
+    width: 28% !important;
+    animation: hu-stage-slide 1.15s ease-in-out infinite alternate;
+}
+
+@keyframes hu-stage-slide {
+    from { transform: translateX(0); }
+    to { transform: translateX(260%); }
+}
+
+.hu-stage__status {
+    margin: 0;
+    max-width: 340px;
+    font-size: 12.5px;
+    line-height: 1.8;
+    color: #d7dfea;
+}
+
+.hu-stage__overlay[data-state="none"] .hu-stage__progress,
+.hu-stage__overlay[data-state="failed"] .hu-stage__progress { opacity: .45; }
+
+.hu-stage__actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+/* .hu-btn 的 display 是作者样式，会盖掉 [hidden] 的 UA 规则，这里显式收口 */
+.hu-stage__actions .hu-btn[hidden] { display: none; }
+
+.hu-stage__side { min-width: 0; }
+
+.hu-stage__sidetitle {
+    margin: 0 0 9px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--hu-muted);
+}
+
+.hu-stage__sidetitle + .hu-stage__sidetitle,
+.hu-stage__keys + .hu-stage__sidetitle,
+.hu-stage__presets + .hu-stage__sidetitle { margin-top: 20px; }
+
+.hu-stage__presets { display: flex; flex-direction: column; gap: 8px; }
+
+.hu-stage__presets .hu-preset {
+    text-align: left;
+    appearance: none;
+    border: 1px solid var(--hu-line);
+    background: var(--hu-surface-alt);
+    border-radius: 10px;
+    padding: 9px 12px;
+    font: inherit;
+    font-size: 13px;
+    color: var(--hu-ink-soft);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: border-color .18s var(--hu-ease), color .18s var(--hu-ease), background .18s var(--hu-ease);
+}
+
+.hu-stage__presets .hu-preset i { font-size: 11px; color: var(--hu-muted); }
+
+.hu-stage__presets .hu-preset:hover { border-color: var(--hu-accent); color: var(--hu-ink); }
+
+.hu-stage__presets .hu-preset.is-active {
+    border-color: var(--hu-accent);
+    background: var(--hu-accent-soft);
+    color: var(--hu-accent-deep);
+    font-weight: 600;
+}
+
+.hu-stage__presets .hu-preset.is-active i { color: var(--hu-accent); }
+
+.hu-stage__presets .hu-preset:focus-visible {
+    outline: 2px solid var(--hu-accent);
+    outline-offset: 2px;
+}
+
+.hu-stage__keys {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--hu-muted);
+    line-height: 1.6;
+}
+
+.hu-stage__keys kbd {
+    display: inline-block;
+    min-width: 20px;
+    padding: 1px 6px;
+    border: 1px solid var(--hu-line-strong);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    background: var(--hu-surface-alt);
+    color: var(--hu-ink-soft);
+    font-family: inherit;
+    font-size: 11px;
+    text-align: center;
+}
+
+.hu-stage__license {
+    margin: 18px 0 0;
+    font-size: 11.5px;
+    line-height: 1.85;
+    color: var(--hu-muted);
+    padding-left: 12px;
+    border-left: 2px solid var(--hu-line);
+}
+
+/* ---------- J12 实拍图集（面板内 Tab 的第二屏） ---------- */
+.hu-stage__photos {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(120px, .4fr);
+    gap: 16px 20px;
+    align-items: start;
+}
+
+.hu-stage__photos[hidden] { display: none; }
+
+.hu-stage.is-2d-only .hu-stage__photos { grid-template-columns: minmax(0, 1fr); }
+.hu-stage.is-2d-only .hu-stage__body { grid-template-columns: minmax(0, 1fr); }
+
+.hu-stage__shot {
+    position: relative;
+    margin: 0;
+    border-radius: var(--hu-radius);
+    overflow: hidden;
+    background: var(--hu-surface-alt);
+    border: 1px solid var(--hu-line);
+}
+
+.hu-stage__shotimg {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    transition: transform .5s var(--hu-ease);
+}
+
+.hu-stage__shotcap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #eef2f7;
+    background: linear-gradient(to top, rgba(12, 17, 26, .82), rgba(12, 17, 26, 0));
+    pointer-events: none;
+}
+
+.hu-stage__strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+    gap: 10px;
+    max-height: 320px;
+    overflow: auto;
+    padding: 2px;
+}
+
+.hu-stage__strip img {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    background: var(--hu-surface-alt);
+    transition: border-color .18s var(--hu-ease), transform .18s var(--hu-ease);
+}
+
+.hu-stage__strip img:hover { transform: translateY(-2px); }
+
+.hu-stage__strip img.is-active { border-color: var(--hu-accent); }
+
+.hu-stage__strip img:focus-visible {
+    outline: 2px solid var(--hu-accent);
+    outline-offset: 3px;
+}
+
+@media (max-width: 1080px) {
+    .hu-stage__body { grid-template-columns: 1fr; }
+    .hu-stage__viewport { min-height: 52vh; }
+    .hu-stage__photos { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+    .hu-stage__head { padding: 16px; align-items: stretch; }
+    .hu-stage__body { padding: 16px; gap: 14px; }
+    .hu-stage__viewport { min-height: 46vh; }
+    .hu-stage__speed input[type="range"] { width: 76px; }
+    .hu-stage__keys { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hu-stage__progress > i.is-indeterminate { animation: none; }
+    .hu-stage__strip img:hover { transform: none; }
+}
+
+/* ---------- J09 放大镜 ---------- */
+.hu-zoomable { position: relative; }
+
+.hu-zoom-lens {
+    position: absolute;
+    z-index: 4;
+    display: block;
+    border: 1px solid rgba(255, 255, 255, .86);
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px rgba(15, 123, 99, .35), 0 12px 28px -12px rgba(16, 22, 35, .5);
+    background-repeat: no-repeat;
+    pointer-events: none;
+}
+
+.hu-zoomable.is-zooming .hu-zoom-lens[hidden] { display: none; }
+
+.hu-zoomable.is-tap-zoom img { cursor: zoom-in; }
+
+img[data-hu-viewer],
+.hu-zoomable img { cursor: zoom-in; }
+
+/* ---------- J11 坏图占位 ---------- */
+.hu-img-broken { position: relative; }
+
+.hu-img-broken > img {
+    cursor: pointer;
+    background: var(--hu-surface-alt);
+    opacity: .9;
+}
+
+.hu-img-broken::after {
+    content: '图片没加载出来，点这里重试';
+    position: absolute;
+    left: 50%;
+    bottom: 10px;
+    transform: translateX(-50%);
+    padding: 4px 10px;
+    border-radius: var(--hu-radius-pill);
+    background: rgba(16, 22, 35, .78);
+    color: #fff;
+    font-size: 11.5px;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* ---------- J10 全屏浏览 ---------- */
+.hu-viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 22px 20px 18px;
+    background: rgba(8, 11, 18, .93);
+    opacity: 0;
+    transition: opacity .22s var(--hu-ease);
+}
+
+.hu-viewer[hidden] { display: none; }
+
+.hu-viewer.is-in { opacity: 1; }
+
+html.hu-viewer-open { overflow: hidden; }
+
+.hu-viewer__stage {
+    position: relative;
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    touch-action: none;
+    min-height: 0;
+}
+
+.hu-viewer__img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    cursor: zoom-in;
+    transition: transform .22s var(--hu-ease);
+    will-change: transform;
+    border-radius: 6px;
+}
+
+.hu-viewer.is-zoomed .hu-viewer__img { cursor: grab; }
+
+.hu-viewer__hint {
+    position: absolute;
+    left: 50%;
+    bottom: 6px;
+    transform: translateX(-50%);
+    margin: 0;
+    padding: 5px 12px;
+    border-radius: var(--hu-radius-pill);
+    background: rgba(16, 22, 35, .62);
+    color: #cfd8e4;
+    font-size: 11.5px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity .3s var(--hu-ease);
+    pointer-events: none;
+}
+
+.hu-viewer:hover .hu-viewer__hint,
+.hu-viewer:focus-within .hu-viewer__hint { opacity: 1; }
+
+.hu-viewer__caption {
+    margin: 0;
+    text-align: center;
+    font-size: 12.5px;
+    color: #cdd6e2;
+    min-height: 18px;
+}
+
+.hu-viewer__bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.hu-viewer__gap { flex: 1 1 24px; max-width: 40px; }
+
+.hu-viewer__counter {
+    min-width: 62px;
+    text-align: center;
+    font-size: 12.5px;
+    color: #e6ebf3;
+    font-variant-numeric: tabular-nums;
+}
+
+.hu-viewer__nav {
+    appearance: none;
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, .18);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .06);
+    color: #eef2f7;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background .18s var(--hu-ease), border-color .18s var(--hu-ease), color .18s var(--hu-ease);
+}
+
+.hu-viewer__nav:hover {
+    background: rgba(15, 123, 99, .28);
+    border-color: var(--hu-accent);
+    color: #fff;
+}
+
+.hu-viewer__nav:focus-visible {
+    outline: 2px solid #59c6a8;
+    outline-offset: 3px;
+}
+
+.hu-viewer__open { text-decoration: none; }
+
+@media (max-width: 720px) {
+    .hu-viewer { padding: 12px 12px 14px; }
+    .hu-viewer__nav { width: 38px; height: 38px; }
+    .hu-viewer__hint { display: none; }
+}

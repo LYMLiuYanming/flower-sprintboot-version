@@ -6,9 +6,43 @@
     <title>订单详情 - 花语轩管理后台</title>
     <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <!-- f-g.css 提供 hu-admin-ui 的 fg-* 组件样式；f-c.css 只放本批次的 hu-admin-order-* -->
+    <link th:href="@{/css/f-g.css}" rel="stylesheet">
+    <link th:href="@{/css/f-c.css}" rel="stylesheet">
     <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
     <style>
         body {background: #f1f1f1;}
+
+        /* 配送与贺卡：与前台同一套视觉，后台只需读得清楚 */
+        .adm-ship { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 22px; font-size: 13px; color: #4a5568; }
+        .adm-ship .label { color: #8a94a6; margin-right: 8px; }
+        .adm-ship b { color: #1f2d3d; font-weight: 600; }
+        .adm-ship b.adm-pref { display: inline-block; padding: 1px 9px; border-radius: 10px; background: #fff4e6; color: #b85c17; }
+        .adm-gcard { margin-top: 18px; }
+        .adm-gcard__inner { position: relative; max-width: 540px; min-height: 208px; padding: 28px 30px; border-radius: 10px;
+            display: flex; flex-direction: column; gap: 14px; box-shadow: 0 6px 20px -14px rgba(16,22,35,.35); }
+        .adm-gcard__inner::after { content: ''; position: absolute; inset: 10px; border: 1px solid currentColor; opacity: .18; border-radius: 6px; pointer-events: none; }
+        .adm-gcard__to { font-size: 12px; letter-spacing: .12em; opacity: .82; }
+        .adm-gcard__msg { flex: 1; font-size: 18px; line-height: 2; white-space: pre-wrap; word-break: break-word;
+            font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; }
+        .adm-gcard__sign { align-self: flex-end; font-size: 14px; opacity: .9; }
+        .adm-gcard__mark { position: absolute; right: 22px; bottom: 18px; font-size: 10px; letter-spacing: .24em; opacity: .45; }
+        .adm-gcard--classic { background: linear-gradient(150deg, #fffdf7, #f6efdf); color: #9c7530; border: 1px solid #e6d8b6; }
+        .adm-gcard--botanical { background: linear-gradient(150deg, #f5fbf7, #e4f1e9); color: #2f7d5e; border: 1px solid #cbe4d6; }
+        .adm-gcard--starry { background: linear-gradient(150deg, #1c2534, #0d1420); color: #c6d3ff; border: 1px solid #2b3752; }
+        .adm-gcard--ink { background: linear-gradient(150deg, #fbfaf7, #eceae3); color: #3b4149; border: 1px solid #dbd6cb; }
+
+        /* 打印贺卡：只保留卡片本体 */
+        @media print {
+            body { background: #fff; }
+            .layui-card:not(#shipCard), .layui-card-header button { display: none !important; }
+            #shipCard { margin: 0 !important; border: 0 !important; box-shadow: none !important; }
+            #shipCard .layui-card-header { display: none !important; }
+            #shipInfo { display: none !important; }
+            .layui-body, .layui-layout-admin .layui-body { left: 0 !important; top: 0 !important; }
+            .content-body { padding: 0 !important; }
+            .adm-gcard__inner { max-width: none; box-shadow: none; }
+        }
     </style>
 </head>
 <body>
@@ -18,6 +52,11 @@
                 <div class="layui-card">
                     <div class="layui-card-header">
                         <i class="fas fa-info-circle"></i> 订单详情
+                        <span class="hu-admin-order-headtools">
+                            <a class="layui-btn layui-btn-sm layui-btn-primary" id="btnListView" href="/admin/order-list">
+                                <i class="fas fa-list"></i> 回列表
+                            </a>
+                        </span>
                     </div>
                     <div class="layui-card-body">
                         <table class="layui-table" lay-skin="line">
@@ -51,16 +90,73 @@
                         </table>
                     </div>
                 </div>
+
+                <div class="layui-card" id="shipCard" style="margin-top: 15px; display: none;">
+                    <div class="layui-card-header">
+                        <i class="fas fa-plane"></i> 配送与贺卡
+                        <button type="button" class="layui-btn layui-btn-sm layui-btn-primary" id="printCard"
+                                style="float: right; display: none;">
+                            <i class="fas fa-print"></i> 打印贺卡
+                        </button>
+                    </div>
+                    <div class="layui-card-body">
+                        <div id="shipInfo" class="adm-ship"></div>
+                        <div id="cardWrap" class="adm-gcard" style="display: none;">
+                            <div class="adm-gcard__inner" id="cardInner">
+                                <div class="adm-gcard__to" id="cardTo">致 ——</div>
+                                <div class="adm-gcard__msg" id="cardMsg"></div>
+                                <div class="adm-gcard__sign" id="cardSign"></div>
+                                <div class="adm-gcard__mark">FLOWER HOUSE · 花语轩</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="layui-card" id="traceCard" style="margin-top: 15px; display: none;">
+                    <div class="layui-card-header">
+                        <i class="fas fa-route"></i> 履约轨迹
+                        <button type="button" class="layui-btn layui-btn-sm" id="addTrace"
+                                style="float: right;">
+                            <i class="fas fa-plus"></i> 补记节点
+                        </button>
+                    </div>
+                    <div class="layui-card-body">
+                        <!-- C14：节点按类型上色打图标，颜色含义在页脚的图例里对得上 -->
+                        <ol class="adm-trace hu-admin-order-trace" id="traceList"></ol>
+                        <div class="hu-admin-order-legend" id="traceLegend"></div>
+                    </div>
+                </div>
+
+                <!-- C13/C23/C24：这一屏只讲「后台对这笔单动过什么」 -->
+                <div class="layui-card hu-admin-order-ops" id="opsCard" style="margin-top: 15px; display: none;">
+                    <div class="layui-card-header">
+                        <i class="fas fa-clipboard-list"></i> 后台操作留痕
+                    </div>
+                    <div class="layui-card-body">
+                        <div class="hu-admin-order-ops__group" id="opsFreight"></div>
+                        <div class="hu-admin-order-ops__group" id="opsRemark"></div>
+                        <div class="hu-admin-order-ops__group" id="opsTrace"></div>
+                        <p class="hu-admin-order-ops__foot">
+                            完整字段级留痕在「系统设置 → 操作日志」按订单号回查。
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
     <script th:src="@{/jquery-3.7.1.min.js}"></script>
+    <script th:src="@{/js/site.js}"></script>
     <script th:src="@{/js/admin-common.js}"></script>
+    <script th:src="@{/js/hu-admin-ui.js}"></script>
     <script th:inline="none">
-        layui.use(['layer'], function () {
+        layui.use(['layer', 'form'], function () {
+            var layer = layui.layer;
+            var form = layui.form;
             var id = window.location.pathname.split('/').pop();
+            var currentOrder = null;
+            var opsMeta = null;
 
             function esc(value) {
                 return huAdmin.esc(value === null || value === undefined || value === '' ? '-' : value);
@@ -69,7 +165,7 @@
             /** 后端 LocalDateTime 序列化为 ISO 字符串，直接截断展示，避免时区二次换算 */
             function fmtDateTime(v) {
                 if (!v) return '-';
-                return String(v).replace('T', ' ').replace(/\.\d+$/, '');
+                return String(v).replace('T', ' ').slice(0, 16);
             }
 
             function money(v) {
@@ -80,29 +176,69 @@
                 return '<tr><td>' + label + '</td><td>' + value + '</td></tr>';
             }
 
+            /* ---------- C14 轨迹节点类型：图标 + 色调，与前台时间轴一个含义 ---------- */
+
+            var NODE_KIND = {
+                created:    {icon: 'fa-file-invoice',           tone: 'neutral', text: '下单'},
+                plan:       {icon: 'fa-calendar-check',         tone: 'info',    text: '配送安排'},
+                paid:       {icon: 'fa-credit-card',            tone: 'paid',    text: '付款'},
+                adjust:     {icon: 'fa-circle-dollar-to-slot',  tone: 'warn',    text: '金额调整'},
+                card:       {icon: 'fa-gift',                   tone: 'info',    text: '贺卡'},
+                note:       {icon: 'fa-note-sticky',            tone: 'neutral', text: '花束备注'},
+                processing: {icon: 'fa-scissors',               tone: 'info',    text: '备花中'},
+                shipped:    {icon: 'fa-truck-fast',             tone: 'ship',    text: '发货'},
+                delivered:  {icon: 'fa-circle-check',           tone: 'sign',    text: '签收'},
+                completed:  {icon: 'fa-check-double',           tone: 'sign',    text: '完成'},
+                cancelled:  {icon: 'fa-ban',                    tone: 'bad',     text: '取消'},
+                refunded:   {icon: 'fa-rotate-left',            tone: 'bad',     text: '退款'},
+                status:     {icon: 'fa-list-check',             tone: 'neutral', text: '状态变更'},
+                custom:     {icon: 'fa-wand-magic-sparkles',    tone: 'custom',  text: '门店补记'}
+            };
+            var NODE_FALLBACK = {icon: 'fa-route', tone: 'neutral', text: '节点'};
+
+            function kindOf(code) {
+                return NODE_KIND[code] || NODE_FALLBACK;
+            }
+
+            /* ---------- 渲染 ---------- */
+
             function render(order) {
+                var remarkCell = '<span class="hu-admin-order-remark">'
+                    + (order.remark ? esc(order.remark) : '<em class="hu-admin-order-empty">买家未填备注</em>')
+                    + '</span>'
+                    + '<button type="button" class="layui-btn layui-btn-xs layui-btn-primary" id="btnRemark">'
+                    + '<i class="fas fa-pen"></i> 改备注</button>';
+                var freightCell = '¥' + esc(money(order.freight))
+                    + '<button type="button" class="layui-btn layui-btn-xs layui-btn-primary" id="btnFreight">'
+                    + '<i class="fas fa-circle-dollar-to-slot"></i> 调整运费</button>';
+
                 // 状态优先用后端下发的 statusLabel，页面不再各自维护状态字典
                 $('#orderInfo').html(
-                    row('订单号：', esc(order.orderNo)) +
-                    row('下单用户：', esc(order.userName) + (order.userPhone ? ' <small style="color:#999">' + esc(order.userPhone) + '</small>' : '')) +
-                    row('收货人：', esc(order.receiverName)) +
-                    row('联系电话：', esc(order.receiverPhone)) +
-                    row('收货地址：', esc(order.receiverAddress)) +
-                    row('订单金额：', '<span style="color: #454f39; font-weight: bold;">¥' + esc(money(order.totalAmount)) + '</span>') +
-                    row('优惠 / 运费：', '¥' + esc(money(order.discountAmount)) + ' / ¥' + esc(money(order.freight))) +
-                    row('实付金额：', '<span style="color: #454f39; font-weight: bold;">¥' + esc(money(order.payAmount)) + '</span>') +
-                    row('订单状态：', esc(order.statusLabel || order.status)) +
-                    row('支付方式：', esc(order.payMethod)) +
-                    row('支付时间：', fmtDateTime(order.payTime)) +
-                    row('物流公司：', esc(order.expressCompany)) +
-                    row('物流单号：', esc(order.expressNo)) +
-                    row('发货时间：', fmtDateTime(order.shipTime)) +
-                    row('完成时间：', fmtDateTime(order.finishTime)) +
-                    (order.cancelReason ? row(order.status === 'refunded' ? '退款原因：' : '取消原因：', esc(order.cancelReason)) : '') +
-                    row('获得积分：', esc(order.pointsEarned == null ? 0 : order.pointsEarned)) +
-                    row('订单备注：', esc(order.remark || '无')) +
-                    row('下单时间：', fmtDateTime(order.createdAt))
+                    row('订单号：', huAdmin.esc(order.orderNo || '')
+                        + '<button type="button" class="hu-admin-order-copy" data-hu-copy="' + huAdmin.esc(order.orderNo || '')
+                        + '" data-hu-copy-label="订单号" title="复制订单号"><i class="fa fa-clipboard"></i></button>'
+                        + '<button type="button" class="hu-admin-order-copy" id="btnCopyLink" title="复制详情深链">'
+                        + '<i class="fa fa-link"></i></button>')
+                    + row('下单用户：', esc(order.userName) + (order.userPhone ? ' <small style="color:#999">' + esc(order.userPhone) + '</small>' : ''))
+                    + row('收货人：', esc(order.receiverName))
+                    + row('联系电话：', esc(order.receiverPhone))
+                    + row('收货地址：', esc(order.receiverAddress))
+                    + row('订单金额：', '<span style="color: #454f39; font-weight: bold;">¥' + esc(money(order.totalAmount)) + '</span>')
+                    + row('优惠 / 运费：', '¥' + esc(money(order.discountAmount)) + ' / ' + freightCell)
+                    + row('实付金额：', '<span style="color: #454f39; font-weight: bold;">¥' + esc(money(order.payAmount)) + '</span>')
+                    + row('订单状态：', esc(order.statusLabel || order.status))
+                    + row('支付方式：', esc(order.payMethod))
+                    + row('支付时间：', fmtDateTime(order.payTime))
+                    + row('物流：', '<span id="shipCell">—</span>')
+                    + row('发货时间：', fmtDateTime(order.shipTime))
+                    + row('完成时间：', fmtDateTime(order.finishTime))
+                    + (order.cancelReason ? row(order.status === 'refunded' ? '退款原因：' : '取消原因：', esc(order.cancelReason)) : '')
+                    + row('获得积分：', esc(order.pointsEarned == null ? 0 : order.pointsEarned))
+                    + row('订单备注：', remarkCell)
+                    + row('下单时间：', fmtDateTime(order.createdAt))
                 );
+
+                bindOrderTools(order);
 
                 var itemsHtml = '';
                 (order.items || []).forEach(function (item) {
@@ -115,18 +251,389 @@
                         '</tr>';
                 });
                 $('#orderItems').html(itemsHtml || '<tr><td colspan="5" style="text-align: center;">暂无商品信息</td></tr>');
+
+                renderShip(order);
+                /* 时间轴带节点 id，只能来自本批次的 /ops 查询：两个请求谁先到都能补上 */
+                if (opsMeta) {
+                    renderShipping(opsMeta.shipping);
+                    renderOps(opsMeta);
+                }
             }
 
-            huAdmin.request({
-                url: '/api/admin/orders/' + encodeURIComponent(id),
-                silent: true,
-                ok: function (res) { render(res.data || {}); },
-                fail: function (res) {
-                    huAdmin.toast(res.msg || '订单信息加载失败', 'err');
-                    $('#orderInfo').html('<tr><td colspan="2" style="text-align:center;color:#b3646a">'
-                        + esc(res.msg || '订单信息加载失败') + '</td></tr>');
+            function bindOrderTools(order) {
+                $('#btnCopyLink').on('click', function () {
+                    huCopy(location.origin + '/admin/order-detail/' + order.id, '详情链接');
+                });
+                $('#btnListView').attr('href', '/admin/order-list?keyword=' + encodeURIComponent(order.orderNo || ''));
+                $('#btnRemark').on('click', function () { openRemarkDialog(order); });
+                $('#btnFreight').on('click', function () { openFreightDialog(order); });
+            }
+
+            /** 配送与贺卡：方式/时效由服务端算好后原样展示，贺卡区供打印交付 */
+            function renderShip(order) {
+                var cells = [];
+                if (order.deliveryMethodName) {
+                    cells.push('<div><span class="label">配送方式</span><b>' + esc(order.deliveryMethodName) + '</b></div>');
                 }
+                if (order.expectedArriveAt) {
+                    cells.push('<div><span class="label">预计送达</span><b>' + esc(fmtDateTime(order.expectedArriveAt)) + '</b></div>');
+                }
+                if (order.deliverySlot) {
+                    var slot = String(order.deliverySlot).replace('T', ' ').slice(5, 16);
+                    var slotEnd = (Number(order.deliverySlot.slice(11, 13)) + 1);
+                    cells.push('<div><span class="label">预约时段</span><b>' + esc(slot + '–'
+                        + (slotEnd < 10 ? '0' : '') + slotEnd + ':00') + '</b></div>');
+                }
+                if (order.deliveryPreferenceName || order.contactPreferenceName) {
+                    cells.push('<div><span class="label">送达偏好</span><b class="adm-pref">'
+                        + esc([order.deliveryPreferenceName, order.contactPreferenceName]
+                            .filter(Boolean).join(' · ')) + '</b></div>');
+                }
+                if (order.deliveryWeight) {
+                    cells.push('<div><span class="label">计费重量</span><b>' + esc(order.deliveryWeight) + ' kg</b></div>');
+                }
+                cells.push('<div><span class="label">运费</span><b>¥' + esc(money(order.freight)) + '</b></div>');
+                $('#shipInfo').html(cells.join(''));
+
+                var card = order.card;
+                if (card) {
+                    $('#cardInner').attr('class', 'adm-gcard__inner adm-gcard--' + (card.style || 'classic'));
+                    $('#cardTo').text(card.recipient ? '致 ' + card.recipient : '致 ——');
+                    $('#cardMsg').text(card.message || '（客户未填写留言，请附空白卡）');
+                    $('#cardSign').text(card.signature ? '—— ' + card.signature : '');
+                    $('#cardWrap').show();
+                    $('#printCard').show();
+                } else {
+                    $('#cardWrap').hide();
+                    $('#printCard').hide();
+                }
+                $('#shipCard').show();
+            }
+
+            /** 轨迹倒序：最新节点置顶，方便备花时一眼看到进展 */
+            function renderTrace(nodes) {
+                var list = (nodes || []).slice().reverse();
+                if (!list.length) {
+                    $('#traceCard').hide();
+                    return;
+                }
+                var html = '';
+                list.forEach(function (t, i) {
+                    var kind = kindOf(t.code);
+                    html += '<li class="hu-admin-order-node hu-admin-order-node--' + kind.tone
+                        + (i === 0 ? ' is-last' : '') + '">'
+                        + '<span class="hu-admin-order-node__dot"><i class="fa ' + kind.icon + '"></i></span>'
+                        + '<div class="adm-trace__title">' + esc(t.title)
+                        + '<span class="hu-admin-order-node__kind">' + esc(kind.text) + '</span>'
+                        + '<span>' + esc(fmtDateTime(t.at)) + '</span>'
+                        + (t.deletable ? '<button type="button" class="hu-admin-order-del" data-trace="'
+                            + huAdmin.esc(t.id) + '" data-title="' + huAdmin.esc(t.title)
+                            + '" title="删除误记节点（原文会存底）"><i class="fa fa-xmark"></i></button>' : '')
+                        + '</div>'
+                        + (t.description ? '<div class="adm-trace__desc">' + esc(t.description) + '</div>' : '')
+                        + (t.operator ? '<span class="adm-trace__op">' + esc(t.operator) + '</span>' : '')
+                        + '</li>';
+                });
+                $('#traceList').html(html);
+                renderLegend(list);
+                $('#traceCard').show();
+            }
+
+            /** 图例只列本单真出现过的类型，避免给运营一份用不上的色卡 */
+            function renderLegend(list) {
+                var seen = {};
+                var html = list.map(function (t) {
+                    var kind = kindOf(t.code);
+                    if (seen[kind.text]) { return ''; }
+                    seen[kind.text] = true;
+                    return '<span class="hu-admin-order-legend__item hu-admin-order-node--' + kind.tone + '">'
+                        + '<i class="fa ' + kind.icon + '"></i>' + esc(kind.text) + '</span>';
+                }).join('');
+                $('#traceLegend').html(html ? '<span>本单节点类型：</span>' + html : '');
+            }
+
+            /* ---------- C12 物流：复制 + 外部查询（链接由服务端按域名白名单下发） ---------- */
+
+            function renderShipping(info) {
+                if (!info || !info.expressNo) {
+                    $('#shipCell').html('<em class="hu-admin-order-empty">尚未发货，暂无运单号</em>');
+                    return;
+                }
+                var html = '<span class="hu-admin-order-express">'
+                    + '<span class="hu-admin-order-express__co">' + esc(info.companyName) + '</span>'
+                    + '<code>' + esc(info.expressNo) + '</code>'
+                    + '<button type="button" class="hu-admin-order-copy" data-hu-copy="' + huAdmin.esc(info.expressNo)
+                    + '" data-hu-copy-label="运单号" title="复制运单号"><i class="fa fa-clipboard"></i></button>'
+                    + (info.trackUrl ? '<a class="hu-admin-order-track" href="' + huAdmin.esc(info.trackUrl)
+                        + '" target="_blank" rel="noopener noreferrer" title="在新窗口查询物流">'
+                        + '<i class="fa fa-arrow-up-right-from-square"></i> 查询</a>'
+                        : '<span class="hu-admin-order-track is-off" title="该渠道没有可信的公开查询入口">无查询链接</span>')
+                    + '</span>';
+                $('#shipCell').html(html);
+            }
+
+            /* ---------- C13 删除误记节点 ---------- */
+
+            jQuery(document).on('click', '.hu-admin-order-del', function () {
+                var traceId = this.getAttribute('data-trace');
+                var title = this.getAttribute('data-title');
+                if (!traceId) { layer.msg('该节点缺少标识，无法删除', {icon: 2}); return; }
+                layer.prompt({title: '删除误记节点「' + title + '」的原因', formType: 2, maxlength: 200,
+                    placeholder: '如：把 10-02 的到港记到了这一单上'}, function (value, index) {
+                    layer.close(index);
+                    if (!value || value.trim().length < 4) {
+                        layer.msg('请写清删除原因（至少 4 个字）', {icon: 2});
+                        return;
+                    }
+                    huAdminUI.confirmDanger({
+                        title: '确认删除轨迹节点',
+                        subject: '将从买家可见的履约轨迹里删掉「' + title + '」。',
+                        consequences: [
+                            '买家端与后台的这条时间轴都会立即看不到该节点。',
+                            '节点原文、删除人与原因会存进后台留痕，可随时查回，但不会重新显示在时间轴上。',
+                            '系统自动写入的付款、发货、签收节点不在可删除范围内。'
+                        ],
+                        note: '原因：' + value,
+                        confirmText: '确认删除', requireAck: true,
+                        onOk: function () {
+                            huAdmin.request({
+                                url: '/api/admin/orders/' + encodeURIComponent(id) + '/trace/'
+                                    + encodeURIComponent(traceId),
+                                type: 'DELETE', data: {reason: value}, silent: true,
+                                ok: function (res) {
+                                    huAdmin.toast('误记节点已删除', 'ok');
+                                    /* 时间轴已经由 /ops 供数，删完只要重取那一屏 */
+                                    loadOps();
+                                },
+                                fail: function (res) { huAdmin.toast(res.msg || '删除失败', 'err'); }
+                            });
+                        }
+                    });
+                });
             });
+
+            /* ---------- C23 备注 ---------- */
+
+            function openRemarkDialog(order) {
+                var html = '<form class="layui-form fg-dlg" id="remarkForm" lay-filter="remarkForm">'
+                    + '<div class="layui-form-item layui-form-text"><label class="layui-form-label">改为</label>'
+                    + '<div class="layui-input-block"><textarea name="remark" class="layui-textarea" rows="4" maxlength="500" '
+                    + 'placeholder="留空即清空备注">' + huAdmin.esc(order.remark || '') + '</textarea></div></div>'
+                    + '<div class="layui-form-item"><label class="layui-form-label">修改原因</label>'
+                    + '<div class="layui-input-block"><input type="text" name="reason" class="layui-input" maxlength="200" '
+                    + 'placeholder="必填：谁要求的、依据什么改"></div></div>'
+                    + '<p class="hu-admin-order-note">改前与改后的备注都会各存一份留痕。</p></form>';
+                layer.open({
+                    type: 1, title: '订单备注 · ' + huAdmin.esc(order.orderNo), area: ['560px', 'auto'],
+                    content: html, btn: ['保存', '取消'],
+                    success: function (layero) { huAdminUI.clearFields(layero); },
+                    yes: function (index, layero) {
+                        var f = form.val('remarkForm');
+                        if (!f.reason || f.reason.trim().length < 4) {
+                            huAdminUI.markField(layero, 'reason', '请填写至少 4 个字的修改原因');
+                            return;
+                        }
+                        huAdminUI.clearFields(layero);
+                        huAdmin.request({
+                            url: '/api/admin/orders/' + encodeURIComponent(id) + '/remark', type: 'PUT',
+                            data: {remark: f.remark, reason: f.reason}, silent: true,
+                            ok: function (res) {
+                                layer.close(index);
+                                huAdmin.toast('备注已更新', 'ok');
+                                currentOrder = res.data || currentOrder;
+                                render(currentOrder);
+                                loadOps();
+                            },
+                            fail: function (res) {
+                                huAdminUI.applyServerErrors(layero, res, [
+                                    {field: 'reason', test: /原因/},
+                                    {field: 'remark', test: /备注/}
+                                ]);
+                            }
+                        });
+                    }
+                });
+            }
+
+            /* ---------- C24 运费微调（权限由服务端下发，页面只负责不让人白点） ---------- */
+
+            function openFreightDialog(order) {
+                if (opsMeta && opsMeta.canAdjustFreight === false) {
+                    layer.msg('当前账号不在可调整运费的名单里，请联系有权限的同事', {icon: 2});
+                    return;
+                }
+                var current = Number(order.freight || 0);
+                var html = '<form class="layui-form fg-dlg" id="freightForm" lay-filter="freightForm">'
+                    + '<div class="layui-form-item"><label class="layui-form-label">当前运费</label>'
+                    + '<div class="layui-input-inline" style="width:120px"><input class="layui-input" value="¥'
+                    + money(current) + '" readonly style="background:#f6f5f1"></div>'
+                    + '<div class="layui-form-mid layui-word-aux">含礼品包装费；当前实付 ¥' + money(order.payAmount) + '</div></div>'
+                    + '<div class="layui-form-item"><label class="layui-form-label">调整为</label>'
+                    + '<div class="layui-input-inline" style="width:120px"><input type="number" step="0.01" min="0" max="999" '
+                    + 'name="freight" class="layui-input" placeholder="0.00"></div>'
+                    + '<div class="layui-form-mid layui-word-aux">可填 ¥0.00 ~ ¥999.00</div></div>'
+                    + '<div class="layui-form-item"><label class="layui-form-label">调整原因</label>'
+                    + '<div class="layui-input-block"><input type="text" name="reason" class="layui-input" maxlength="200" '
+                    + 'placeholder="必填：如 客服承诺免运费 / 冷链改普送退差价"></div></div>'
+                    + '<p class="hu-admin-order-note">实付 = 商品总额 − 优惠 + 运费，由服务端按下单同一口径重算，'
+                    + '抵扣到 0 时仍按 ¥0.01 收。</p></form>';
+                layer.open({
+                    type: 1, title: '调整运费 · ' + huAdmin.esc(order.orderNo), area: ['580px', 'auto'],
+                    content: html, btn: ['下一步', '取消'],
+                    success: function (layero) { huAdminUI.clearFields(layero); },
+                    yes: function (index, layero) {
+                        var f = form.val('freightForm');
+                        if (f.freight === '' || Number(f.freight) < 0) {
+                            huAdminUI.markField(layero, 'freight', '请填写调整后的运费');
+                            return;
+                        }
+                        if (!f.reason || f.reason.trim().length < 4) {
+                            huAdminUI.markField(layero, 'reason', '请填写至少 4 个字的调整原因');
+                            return;
+                        }
+                        var next = Number(f.freight).toFixed(2);
+                        var payGuess = Number(order.totalAmount || 0) - Number(order.discountAmount || 0) + Number(next);
+                        if (payGuess < 0.01) { payGuess = 0.01; }
+                        huAdminUI.confirmDanger({
+                            title: '确认调整运费',
+                            subject: '运费 ¥' + money(current) + ' → ¥' + next + '。',
+                            consequences: [
+                                '实付金额同步重算为 ¥' + money(payGuess) + '，买家端看到的价格随之变化。',
+                                '已发货或已关单的订单不允许再改金额，服务端会挡回这条请求。',
+                                '改前改后的运费与实付、调整原因都写进留痕。'
+                            ],
+                            note: '原因：' + f.reason,
+                            confirmText: '确认调整', requireAck: true,
+                            onOk: function () {
+                                huAdmin.request({
+                                    url: '/api/admin/orders/' + encodeURIComponent(id) + '/freight', type: 'POST',
+                                    data: {freight: Number(next), reason: f.reason}, silent: true,
+                                    ok: function (res) {
+                                        layer.close(index);
+                                        huAdmin.toast(res.msg || '运费已调整', 'ok');
+                                        reloadOrder();
+                                    },
+                                    fail: function (res) {
+                                        huAdminUI.applyServerErrors(layero, res, [
+                                            {field: 'freight', test: /运费/},
+                                            {field: 'reason', test: /原因/}
+                                        ]);
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+
+            /* ---------- C13/C23/C24 留痕面板 ---------- */
+
+            function loadOps() {
+                huAdmin.request({url: '/api/admin/orders/' + encodeURIComponent(id) + '/ops', silent: true, ok: function (res) {
+                    opsMeta = res.data || {};
+                    renderShipping(opsMeta.shipping);
+                    renderOps(opsMeta);
+                }});
+            }
+
+            function renderOps(meta) {
+                var remarks = meta.remarkEdits || [];
+                var freight = meta.freightAdjustments || [];
+                var traces = meta.traceDeletions || [];
+                renderTrace(meta.nodes);
+                if (!remarks.length && !freight.length && !traces.length) {
+                    $('#opsCard').hide();
+                    return;
+                }
+                group('#opsFreight', '运费调整', freight.map(function (item) {
+                    return '<tr><td>' + esc(fmtDateTime(item.at)) + '</td><td>' + esc(item.operator) + '</td>'
+                        + '<td>运费 ¥' + money(item.freightBefore) + ' → <b>¥' + money(item.freightAfter) + '</b></td>'
+                        + '<td>实付 ¥' + money(item.payBefore) + ' → <b>¥' + money(item.payAfter) + '</b></td>'
+                        + '<td>' + esc(item.reason) + '</td></tr>';
+                }));
+                group('#opsRemark', '备注修改', remarks.map(function (item) {
+                    return '<tr><td>' + esc(fmtDateTime(item.at)) + '</td><td>' + esc(item.operator) + '</td>'
+                        + '<td class="is-before">' + (item.before ? esc(item.before) : '（空）') + '</td>'
+                        + '<td class="is-after">' + (item.after ? esc(item.after) : '（已清空）') + '</td>'
+                        + '<td>' + esc(item.reason) + '</td></tr>';
+                }));
+                group('#opsTrace', '误记节点删除', traces.map(function (item) {
+                    return '<tr><td>' + esc(fmtDateTime(item.at)) + '</td><td>' + esc(item.deletedBy) + '</td>'
+                        + '<td>' + esc(item.title) + (item.description ? '（' + esc(item.description) + '）' : '') + '</td>'
+                        + '<td>' + esc(item.nodeOperator) + '</td><td>' + esc(item.reason) + '</td></tr>';
+                }));
+                $('#opsCard').show();
+
+                function group(selector, title, rows) {
+                    jQuery(selector).html(rows.length
+                        ? '<div class="fg-section">' + title + ' · ' + rows.length + ' 条</div>'
+                            + '<table class="layui-table" lay-skin="line" lay-size="sm"><tbody>'
+                            + rows.join('') + '</tbody></table>'
+                        : '');
+                }
+            }
+
+            /* ---------- 补记节点（原有能力，保留） ---------- */
+
+            $('#addTrace').on('click', function () {
+                layer.open({
+                    type: 1,
+                    title: '补记履约轨迹',
+                    area: ['460px', 'auto'],
+                    content: '<div style="padding:22px 24px;">'
+                        + '<div class="layui-form-item"><label class="layui-form-label">节点标题</label>'
+                        + '<div class="layui-input-block"><input type="text" id="traceTitle" maxlength="60" autocomplete="off" class="layui-input" placeholder="如 花材已空运到港"></div></div>'
+                        + '<div class="layui-form-item layui-form-text"><label class="layui-form-label">说明</label>'
+                        + '<div class="layui-input-block"><textarea id="traceDesc" maxlength="255" class="layui-textarea" placeholder="选填，收花人在订单详情可见"></textarea></div></div>'
+                        + '</div>',
+                    btn: ['保存', '取消'],
+                    yes: function (index) {
+                        var title = (document.getElementById('traceTitle').value || '').trim();
+                        if (!title) { layer.msg('请填写节点标题', {icon: 2}); return; }
+                        huAdmin.request({
+                            url: '/api/admin/orders/' + encodeURIComponent(id) + '/trace',
+                            type: 'POST',
+                            data: {title: title, description: (document.getElementById('traceDesc').value || '').trim()},
+                            ok: function (res) {
+                                layer.close(index);
+                                huAdmin.toast('轨迹已补记', 'ok');
+                                currentOrder = res.data || currentOrder;
+                                render(currentOrder);
+                                /* 新节点要带 id 才能删，重取一次 /ops 供数 */
+                                loadOps();
+                            }
+                        });
+                    }
+                });
+            });
+
+            $('#printCard').on('click', function () {
+                window.print();
+            });
+
+            function loadOrder() {
+                huAdmin.request({
+                    url: '/api/admin/orders/' + encodeURIComponent(id),
+                    silent: true,
+                    ok: function (res) {
+                        currentOrder = res.data || {};
+                        render(currentOrder);
+                    },
+                    fail: function (res) {
+                        huAdmin.toast(res.msg || '订单信息加载失败', 'err');
+                        $('#orderInfo').html('<tr><td colspan="2" style="text-align:center;color:#b3646a">'
+                            + esc(res.msg || '订单信息加载失败') + '</td></tr>');
+                    }
+                });
+            }
+
+            function reloadOrder() {
+                loadOrder();
+                loadOps();
+            }
+
+            loadOrder();
+            loadOps();
         });
     </script>
 </body>

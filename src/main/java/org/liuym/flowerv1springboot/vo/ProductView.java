@@ -38,7 +38,39 @@ public record ProductView(
         String packaging,
         String tags,
         List<String> tagList,
+        String subtitle,
+        String careTip,
+        String flowerLanguage,
+        String suitableFor,
+        List<String> suitableForList,
+        /** 划线价折扣文案（如「6.5 折」），无划线价时为 null，前端据此决定是否显示 */
+        String discountLabel,
+        /** 库存 ≤ 5 且在售：列表页打「库存紧张」标 */
+        Boolean lowStock,
+        Boolean soldOut,
+        /** 主产地：后台下拉回填与详情页溯源条共用 */
+        UUID originId,
+        /** 运营是否真写了养护贴士：详情页没写时展示通用建议，列表页勾了该筛选条件就不会误显示 */
+        Boolean careTipProvided,
         LocalDateTime createdAt) {
+
+    /** 库存告急阈值：低于此值列表页显示「库存紧张」 */
+    public static final int LOW_STOCK_ALERT = 5;
+
+    /** 折扣文案按国内习惯用「几折」而不是百分比，且只在确实便宜时给出 */
+    static String discountLabel(Product p) {
+        BigDecimal original = p.getOriginalPrice();
+        BigDecimal price = p.getPrice();
+        if (original == null || price == null || original.compareTo(price) <= 0
+                || original.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+        BigDecimal rate = price.multiply(BigDecimal.TEN).divide(original, 1, java.math.RoundingMode.HALF_UP);
+        if (rate.compareTo(new BigDecimal("9.5")) >= 0) {
+            return null;
+        }
+        return rate.stripTrailingZeros().toPlainString() + " 折";
+    }
 
     public record CategoryRef(UUID id, String name, String icon, Integer sortOrder) {
 
@@ -73,6 +105,16 @@ public record ProductView(
                 p.getPackaging(),
                 p.getTags(),
                 split(p.getTags()),
+                p.getSubtitle(),
+                p.getCareTip(),
+                p.getFlowerLanguage(),
+                p.getSuitableFor(),
+                split(p.getSuitableFor()),
+                discountLabel(p),
+                p.getStock() != null && p.getStock() <= LOW_STOCK_ALERT && !Boolean.FALSE.equals(p.getIsActive()),
+                p.getStock() == null || p.getStock() <= 0,
+                p.getOriginId(),
+                p.getCareTip() != null && !p.getCareTip().isBlank(),
                 p.getCreatedAt());
     }
 

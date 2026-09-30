@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>促销位与满减 - 花语轩管理后台</title>
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
+    <style>
+        body {background: #f1f1f1;}
+        .pr-group {margin-bottom: 18px;}
+        .pr-group__head {display:flex;align-items:center;justify-content:space-between;padding:8px 0 10px;border-bottom:1px dashed #e6e6e6;margin-bottom:8px;}
+        .pr-group__title {font-size:14px;font-weight:600;color:#1c1f24;}
+        .pr-group__sub {color:#8c8c8c;font-size:12px;margin-left:8px;}
+        .pr-off {color:#8c8c8c;}
+        .pr-ladder {color:#1c4b8a;font-weight:600;}
+        .pr-window {color:#595959;font-size:12px;}
+        .pr-form-tip {color:#999;font-size:12px;margin-top:4px;line-height:1.5;}
+        .layui-form-item {margin-bottom: 14px;}
+    </style>
+</head>
+<body>
+    <div class="layui-layout layui-layout-admin">
+        <div class="layui-header header" style="background: #211f1a;">
+            <div class="logo"><i class="fas fa-leaf"></i> 花语轩管理后台</div>
+            <div class="user-info">
+                <span><i class="fas fa-user-circle"></i> 管理员</span>
+                <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+            </div>
+        </div>
+
+        <div class="layui-side layui-bg-black" style="top: 60px;width: 200px;">
+            <div class="layui-side-scroll">
+                <ul class="layui-nav layui-nav-tree" lay-filter="nav">
+                    <li class="layui-nav-item">
+                        <a href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-th"></i> 商品管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/product-list"><i class="fas fa-box"></i> 商品列表</a></dd>
+                            <dd><a href="/admin/category-list"><i class="fas fa-tags"></i> 分类管理</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-shopping-cart"></i> 订单管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/order-list"><i class="fas fa-list-alt"></i> 订单列表</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-users"></i> 用户管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/user-list"><i class="fas fa-user"></i> 用户列表</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item layui-nav-itemed">
+                        <a href="javascript:;"><i class="fas fa-cog"></i> 系统设置</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/banner-list"><i class="fas fa-image"></i> 轮播图管理</a></dd>
+                            <dd><a href="/admin/notice-list"><i class="fas fa-bullhorn"></i> 公告管理</a></dd>
+                            <dd><a href="/admin/coupon-list"><i class="fas fa-ticket-alt"></i> 优惠券</a></dd>
+                            <dd class="layui-this"><a href="/admin/promotion-list"><i class="fas fa-bullseye"></i> 促销位与满减</a></dd>
+                            <dd><a href="/admin/audit-list"><i class="fas fa-history"></i> 操作日志</a></dd>
+                        </dl>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="layui-body" style="left: 200px;">
+            <div class="content-body" style="padding: 20px;">
+                <div class="layui-card">
+                    <div class="layui-card-header">
+                        <i class="fas fa-bullseye"></i> 促销位（E19）
+                        <span style="color:#8c8c8c;font-size:12px;margin-left:10px;">开关与排序即时生效，前台按这里的顺序渲染</span>
+                        <button class="layui-btn layui-btn-xs layui-btn-normal" style="float: right;" onclick="huSlotAdd()">
+                            <i class="fas fa-plus"></i> 新增促销位
+                        </button>
+                    </div>
+                    <div class="layui-card-body">
+                        <div id="slotGroups"><p style="color:#8c8c8c">正在读取促销位…</p></div>
+                    </div>
+                </div>
+
+                <div class="layui-card" style="margin-top:18px;">
+                    <div class="layui-card-header">
+                        <i class="fas fa-tags"></i> 满减活动（无需领券）
+                        <span style="color:#8c8c8c;font-size:12px;margin-left:10px;">与优惠券并存时：可叠加则先满减后用券，不可叠加取更省的一条</span>
+                        <button class="layui-btn layui-btn-xs layui-btn-normal" style="float: right;" onclick="huReductionAdd()">
+                            <i class="fas fa-plus"></i> 新建满减
+                        </button>
+                    </div>
+                    <div class="layui-card-body">
+                        <table class="layui-hide" id="reductionTable" lay-filter="reductionTable"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-footer">© 2024 花语轩鲜花销售系统 - 版权所有</div>
+    </div>
+
+    <script type="text/html" id="reductionOperate">
+        <a class="layui-btn layui-btn-xs" lay-event="edit"><i class="fas fa-edit"></i> 编辑</a>
+        {{# if(d.status === 'active') { }}
+        <a class="layui-btn layui-btn-warm layui-btn-xs" lay-event="disable">停用</a>
+        {{# } else { }}
+        <a class="layui-btn layui-btn-xs" lay-event="enable">启用</a>
+        {{# } }}
+        <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del"><i class="fas fa-trash"></i> 删除</a>
+    </script>
+
+    <script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+    <script th:src="@{/jquery-3.7.1.min.js}"></script>
+    <script th:src="@{/js/admin-common.js}"></script>
+    <script th:inline="none">
+        layui.use(['table', 'layer', 'form', 'laydate'], function () {
+            var table = layui.table;
+            var layer = layui.layer;
+            var laydate = layui.laydate;
+            var esc = huAdmin.esc;
+            var slots = [];
+            var coupons = [];
+            var categories = [];
+            var positions = {
+                home: '首页领券条', pdp: '商品详情页领券条', center: '领券中心顶部', cart: '购物车凑单提示'
+            };
+
+            function fmt(v) {
+                return v ? String(v).replace('T', ' ').slice(0, 16) : '';
+            }
+
+            function iso(id) {
+                var text = jQuery.trim(jQuery(id).val());
+                return text ? text.replace(' ', 'T') : null;
+            }
+
+            function field(label, control, tip) {
+                return '<div class="layui-form-item"><label class="layui-form-label">' + label + '</label>' +
+                    '<div class="layui-input-block">' + control +
+                    (tip ? '<div class="pr-form-tip">' + tip + '</div>' : '') + '</div></div>';
+            }
+
+            /* ---------------------------------------------------------------- 促销位 */
+            function renderSlots() {
+                var html = Object.keys(positions).map(function (position) {
+                    var rows = slots.filter(function (s) { return s.position === position; });
+                    if (!rows.length) return '';
+                    return '<div class="pr-group"><div class="pr-group__head">' +
+                        '<div><span class="pr-group__title">' + positions[position] + '</span>' +
+                        '<span class="pr-group__sub">从上到下即前台展示顺序，共 ' + rows.length + ' 个位</span></div>' +
+                        '<span class="pr-group__sub">已投放 ' + rows.filter(function (s) { return s.stateLabel === '投放中'; }).length + ' 个</span>' +
+                        '</div><table class="layui-table" lay-size="sm"><thead><tr>' +
+                        '<th style="width:56px">排序</th><th style="width:150px">名称</th><th>标题 / 副标题</th>' +
+                        '<th style="width:150px">关联券</th><th style="width:130px">投放窗口</th>' +
+                        '<th style="width:80px">状态</th><th style="width:210px">操作</th></tr></thead><tbody>' +
+                        rows.map(function (s) {
+                            return '<tr>' +
+                                '<td>' + (s.sortOrder == null ? '-' : s.sortOrder) + '</td>' +
+                                '<td>' + esc(s.name) + '</td>' +
+                                '<td><div style="font-weight:600">' + esc(s.title) + '</div>' +
+                                (s.subtitle ? '<div style="color:#8c8c8c;font-size:12px">' + esc(s.subtitle) + '</div>' : '') +
+                                (s.linkUrl ? '<div style="color:#8c8c8c;font-size:12px">' + esc(s.linkUrl) + '</div>' : '') + '</td>' +
+                                '<td>' + (s.coupon
+                                    ? esc(s.coupon.name) + '<div style="color:#8c8c8c;font-size:12px">' + esc(s.coupon.ruleText || '') + '</div>'
+                                    : '<span style="color:#bfbfbf">纯文案位</span>') + '</td>' +
+                                '<td><span class="pr-window">' + (fmt(s.startTime) || '立即') + ' ~ ' + (fmt(s.endTime) || '不限') + '</span></td>' +
+                                '<td>' + (s.status === 'active'
+                                    ? '<span style="color:#52c41a">' + esc(s.stateLabel) + '</span>'
+                                    : '<span class="pr-off">' + esc(s.stateLabel) + '</span>') + '</td>' +
+                                '<td>' +
+                                '<button class="layui-btn layui-btn-primary layui-btn-xs" data-move="up" data-id="' + esc(s.id) + '" title="上移"><i class="fas fa-arrow-up"></i></button>' +
+                                '<button class="layui-btn layui-btn-primary layui-btn-xs" data-move="down" data-id="' + esc(s.id) + '" title="下移"><i class="fas fa-arrow-down"></i></button>' +
+                                '<button class="layui-btn layui-btn-xs ' + (s.status === 'active' ? 'layui-btn-warm' : 'layui-btn-normal') + '" data-toggle="' + esc(s.id) + '">' +
+                                (s.status === 'active' ? '关闭' : '开启') + '</button>' +
+                                '<button class="layui-btn layui-btn-primary layui-btn-xs" data-edit="' + esc(s.id) + '">编辑</button>' +
+                                '<button class="layui-btn layui-btn-danger layui-btn-xs" data-del="' + esc(s.id) + '"><i class="fas fa-trash"></i></button>' +
+                                '</td></tr>';
+                        }).join('') + '</tbody></table></div>';
+                }).join('');
+                jQuery('#slotGroups').html(html || '<p style="color:#8c8c8c">还没有促销位，点右上角新增。</p>');
+            }
+
+            function loadSlots() {
+                huAdmin.request({
+                    url: '/api/admin/promotions/slots',
+                    data: {limit: 200},
+                    silent: true,
+                    ok: function (res) { slots = res.data || []; renderSlots(); }
+                });
+            }
+
+            /** E19：整列上下一格 → 重新按顺序提交 ids，服务端逐行更新 sort_order */
+            function move(id, direction) {
+                var slot = slots.filter(function (s) { return s.id === id; })[0];
+                if (!slot) return;
+                var group = slots.filter(function (s) { return s.position === slot.position; });
+                var idx = group.map(function (s) { return s.id; }).indexOf(id);
+                var to = direction === 'up' ? idx - 1 : idx + 1;
+                if (idx < 0 || to < 0 || to >= group.length) {
+                    huAdmin.toast(direction === 'up' ? '已经在最上面了' : '已经在最下面了', 'err');
+                    return;
+                }
+                var ids = group.map(function (s) { return s.id; });
+                ids.splice(to, 0, ids.splice(idx, 1)[0]);
+                huAdmin.request({
+                    url: '/api/admin/promotions/slots/sort',
+                    type: 'POST',
+                    data: {ids: ids},
+                    ok: loadSlots
+                });
+            }
+
+            function toggleSlot(id) {
+                var slot = slots.filter(function (s) { return s.id === id; })[0];
+                if (!slot) return;
+                huAdmin.request({
+                    url: '/api/admin/promotions/slots/' + id + '/status?status=' + (slot.status === 'active' ? 'inactive' : 'active'),
+                    type: 'POST',
+                    ok: loadSlots
+                });
+            }
+
+            function openSlotForm(slot) {
+                var isEdit = !!slot;
+                var v = slot || {position: 'home', name: '', title: '', subtitle: '', linkUrl: '', couponId: '',
+                    sortOrder: 0, status: 'active'};
+                var couponOptions = '<option value="">不关联券（纯文案位）</option>' + coupons.map(function (c) {
+                    return '<option value="' + esc(c.id) + '"' + (v.couponId === c.id ? ' selected' : '') + '>' +
+                        esc(c.name) + ' · ' + esc(c.ruleText || '') + '</option>';
+                }).join('');
+
+                layer.open({
+                    type: 1,
+                    title: isEdit ? '编辑促销位 · ' + esc(v.name) : '新增促销位',
+                    area: ['620px', '640px'],
+                    content: '<form class="layui-form" style="padding:20px 24px 0">' +
+                        '<div style="display:flex;gap:12px">' +
+                        '<div style="flex:1">' + field('投放位置', '<select id="sfPosition" lay-filter="sfPosition">' +
+                            Object.keys(positions).map(function (p) {
+                                return '<option value="' + p + '"' + (v.position === p ? ' selected' : '') + '>' + positions[p] + '</option>';
+                            }).join('') + '</select>') + '</div>' +
+                        '<div style="flex:1">' + field('名称（仅后台可见）', '<input type="text" id="sfName" value="' + esc(v.name) + '" class="layui-input" placeholder="如 首页 · 阶梯礼领券条">') + '</div>' +
+                        '</div>' +
+                        field('主标题', '<input type="text" id="sfTitle" value="' + esc(v.title) + '" class="layui-input" placeholder="用户在页面上看到的第一行">') +
+                        field('副标题', '<input type="text" id="sfSubtitle" value="' + esc(v.subtitle || '') + '" class="layui-input" placeholder="留空不显示">') +
+                        field('关联优惠券', '<select id="sfCoupon" lay-search>' + couponOptions + '</select>',
+                            '关联后前台会带出券面规则与适用范围，不需要在这里重写文案') +
+                        field('跳转地址', '<input type="text" id="sfLink" value="' + esc(v.linkUrl || '') + '" class="layui-input" placeholder="如 /user/coupon-center">') +
+                        '<div style="display:flex;gap:12px">' +
+                        '<div style="flex:1">' + field('排序', '<input type="number" id="sfSort" value="' + esc(v.sortOrder == null ? 0 : v.sortOrder) + '" class="layui-input">', '小在前，也可用列表里的上移下移') + '</div>' +
+                        '<div style="flex:1">' + field('状态', '<select id="sfStatus">' +
+                            '<option value="active"' + (v.status !== 'inactive' ? ' selected' : '') + '>开启</option>' +
+                            '<option value="inactive"' + (v.status === 'inactive' ? ' selected' : '') + '>关闭</option></select>') + '</div>' +
+                        '</div>' +
+                        '<div style="display:flex;gap:12px">' +
+                        '<div style="flex:1">' + field('开始投放', '<input type="text" id="sfStart" value="' + fmt(v.startTime) + '" class="layui-input" placeholder="留空立即" readonly>') + '</div>' +
+                        '<div style="flex:1">' + field('结束投放', '<input type="text" id="sfEnd" value="' + fmt(v.endTime) + '" class="layui-input" placeholder="留空不限" readonly>') + '</div>' +
+                        '</div>' +
+                        '<div class="layui-form-item"><div class="layui-input-block">' +
+                        '<button type="button" class="layui-btn" id="sfSubmit">保存</button></div></div>' +
+                        '</form>',
+                    success: function () {
+                        layui.form.render(null, null);
+                        laydate.render({elem: '#sfStart', type: 'datetime', trigger: 'click'});
+                        laydate.render({elem: '#sfEnd', type: 'datetime', trigger: 'click'});
+                        jQuery('#sfSubmit').on('click', function () {
+                            var name = jQuery.trim(jQuery('#sfName').val());
+                            var title = jQuery.trim(jQuery('#sfTitle').val());
+                            if (!name || !title) {
+                                huAdmin.toast('名称与主标题必填', 'err');
+                                return;
+                            }
+                            huAdmin.request({
+                                url: isEdit ? '/api/admin/promotions/slots/' + slot.id : '/api/admin/promotions/slots',
+                                type: isEdit ? 'PUT' : 'POST',
+                                data: {
+                                    position: jQuery('#sfPosition').val(),
+                                    name: name,
+                                    couponId: jQuery('#sfCoupon').val() || null,
+                                    title: title,
+                                    subtitle: jQuery.trim(jQuery('#sfSubtitle').val()) || null,
+                                    linkUrl: jQuery.trim(jQuery('#sfLink').val()) || null,
+                                    imageUrl: null,
+                                    sortOrder: Number(jQuery('#sfSort').val()) || 0,
+                                    status: jQuery('#sfStatus').val(),
+                                    startTime: iso('#sfStart'),
+                                    endTime: iso('#sfEnd')
+                                },
+                                ok: function () {
+                                    layer.closeAll('page');
+                                    loadSlots();
+                                }
+                            });
+                        });
+                    }
+                });
+            }
+
+            jQuery('#slotGroups').on('click', '[data-move]', function () {
+                move(String(jQuery(this).data('id')), String(jQuery(this).data('move')));
+            });
+            jQuery('#slotGroups').on('click', '[data-toggle]', function () { toggleSlot(String(jQuery(this).data('toggle'))); });
+            jQuery('#slotGroups').on('click', '[data-edit]', function () {
+                var id = String(jQuery(this).data('edit'));
+                openSlotForm(slots.filter(function (s) { return s.id === id; })[0]);
+            });
+            jQuery('#slotGroups').on('click', '[data-del]', function () {
+                var id = String(jQuery(this).data('del'));
+                huAdmin.confirmDelete('删除后前台立即消失，确定？', '/api/admin/promotions/slots/' + id, loadSlots);
+            });
+
+            window.huSlotAdd = function () {
+                openSlotForm(null);
+            };
+
+            /* ---------------------------------------------------------------- 满减活动（E14） */
+            function renderReductionTable() {
+                table.render({
+                    elem: '#reductionTable',
+                    url: '/api/admin/promotions/reductions',
+                    page: false,
+                    where: {limit: 100},
+                    cols: [[
+                        {field: 'name', title: '活动名称', minWidth: 170},
+                        {field: 'ladderText', title: '档位（自动生成）', minWidth: 220, templet: function (d) {
+                            return '<span class="pr-ladder">' + esc(d.ladderText || d.ladderRule || '-') + '</span>';
+                        }},
+                        {field: 'scope', title: '适用范围', width: 150, templet: function (d) {
+                            if (d.scope !== 'category' || !(d.categoryIds || []).length) return '全场通用';
+                            var names = d.categoryIds.map(function (id) {
+                                var hit = categories.filter(function (c) { return c.id === id; })[0];
+                                return hit ? hit.name : '已删除分类';
+                            });
+                            return names.slice(0, 3).join('、') + (names.length > 3 ? ' 等' : '');
+                        }},
+                        {field: 'stackWithCoupon', title: '与券叠加', width: 100, templet: function (d) {
+                            return d.stackWithCoupon
+                                ? '<span style="color:#52c41a">可叠加</span>' : '<span style="color:#8c8c8c">取更优</span>';
+                        }},
+                        {field: 'priority', title: '优先级', width: 80},
+                        {field: 'startTime', title: '生效窗口', width: 168, templet: function (d) {
+                            return '<span class="pr-window">' + (fmt(d.startTime) || '立即') + ' ~ ' + (fmt(d.endTime) || '不限') + '</span>';
+                        }},
+                        {field: 'status', title: '状态', width: 76, templet: function (d) {
+                            return d.status === 'active'
+                                ? '<span style="color:#52c41a">启用</span>' : '<span class="pr-off">停用</span>';
+                        }},
+                        {title: '操作', width: 210, toolbar: '#reductionOperate', fixed: 'right'}
+                    ]]
+                });
+            }
+
+            function openReductionForm(row) {
+                var isEdit = !!row;
+                var v = row || {name: '', scope: 'all', ladderRule: '', stackWithCoupon: false, priority: 10, status: 'active'};
+                var catOptions = categories.map(function (c) {
+                    return '<option value="' + esc(c.id) + '">' + esc(c.name) + '</option>';
+                }).join('');
+
+                layer.open({
+                    type: 1,
+                    title: isEdit ? '编辑满减 · ' + esc(v.name) : '新建满减活动',
+                    area: ['580px', '520px'],
+                    content: '<form class="layui-form" style="padding:20px 24px 0">' +
+                        field('活动名称', '<input type="text" id="rfName" value="' + esc(v.name) + '" class="layui-input" placeholder="如 全场满额立减 · 日常档">') +
+                        field('适用范围', '<select id="rfScope" lay-filter="rfScope">' +
+                            '<option value="all"' + (v.scope !== 'category' ? ' selected' : '') + '>全场通用</option>' +
+                            '<option value="category"' + (v.scope === 'category' ? ' selected' : '') + '>指定分类</option></select>') +
+                        '<div class="rf-category' + (v.scope === 'category' ? '' : ' layui-hide') + '">' +
+                        field('分类（可多选）', '<select id="rfCategories" multiple lay-search>' + catOptions + '</select>',
+                            '多选时任一分类命中即可，自动含其下级分类') + '</div>' +
+                        field('满减阶梯', '<input type="text" id="rfLadder" value="' + esc(v.ladderRule || '') + '" class="layui-input" placeholder="199:20,399:60">',
+                            '门槛:减免，逗号分隔；前台文案与本表「档位」都由系统生成') +
+                        '<div style="display:flex;gap:12px">' +
+                        '<div style="flex:1">' + field('与券叠加', '<select id="rfStack">' +
+                            '<option value="true"' + (v.stackWithCoupon ? ' selected' : '') + '>可叠加（先满减后用券）</option>' +
+                            '<option value="false"' + (!v.stackWithCoupon ? ' selected' : '') + '>取更省的一条</option></select>') + '</div>' +
+                        '<div style="flex:1">' + field('优先级', '<input type="number" id="rfPriority" value="' + esc(v.priority == null ? 10 : v.priority) + '" class="layui-input">', '同额时数值大的胜出') + '</div>' +
+                        '</div>' +
+                        '<div style="display:flex;gap:12px">' +
+                        '<div style="flex:1">' + field('开始', '<input type="text" id="rfStart" value="' + fmt(v.startTime) + '" class="layui-input" placeholder="留空立即" readonly>') + '</div>' +
+                        '<div style="flex:1">' + field('结束', '<input type="text" id="rfEnd" value="' + fmt(v.endTime) + '" class="layui-input" placeholder="留空不限" readonly>') + '</div>' +
+                        '</div>' +
+                        field('状态', '<select id="rfStatus">' +
+                            '<option value="active"' + (v.status !== 'inactive' ? ' selected' : '') + '>启用</option>' +
+                            '<option value="inactive"' + (v.status === 'inactive' ? ' selected' : '') + '>停用</option></select>') +
+                        '<div class="layui-form-item"><div class="layui-input-block">' +
+                        '<button type="button" class="layui-btn" id="rfSubmit">保存</button></div></div>' +
+                        '</form>',
+                    success: function () {
+                        layui.form.render(null, null);
+                        laydate.render({elem: '#rfStart', type: 'datetime', trigger: 'click'});
+                        laydate.render({elem: '#rfEnd', type: 'datetime', trigger: 'click'});
+                        if (isEdit && (v.categoryIds || []).length) {
+                            jQuery('#rfCategories').val(v.categoryIds.map(function (x) { return String(x); }));
+                            layui.form.render('select', null);
+                        }
+                        jQuery(document).on('change rfScope', '#rfScope', function () {
+                            jQuery('.rf-category').toggleClass('layui-hide', jQuery('#rfScope').val() !== 'category');
+                        });
+                        layui.form.on('select(rfScope)', function (data) {
+                            jQuery('.rf-category').toggleClass('layui-hide', data.value !== 'category');
+                        });
+                        jQuery('#rfSubmit').on('click', function () {
+                            var name = jQuery.trim(jQuery('#rfName').val());
+                            var ladder = jQuery.trim(jQuery('#rfLadder').val());
+                            var scope = jQuery('#rfScope').val();
+                            var categoryIds = jQuery('#rfCategories').val() || [];
+                            if (!name) { huAdmin.toast('活动名称必填', 'err'); return; }
+                            if (ladder.indexOf(':') < 0) { huAdmin.toast('满减阶梯形如 199:20,399:60', 'err'); return; }
+                            if (scope === 'category' && !categoryIds.length) { huAdmin.toast('请至少选择一个分类', 'err'); return; }
+                            huAdmin.request({
+                                url: isEdit ? '/api/admin/promotions/reductions/' + row.id : '/api/admin/promotions/reductions',
+                                type: isEdit ? 'PUT' : 'POST',
+                                data: {
+                                    name: name,
+                                    scope: scope,
+                                    categoryIds: scope === 'category' ? categoryIds : [],
+                                    ladderRule: ladder,
+                                    stackWithCoupon: jQuery('#rfStack').val() === 'true',
+                                    priority: Number(jQuery('#rfPriority').val()) || 0,
+                                    startTime: iso('#rfStart'),
+                                    endTime: iso('#rfEnd'),
+                                    status: jQuery('#rfStatus').val()
+                                },
+                                ok: function () {
+                                    layer.closeAll('page');
+                                    table.reload('reductionTable');
+                                }
+                            });
+                        });
+                    }
+                });
+            }
+
+            table.on('tool(reductionTable)', function (obj) {
+                if (obj.event === 'edit') {
+                    openReductionForm(obj.data);
+                } else if (obj.event === 'enable' || obj.event === 'disable') {
+                    huAdmin.request({
+                        url: '/api/admin/promotions/reductions/' + obj.data.id + '/status?status=' +
+                            (obj.event === 'enable' ? 'active' : 'inactive'),
+                        type: 'POST',
+                        ok: function () { table.reload('reductionTable'); }
+                    });
+                } else if (obj.event === 'del') {
+                    huAdmin.confirmDelete('确定删除「' + obj.data.name + '」？已成交订单不受影响。',
+                        '/api/admin/promotions/reductions/' + obj.data.id, function () { table.reload('reductionTable'); });
+                }
+            });
+
+            window.huReductionAdd = function () {
+                openReductionForm(null);
+            };
+
+            /**
+             * 促销位要选券、满减要选分类，两份字典先取齐再渲染，
+             * 否则表单里的下拉会先出现一次「只有占位项」的闪动
+             */
+            function boot() {
+                jQuery.getJSON('/api/admin/coupons?limit=200').done(function (res) {
+                    coupons = (res && res.code === 200) ? (res.data || []) : [];
+                }).fail(function () { coupons = []; });
+                jQuery.getJSON('/api/categories').done(function (res) {
+                    categories = (res && res.code === 200) ? (res.data || []) : [];
+                }).fail(function () { categories = []; });
+                loadSlots();
+                renderReductionTable();
+            }
+
+            boot();
+        });
+    </script>
+</body>
+</html>

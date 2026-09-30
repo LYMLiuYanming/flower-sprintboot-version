@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.GenericGenerator;
+import org.liuym.flowerv1springboot.common.CheckoutPolicy;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -42,6 +43,22 @@ public class OrderItem {
 
     @Column(name = "subtotal", precision = 10, scale = 2, nullable = false)
     private BigDecimal subtotal;
+
+    /** 每束花的一句话（B02）：购物车行备注在下单时快照，之后改购物车不影响这张单 */
+    @Column(name = "item_note", length = 200)
+    private String itemNote;
+
+    /** 这一束是否要求礼品包装（B01）：包装费按整单收一次，行标记给花艺师分束用 */
+    @Column(name = "gift_wrap", nullable = false)
+    private Boolean giftWrap = false;
+
+    public void setItemNote(String itemNote) {
+        this.itemNote = CheckoutPolicy.cleanNote(itemNote);
+    }
+
+    public boolean isGiftWrapped() {
+        return Boolean.TRUE.equals(giftWrap);
+    }
 
     public void calculateSubtotal() {
         this.subtotal = this.price.multiply(BigDecimal.valueOf(this.quantity));

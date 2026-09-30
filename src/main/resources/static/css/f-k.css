@@ -1,0 +1,282 @@
+/* ============================================================
+   f-k.css · K 组：通用体验与可访问性
+   只放 K 批次新增的组件样式，改令牌请去 theme.css 的 :root
+   ============================================================ */
+
+:root {
+    /* K03 骨架屏基色：比画布略冷，浅色块在深色卡片上不会闪 */
+    --hu-skeleton-base: #eef1f4;
+    --hu-skeleton-hi: rgba(255, 255, 255, .75);
+    /* K05 错误态 / K06 toast 的语义底色 */
+    --hu-danger-soft: #fdeeef;
+    --hu-warn-soft: #fdf4e3;
+    --hu-info-soft: #eaf2fb;
+}
+
+/* ---------- K06 Toast：堆叠、去重计数、类型色 ---------- */
+.hu-toasts {
+    position: fixed;
+    left: 50%;
+    bottom: 40px;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: min(420px, calc(100vw - 32px));
+    pointer-events: none;
+}
+.hu-toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 100%;
+    padding: 12px 14px 12px 20px;
+    border-radius: 12px;
+    background: var(--hu-ink);
+    color: #fff;
+    font-size: 14px;
+    letter-spacing: .01em;
+    line-height: 1.5;
+    box-shadow: 0 26px 60px -22px rgba(16, 22, 35, .5);
+    opacity: 0;
+    transform: translateY(14px) scale(.98);
+    transition: opacity .28s var(--hu-ease), transform .28s var(--hu-ease);
+}
+.hu-toast.is-show { opacity: 1; transform: none; }
+.hu-toast__msg { min-width: 0; word-break: break-word; }
+.hu-toast__n {
+    flex: 0 0 auto;
+    padding: 1px 7px;
+    border-radius: var(--hu-radius-pill);
+    background: rgba(255, 255, 255, .2);
+    font-size: 11.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.hu-toast__n:empty { display: none; }
+.hu-toast__x {
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: rgba(255, 255, 255, .66);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color .18s var(--hu-ease), color .18s var(--hu-ease);
+}
+.hu-toast__x:hover { background: rgba(255, 255, 255, .18); color: #fff; }
+.hu-toast__x:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+.hu-toast--ok { background: var(--hu-ink); }
+.hu-toast--err, .hu-toast.err { background: var(--hu-clay); }
+.hu-toast--warn { background: #8a5614; }
+.hu-toast--info { background: #2f5d8a; }
+/* 重复触发时用一次极短的缩放代替新弹层，告诉用户「点到了，但已经在了」 */
+.hu-toast.is-bump { animation: huToastBump .28s var(--hu-ease); }
+@keyframes huToastBump {
+    0% { transform: none; }
+    40% { transform: translateY(-3px) scale(1.015); }
+    100% { transform: none; }
+}
+@media (max-width: 560px) {
+    .hu-toasts { bottom: 20px; width: calc(100vw - 24px); }
+}
+
+/* ---------- K03 骨架屏补充：行式与卡片式占位 ---------- */
+.hu-skeleton-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--hu-line);
+}
+.hu-panel--ghost { box-shadow: none; }
+.hu-product--ghost { box-shadow: none; }
+.hu-product--ghost:hover { transform: none; }
+.hu-skeleton-card { padding: 20px; }
+.is-loading { pointer-events: none; }
+[class*="hu-skeleton"] { user-select: none; }
+
+/* ---------- K04 空态补充：图形化占位块，避免只剩一行灰字 ---------- */
+.hu-empty__icon { line-height: 1; }
+.hu-empty__hint { font-size: 12.5px; color: var(--hu-muted); margin-top: 4px; }
+.hu-empty--inline { padding: 36px 20px; border-style: solid; border-color: var(--hu-line); background: var(--hu-surface-alt); }
+
+/* ---------- K05 错误态：整块居中，重试按钮是这一屏唯一的主行动 ---------- */
+.hu-errorstate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+    padding: 56px 24px;
+    background: var(--hu-surface);
+    border: 1px solid var(--hu-line);
+    border-radius: var(--hu-radius-lg);
+}
+.hu-errorstate__icon {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    margin-bottom: 6px;
+    border-radius: 18px;
+    background: var(--hu-danger-soft);
+    color: var(--hu-danger-text);
+    font-size: 22px;
+}
+.hu-errorstate__title { font-size: 16px; font-weight: 600; color: var(--hu-ink); }
+.hu-errorstate__desc { font-size: 13.5px; color: var(--hu-muted); max-width: 40ch; line-height: 1.8; }
+.hu-errorstate__btn { margin-top: 14px; }
+.hu-errorstate__btn.is-busy { opacity: .7; }
+.hu-errorstate__btn.is-busy i { animation: huSpin .9s linear infinite; }
+@keyframes huSpin { to { transform: rotate(360deg); } }
+
+/* ---------- K07 表单：错误就地显示之外的可感知提示 ---------- */
+.hu-field.has-err > label { color: var(--hu-danger-text); }
+.hu-field.has-err .hu-field__err { display: block; color: var(--hu-danger-text); }
+.hu-field__err:not(:empty)::before { content: '\26A0'; margin-right: 5px; font-size: 11px; }
+.hu-input[aria-invalid="true"], .hu-select[aria-invalid="true"], .hu-textarea[aria-invalid="true"] {
+    border-color: var(--hu-clay);
+    box-shadow: 0 0 0 3px rgba(193, 91, 107, .12);
+}
+
+/* ---------- K08 图片：加载失败的格子留下可辨识的底色，不塌陷 ---------- */
+img.is-broken {
+    background: var(--hu-surface-alt);
+    border: 1px dashed var(--hu-line-strong);
+    object-fit: cover;
+}
+
+/* ---------- K09 弹层：焦点陷阱期间的可见反馈 ---------- */
+.hu-mask { contain: layout paint; }
+.hu-dialog:focus { outline: none; }
+.hu-dialog:focus-visible { box-shadow: var(--hu-shadow-lg), var(--hu-focus-soft); }
+.hu-mask .hu-dialog { position: relative; }
+
+/* ---------- K10 播报区（读屏专用，视觉隐藏） ---------- */
+.hu-sr-live { position: fixed; bottom: 0; left: 0; }
+
+/* ---------- K12 抽屉遮罩：点击外部即可收起 ---------- */
+.hu-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgba(16, 22, 35, .42);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    animation: huScrimIn .26s var(--hu-ease) forwards;
+}
+.hu-drawer-scrim { top: 64px; }
+@keyframes huScrimIn { to { opacity: 1; } }
+
+/* ---------- K13 分页：省略号与元信息 ---------- */
+.hu-pager__nav + .hu-pager__meta { margin-top: 10px; }
+.hu-pager .hu-ellipsis { min-width: 18px; text-align: center; }
+/* 上下页箭头：只有一枚图标，弱化到「辅助操作」层级 */
+.hu-pager__edge { color: var(--hu-muted); }
+.hu-pager__edge:hover:not(:disabled) { color: var(--hu-accent-deep); }
+/* 服务端分页用链接渲染，不能 disabled，只能靠 aria-disabled 抑制样式 */
+.hu-pager a[aria-disabled="true"] { opacity: .45; pointer-events: none; }
+
+/* ---------- K10 必填星号：与错误文字同色，读屏另有 aria-required ---------- */
+.hu-field__req { color: var(--hu-danger-text); margin-left: 2px; }
+
+/* ---------- K14/K15 金额与时间的排版细节 ---------- */
+.hu-money { font-variant-numeric: tabular-nums; }
+.hu-time { cursor: help; border-bottom: 1px dotted transparent; transition: border-color .18s var(--hu-ease); }
+.hu-time:hover { border-bottom-color: var(--hu-line-strong); }
+
+/* ---------- K16 复制按钮：图标按钮与行内小按钮两种形态 ---------- */
+.hu-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid var(--hu-line-strong);
+    border-radius: var(--hu-radius-pill);
+    background: var(--hu-surface);
+    color: var(--hu-muted);
+    font-family: var(--hu-font-body);
+    font-size: 12px;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: color .2s var(--hu-ease), border-color .2s var(--hu-ease), background-color .2s var(--hu-ease);
+}
+.hu-copy:hover { color: var(--hu-accent-deep); border-color: var(--hu-accent); background: var(--hu-accent-soft); }
+.hu-copy__done { display: none; }
+.hu-copy.is-copied { color: var(--hu-accent-deep); border-color: var(--hu-accent); }
+.hu-copy.is-copied .hu-copy__done { display: inline; }
+.hu-copy.is-copied .hu-copy__todo { display: none; }
+/* 单图标形态：贴在订单号 / 券码后面，不额外占一行 */
+.hu-copy--icon { width: 26px; height: 26px; padding: 0; border-radius: 8px; justify-content: center; font-size: 12px; }
+
+/* ---------- K17 面包屑与返回上级 ---------- */
+.hu-crumb ol, .hu-crumb ul { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.hu-crumb li { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--hu-muted); }
+.hu-crumb li + li::before { content: '/'; color: var(--hu-line-strong); }
+.hu-crumb a { color: var(--hu-muted); transition: color .2s var(--hu-ease); }
+.hu-crumb a:hover { color: var(--hu-accent); }
+.hu-crumb [aria-current="page"] { color: var(--hu-ink-soft); font-weight: 500; }
+.hu-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    color: var(--hu-muted);
+    background: none;
+    border: 0;
+    padding: 6px 0;
+    cursor: pointer;
+    font-family: var(--hu-font-body);
+    transition: color .2s var(--hu-ease), gap .2s var(--hu-ease);
+}
+.hu-back:hover { color: var(--hu-accent-deep); gap: 10px; }
+.hu-back i { font-size: 12px; }
+
+/* ---------- K18 深色模式变量预留：只覆盖令牌，组件不重写 ---------- */
+[data-hu-theme="dark"] {
+    color-scheme: dark;
+    --hu-paper: #0d121b;
+    --hu-surface: #141b26;
+    --hu-surface-alt: #1a222e;
+    --hu-ink: #eef1f5;
+    --hu-ink-soft: #c8cdd6;
+    --hu-muted: #98a2b1;
+    --hu-muted-strong: #b3bcc9;
+    --hu-line: #232c39;
+    --hu-line-strong: #33404f;
+    --hu-accent: #35b193;
+    --hu-accent-deep: #62c9ac;
+    --hu-accent-soft: rgba(53, 177, 147, .14);
+    --hu-clay: #e08a97;
+    --hu-gold: #d7a955;
+    --hu-grad-accent: linear-gradient(135deg, #2c9c81 0%, #14655a 100%);
+    --hu-grad-ink: linear-gradient(135deg, #1e2836 0%, #101720 100%);
+    --hu-shadow-sm: 0 1px 2px rgba(0, 0, 0, .5);
+    --hu-shadow: 0 10px 30px -14px rgba(0, 0, 0, .7);
+    --hu-shadow-lg: 0 26px 60px -22px rgba(0, 0, 0, .8);
+    --hu-placeholder: #6c7688;
+    --hu-skeleton-base: #1e2733;
+    --hu-skeleton-hi: rgba(255, 255, 255, .06);
+    --hu-danger-soft: rgba(224, 138, 151, .16);
+    --hu-warn-soft: rgba(215, 169, 85, .16);
+    --hu-info-soft: rgba(107, 158, 209, .16);
+}
+/* 深色下的三处画布级差异：body 渐变、图片遮罩带、玻璃底导航栏 */
+[data-hu-theme="dark"] body.hu-body {
+    background:
+        radial-gradient(1200px 400px at 50% -200px, rgba(53, 177, 147, .12), transparent 70%),
+        var(--hu-paper);
+}
+[data-hu-theme="dark"] .hu-nav { background: rgba(13, 18, 27, .8); }
+[data-hu-theme="dark"] .hu-nav.is-scrolled { background: rgba(13, 18, 27, .94); }
+[data-hu-theme="dark"] .hu-tag { background: rgba(238, 241, 245, .82); color: #101623; }
+[data-hu-theme="dark"] .hu-btn--solid { color: #101623; background: linear-gradient(135deg, #eef1f5, #c8cdd6); }
+[data-hu-theme="dark"] .hu-skeleton { background: var(--hu-skeleton-base); }

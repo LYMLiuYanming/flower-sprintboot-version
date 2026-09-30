@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>报表中心 - 花语轩管理后台</title>
+    <link rel="icon" th:href="@{/img/favicon.svg}" type="image/svg+xml">
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/css/f-h.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
+    <style>
+        * {margin: 0;padding: 0;}
+        body {background: var(--ad-paper, #f6f5f1);font-family: 'Inter', 'Noto Sans SC', -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;}
+        .header {background: #211f1a;padding: 0 24px;color: white;display: flex;justify-content: space-between;align-items: center;height: 60px;}
+        .header .logo {font-family: 'Noto Serif SC', serif;font-size: 19px;font-weight: 600;letter-spacing: .04em;}
+        .header .logo i {color: #a9906a;margin-right: 8px;}
+        .header .user-info {display: flex;align-items: center;gap: 18px;font-size: 14px;}
+        .header .user-info a {color: #d8d5cc;text-decoration: none;}
+        .header .user-info a:hover {color: #fff;}
+        .layui-layout-admin .layui-side {top: 60px;width: 200px;}
+        .layui-layout-admin .layui-header {top: 0;}
+        .layui-layout-admin .layui-body, .layui-layout-admin .layui-footer {left: 200px;}
+        .layui-side-scroll {width: 220px;}
+    </style>
+</head>
+<body>
+    <div class="layui-layout layui-layout-admin">
+        <div class="layui-header header">
+            <div class="logo"><i class="fas fa-leaf"></i> 花语轩管理后台</div>
+            <div class="user-info">
+                <span><i class="fas fa-user-circle"></i> 管理员</span>
+                <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+            </div>
+        </div>
+
+        <div class="layui-side layui-bg-black">
+            <div class="layui-side-scroll">
+                <ul class="layui-nav layui-nav-tree" lay-filter="nav">
+                    <li class="layui-nav-item"><a href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a></li>
+                    <li class="layui-nav-item layui-this"><a href="/admin/report"><i class="fas fa-chart-pie"></i> 报表中心</a></li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-th"></i> 商品管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/product-list"><i class="fas fa-box"></i> 商品列表</a></dd>
+                            <dd><a href="/admin/category-list"><i class="fas fa-tags"></i> 分类管理</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-shopping-cart"></i> 订单管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/order-list"><i class="fas fa-list-alt"></i> 订单列表</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-users"></i> 用户管理</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/user-list"><i class="fas fa-user"></i> 用户列表</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-cog"></i> 系统设置</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="/admin/banner-list"><i class="fas fa-image"></i> 轮播图管理</a></dd>
+                            <dd><a href="/admin/notice-list"><i class="fas fa-bullhorn"></i> 公告管理</a></dd>
+                            <dd><a href="/admin/coupon-list"><i class="fas fa-ticket-alt"></i> 优惠券</a></dd>
+                            <dd><a href="/admin/audit-list"><i class="fas fa-history"></i> 操作日志</a></dd>
+                        </dl>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="layui-body">
+            <div class="h-content">
+                <div class="h-head">
+                    <div>
+                        <h2>报表中心</h2>
+                        <p class="h-head__note">成交口径：已支付及后续流转状态订单；每张卡都能单独导出当前视图 CSV</p>
+                    </div>
+                    <div class="h-ops">
+                        <div class="h-range">
+                            <div class="h-seg" id="rangeSeg">
+                                <button type="button" data-range="7">近 7 天</button>
+                                <button type="button" data-range="30" class="is-active">近 30 天</button>
+                                <button type="button" data-range="90">近 90 天</button>
+                                <button type="button" data-range="custom">自定义</button>
+                            </div>
+                            <span id="rangeDates" style="display:none">
+                                <input type="text" class="h-date" id="dateFrom" placeholder="开始日期" autocomplete="off">
+                                <span style="color:#a4acba">–</span>
+                                <input type="text" class="h-date" id="dateTo" placeholder="结束日期" autocomplete="off">
+                            </span>
+                            <div class="h-seg" id="granSeg">
+                                <button type="button" data-gran="day" class="is-active">按天</button>
+                                <button type="button" data-gran="week">按周</button>
+                                <button type="button" data-gran="month">按月</button>
+                            </div>
+                        </div>
+                        <span class="h-updated" id="reportUpdated"><i class="fas fa-clock"></i>数据加载中</span>
+                        <a class="h-btn" href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a>
+                        <button type="button" class="h-btn" id="reportRefresh"><i class="fas fa-sync-alt"></i> 刷新</button>
+                        <button type="button" class="h-btn h-btn--primary" id="exportSummary">
+                            <i class="fas fa-file-csv"></i> 导出核心指标
+                        </button>
+                    </div>
+                </div>
+
+                <div class="h-alerts" id="reportAlerts"></div>
+                <div class="h-cards h-cards--wide" id="reportCards"></div>
+
+                <div class="layui-row layui-col-space15">
+                    <div class="layui-col-md8">
+                        <div class="h-panel">
+                            <div class="h-panel__head">
+                                <div class="h-panel__title"><i class="fas fa-chart-area"></i> 销售趋势 <small id="trendSummary"></small></div>
+                                <div class="h-panel__tools" data-export="trend"></div>
+                            </div>
+                            <div class="h-panel__body"><div class="h-chart" id="trendChart"></div></div>
+                            <div class="h-panel__foot" id="trendFoot"></div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md4">
+                        <div class="h-panel">
+                            <div class="h-panel__head">
+                                <div class="h-panel__title"><i class="fas fa-chart-pie"></i> 分类占比与同比</div>
+                                <div class="h-panel__tools" data-export="categories"></div>
+                            </div>
+                            <div class="h-panel__body">
+                                <div class="h-chart h-chart--sm" id="categoryChart"></div>
+                                <ul class="h-rank" id="categoryList"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="layui-row layui-col-space15">
+                    <div class="layui-col-md6">
+                        <div class="h-panel">
+                            <div class="h-panel__head">
+                                <div class="h-panel__title"><i class="fas fa-award"></i> 商品销量 Top 10</div>
+                                <div class="h-panel__tools" data-export="products"></div>
+                            </div>
+                            <div class="h-panel__body"><div class="h-chart" id="productChart"></div></div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6">
+                        <div class="h-panel">
+                            <div class="h-panel__head">
+                                <div class="h-panel__title"><i class="fas fa-map-marked-alt"></i> 地区销售 Top 12
+                                    <small><a class="h-link" href="/flower-map" target="_blank">在地图上看 →</a></small>
+                                </div>
+                                <div class="h-panel__tools" data-export="regions"></div>
+                            </div>
+                            <div class="h-panel__body"><div class="h-chart" id="regionChart"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="layui-row layui-col-space15">
+                    <div class="layui-col-md6">
+                        <div class="h-panel">
+                            <div class="h-panel__head">
+                                <div class="h-panel__title"><i class="fas fa-seedling"></i> 产地发货榜</div>
+                                <div class="h-panel__tools" data-export="origins"></div>
+                            </div>
+                            <div class="h-panel__body"><ul class="h-rank" id="originList"></ul></div>
+                            <div class="h-panel__foot">主产地取自商品档案，未标注产地的商品不进该榜</div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6">
+                        <div class="h-panel">
+                            <div class="h-panel__head">
+                                <div class="h-panel__title"><i class="fas fa-ticket-alt"></i> 优惠券核销与带动 GMV</div>
+                                <div class="h-panel__tools" data-export="coupons"></div>
+                            </div>
+                            <div class="h-panel__body">
+                                <dl class="h-kv" id="couponKv"></dl>
+                                <table class="layui-hide" id="couponTable" lay-filter="couponTable"></table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="layui-row layui-col-space15">
+                    <div class="layui-col-md6">
+                        <div class="h-panel">
+                            <div class="h-panel__head">
+                                <div class="h-panel__title"><i class="fas fa-rotate-left"></i> 退款与取消</div>
+                                <div class="h-panel__tools" data-export="refunds"></div>
+                            </div>
+                            <div class="h-panel__body">
+                                <dl class="h-kv" id="refundKv"></dl>
+                                <ul class="h-rank" id="refundReasons"></ul>
+                            </div>
+                            <div class="h-panel__foot">退款/取消按关闭时刻归属窗口，比率分母是同窗口的成交单量</div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6">
+                        <div class="h-panel">
+                            <div class="h-panel__head">
+                                <div class="h-panel__title"><i class="fas fa-truck-fast"></i> 履约时效分位</div>
+                                <div class="h-panel__tools" data-export="fulfillment"></div>
+                            </div>
+                            <div class="h-panel__body">
+                                <div class="h-chart h-chart--sm" id="timingChart"></div>
+                                <div class="h-timeline" id="timingList"></div>
+                            </div>
+                            <div class="h-panel__foot">签收时间没有独立字段，已签收单以状态更新时间近似，含少量尾差</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="layui-row layui-col-space15">
+                    <div class="layui-col-md6">
+                        <div class="h-panel">
+                            <div class="h-panel__head">
+                                <div class="h-panel__title"><i class="fas fa-boxes-stacked"></i> 库存周转</div>
+                                <div class="h-panel__tools" data-export="inventory"></div>
+                            </div>
+                            <div class="h-panel__body">
+                                <dl class="h-kv" id="stockKv"></dl>
+                                <div class="h-chart h-chart--sm" id="turnoverChart"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6">
+                        <div class="h-panel">
+                            <div class="h-panel__head">
+                                <div class="h-panel__title"><i class="fas fa-triangle-exclamation"></i> 库存告急清单</div>
+                                <div class="h-panel__tools" data-export="stock-alerts"></div>
+                            </div>
+                            <div class="h-panel__body"><ul class="h-rank" id="alertList"></ul></div>
+                            <div class="h-panel__foot" id="alertFoot"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="layui-row layui-col-space15">
+                    <div class="layui-col-md4">
+                        <div class="h-panel">
+                            <div class="h-panel__head">
+                                <div class="h-panel__title"><i class="fas fa-user-plus"></i> 新客 / 老客</div>
+                                <div class="h-panel__tools" data-export="customers"></div>
+                            </div>
+                            <div class="h-panel__body"><div class="h-chart h-chart--sm" id="mixChart"></div></div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md4">
+                        <div class="h-panel">
+                            <div class="h-panel__head">
+                                <div class="h-panel__title"><i class="fas fa-diagram-project"></i> 新客来源 <small>成交首单品类</small></div>
+                                <div class="h-panel__tools" data-export="sources"></div>
+                            </div>
+                            <div class="h-panel__body"><ul class="h-rank" id="sourceList"></ul></div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md4">
+                        <div class="h-panel">
+                            <div class="h-panel__head">
+                                <div class="h-panel__title"><i class="fas fa-star"></i> 口碑</div>
+                                <div class="h-panel__tools" data-export="reputation"></div>
+                            </div>
+                            <div class="h-panel__body"><dl class="h-kv" id="reviewKv"></dl></div>
+                            <div class="h-panel__foot">评价只统计可见评价，差评口径为 1–2 星</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-footer">© 2024 花语轩鲜花销售系统 - 版权所有</div>
+    </div>
+
+    <script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+    <script th:src="@{/jquery-3.7.1.min.js}"></script>
+    <script th:src="@{/js/echarts.min.js}"></script>
+    <script th:src="@{/js/admin-common.js}"></script>
+    <script th:src="@{/js/hu-stats.js}"></script>
+    <script th:inline="none">
+        layui.use(['element', 'table', 'layer', 'laydate'], function () {
+            var table = layui.table;
+            var laydate = layui.laydate;
+            var esc = huStats.esc;
+            var $ = window.jQuery;
+
+            var state = {range: '30', from: '', to: '', granularity: 'day'};
+
+            function qs() {
+                var q = {range: state.range, granularity: state.granularity};
+                if (state.range === 'custom') {
+                    q.from = state.from;
+                    q.to = state.to;
+                }
+                return q;
+            }
+
+            function money(v, d) { return huStats.money(v, d); }
+            function num(v) { return huStats.num(v); }
+            function int(v) { return huStats.int(v); }
+
+            /* H12：每个图卡都能把「当前视图」单独下成 csv，链接参数与页面取数完全一致 */
+            function exportUrl(section) {
+                var q = qs();
+                q.section = section;
+                var pairs = [];
+                for (var k in q) {
+                    if (q[k] !== undefined && q[k] !== null && q[k] !== '') {
+                        pairs.push(encodeURIComponent(k) + '=' + encodeURIComponent(q[k]));
+                    }
+                }
+                return '/api/admin/report/export?' + pairs.join('&');
+            }
+
+            function renderExportTools() {
+                $('[data-export]').each(function () {
+                    var section = this.getAttribute('data-export');
+                    jQuery(this).html('<a class="h-btn" href="' + exportUrl(section) + '">'
+                        + '<i class="fas fa-file-csv"></i> 导出 CSV</a>');
+                });
+            }
+
+            function kv(target, items) {
+                var html = '';
+                for (var i = 0; i < items.length; i++) {
+                    html += '<div><dt>' + esc(items[i][0]) + '</dt><dd>' + items[i][1] + '</dd></div>';
+                }
+                $(target).html(html);
+            }
+
+            /* ───── KPI 卡（H03/H14） ───── */
+            function renderCards(kpi, range) {
+                if (!kpi) return;
+                function card(color, icon, label, value, sub, delta) {
+                    var flagged = delta && delta.level && delta.level !== 'flat' ? ' is-flagged' : '';
+                    return '<div class="h-card' + flagged + '" style="--bar:' + color + '">'
+                        + '<div class="h-card__label"><i class="fas ' + icon + '"></i>' + esc(label) + '</div>'
+                        + '<div class="h-card__value">' + value + '</div>'
+                        + '<div class="h-card__sub">' + sub + '</div></div>';
+                }
+                var html = '';
+                html += card('#0f7b63', 'fa-coins', '成交额 · ' + (range ? range.label : ''),
+                    money(kpi.gmv, 0), '<b>' + int(kpi.dealOrders) + '</b> 单' + huStats.deltaHtml(kpi.gmvDelta, '环比'), kpi.gmvDelta);
+                html += card('#c08a33', 'fa-receipt', '客单价',
+                    kpi.avgOrderAmount == null ? '—' : money(kpi.avgOrderAmount),
+                    '实付 / 成交单量' + huStats.deltaHtml(kpi.avgDelta, '环比'), kpi.avgDelta);
+                html += card('#1c4b8a', 'fa-filter', '支付转化率', num(kpi.payConvertPercent).toFixed(1) + '<em>%</em>',
+                    '下单 ' + int(kpi.createdOrders) + ' 单' + huStats.deltaHtml(kpi.convertDelta, '环比'), kpi.convertDelta);
+                html += card('#6f4fb0', 'fa-repeat', '复购率', num(kpi.repurchasePercent).toFixed(1) + '<em>%</em>',
+                    int(kpi.buyers) + ' 人中 ' + int(kpi.repeatBuyers) + ' 人复购' + huStats.deltaHtml(kpi.repurchaseDelta, '环比'), kpi.repurchaseDelta);
+                html += card('#c15b6b', 'fa-hand-holding-dollar', '退款率', num(kpi.refundPercent).toFixed(1) + '<em>%</em>',
+                    int(kpi.refundOrders) + ' 单 / ' + money(kpi.refundAmount, 0) + huStats.deltaHtml(kpi.refundDelta, '环比'), kpi.refundDelta);
+                $('#reportCards').html(html);
+            }
+
+            function renderReport(d) {
+                renderCards(d.kpi, d.range);
+                $('#reportAlerts').html(huStats.anomalyBar(anomaliesOf(d)));
+                $('#trendSummary').text(d.range ? d.range.label : '');
+                huStats.render.trend('trendChart', d.trend || []);
+                $('#trendFoot').text('共 ' + (d.trend || []).length + ' 个时间桶 · 成交额按支付时间归属（缺支付时间的成交单按下单时间归位）');
+                renderCategories(d.categories || []);
+                renderProducts(d.topProducts || []);
+                renderRegions(d.regions || []);
+                renderOrigins(d.origins || []);
+                renderCoupons(d.coupons);
+                renderRefunds(d.refunds);
+                renderFulfillment(d.fulfillment);
+                renderInventory(d.inventory);
+                renderCustomers(d.customers);
+                renderReputation(d.reputation);
+                /* ISO 串形如 2026-09-30T08:12:34，替换后取 11..16 才是 HH:mm */
+                var time = d.generatedAt ? String(d.generatedAt).replace('T', ' ').slice(11, 16) : '';
+                $('#reportUpdated').html('<i class="fas fa-clock"></i>数据更新于 '
+                    + (time || new Date().toTimeString().slice(0, 5)));
+                renderExportTools();
+            }
+
+            /* 报表页没有单独的 anomalies 字段，用各卡的 delta 复原异常清单 */
+            function anomaliesOf(d) {
+                var list = [];
+                var k = d.kpi;
+                if (!k) return list;
+                [['成交额', k.gmvDelta], ['成交单量', k.orderDelta], ['客单价', k.avgDelta],
+                    ['支付转化率', k.convertDelta], ['复购率', k.repurchaseDelta], ['退款率', k.refundDelta]].forEach(function (row) {
+                    if (row[1] && row[1].level && row[1].level !== 'flat') {
+                        list.push({metric: row[0], level: row[1].level, changeRate: row[1].changeRate,
+                            text: '环比 ' + huStats.rateText(row[1].changeRate)});
+                    }
+                });
+                var f = d.fulfillment && d.fulfillment.slowDelta;
+                if (f && f.level !== 'flat') {
+                    list.push({metric: '履约时长', level: f.level, changeRate: f.changeRate, text: '中位时长环比 ' + huStats.rateText(f.changeRate)});
+                }
+                return list;
+            }
+
+            function renderCategories(rows) {
+                huStats.render.pie('categoryChart', rows, {yoy: true});
+                if (!rows.length) {
+                    $('#categoryList').html('<li class="h-rank--empty">本期暂无成交记录</li>');
+                    return;
+                }
+                var html = '';
+                for (var i = 0; i < Math.min(rows.length, 6); i++) {
+                    var r = rows[i];
+                    var yoy = r.yoyRate == null ? '<span class="h-badge">同比 —</span>'
+                        : '<span class="h-badge ' + (r.yoyRate < 0 ? 'is-danger' : 'is-good') + '">同比 ' + huStats.rateText(r.yoyRate) + '</span>';
+                    html += '<li><span class="name">' + esc(r.category) + '<span>' + int(r.units) + ' 件 / ' + int(r.orders) + ' 单</span></span>'
+                        + '<span class="h-bar"><i style="width:' + Math.min(100, num(r.percent)) + '%"></i></span>'
+                        + '<span class="amt">' + money(r.amount, 0) + '<span>' + num(r.percent).toFixed(1) + '% ' + yoy + '</span></span></li>';
+                }
+                $('#categoryList').html(html);
+            }
+
+            function renderProducts(rows) {
+                huStats.render.hBar('productChart', rows, {
+                    labelKey: 'productName', valueKey: 'amount',
+                    tooltip: function (d) {
+                        return '<div style="color:#8d97a8;line-height:20px">销量 <b style="color:#101623">' + int(d.units) + ' 件</b></div>'
+                            + '<div style="color:#8d97a8;line-height:20px">成交额 <b style="color:#101623">' + money(d.amount) + '</b></div>'
+                            + '<div style="color:#8d97a8;line-height:20px">库存 <b style="color:#101623">' + int(d.stock) + '</b></div>';
+                    }
+                });
+            }
+
+            function renderRegions(rows) {
+                huStats.render.hBar('regionChart', rows, {
+                    labelKey: 'city', valueKey: 'amount',
+                    tooltip: function (d) {
+                        return '<div style="color:#8d97a8;line-height:20px">单量 <b style="color:#101623">' + int(d.orders) + '</b></div>'
+                            + '<div style="color:#8d97a8;line-height:20px">枝数 <b style="color:#101623">' + int(d.units) + '</b></div>'
+                            + '<div style="color:#8d97a8;line-height:20px">占比 <b style="color:#101623">' + num(d.percent).toFixed(1) + '%</b></div>';
+                    }
+                });
+            }
+
+            function renderOrigins(rows) {
+                if (!rows || !rows.length) {
+                    $('#originList').html('<li class="h-rank--empty">本期暂无产地成交</li>');
+                    return;
+                }
+                var html = '';
+                for (var i = 0; i < rows.length; i++) {
+                    var r = rows[i];
+                    html += '<li><span class="no">' + (i + 1) + '</span>'
+                        + '<span class="name">' + esc(r.name) + '<span>' + esc(r.city || '') + '</span></span>'
+                        + '<span class="h-bar"><i style="width:' + Math.min(100, num(r.percent)) + '%"></i></span>'
+                        + '<span class="amt">' + int(r.units) + ' 枝<span>' + int(r.orders) + ' 单</span></span></li>';
+                }
+                $('#originList').html(html);
+            }
+
+            function renderCoupons(board) {
+                if (!board || !board.summary) {
+                    $('#couponKv').html('<div class="h-empty">券数据加载失败</div>');
+                    return;
+                }
+                var s = board.summary;
+                kv('#couponKv', [
+                    ['券模板', int(s.templates)],
+                    ['累计发放', int(s.issued)],
+                    ['累计核销', int(s.used) + '<em>' + num(s.redeemPercent).toFixed(1) + '%</em>'],
+                    ['已过期', int(s.expired)],
+                    ['本期带动成交额', money(s.gmvInWindow, 0) + '<em>占 ' + num(s.gmvSharePercent).toFixed(1) + '%</em>'],
+                    ['本期优惠支出', money(s.discountInWindow)]
+                ]);
+                table.render({
+                    elem: '#couponTable',
+                    data: board.items || [],
+                    page: false,
+                    limit: (board.items || []).length || 10,
+                    even: true,
+                    text: {none: '本期没有券成交'},
+                    cols: [[
+                        {field: 'name', title: '券名', minWidth: 130, templet: function (d) {return esc(d.name);}},
+                        {field: 'type', title: '类型', width: 80, templet: function (d) {
+                            return '<span class="h-badge ' + (d.type === 'cash' ? 'is-info' : 'is-good') + '">'
+                                + (d.type === 'cash' ? '满减' : '折扣') + '</span>';
+                        }},
+                        {field: 'issued', title: '发放', width: 76, align: 'right', templet: function (d) {return int(d.issued);}},
+                        {field: 'used', title: '核销', width: 76, align: 'right', templet: function (d) {return int(d.used);}},
+                        {field: 'redeemPercent', title: '核销率', width: 96, align: 'right', templet: function (d) {
+                            var v = num(d.redeemPercent);
+                            var cls = v >= 60 ? 'is-good' : v >= 20 ? 'is-info' : 'is-warn';
+                            return '<span class="h-badge ' + cls + '">' + v.toFixed(1) + '%</span>';
+                        }},
+                        {field: 'gmvInWindow', title: '本期带动成交额', width: 132, align: 'right', templet: function (d) {return money(d.gmvInWindow);}}
+                    ]]
+                });
+            }
+
+            function renderRefunds(stat) {
+                if (!stat) {
+                    $('#refundKv').html('<div class="h-empty">退款数据加载失败</div>');
+                    return;
+                }
+                kv('#refundKv', [
+                    ['成交单量', int(stat.dealOrders)],
+                    ['退款单量', int(stat.refundOrders) + '<em>' + num(stat.refundPercent).toFixed(1) + '%</em>'],
+                    ['退款金额', money(stat.refundAmount, 0)],
+                    ['取消单量', int(stat.cancelOrders) + '<em>' + num(stat.cancelPercent).toFixed(1) + '%</em>']
+                ]);
+                var html = reasonBlock('退款原因', stat.refundReasons, 'is-danger')
+                    + reasonBlock('取消原因', stat.cancelReasons, 'is-warn');
+                $('#refundReasons').html(html || '<li class="h-rank--empty">本期没有退款与取消</li>');
+            }
+
+            function reasonBlock(title, reasons, tone) {
+                if (!reasons || !reasons.length) return '';
+                var html = '<li style="border:0;padding-bottom:2px"><span class="name" style="color:#798394">'
+                    + esc(title) + '</span></li>';
+                for (var i = 0; i < reasons.length; i++) {
+                    var r = reasons[i];
+                    html += '<li><span class="name">' + esc(r.name) + '<span>' + int(r.orders) + ' 单 · '
+                        + money(r.amount, 0) + '</span></span>'
+                        + '<span class="h-bar ' + tone + '"><i style="width:' + Math.min(100, num(r.percent)) + '%"></i></span>'
+                        + '<span class="amt">' + num(r.percent).toFixed(1) + '%</span></li>';
+                }
+                return html;
+            }
+
+            function renderFulfillment(data) {
+                if (!data) {
+                    huStats.empty('timingChart', '履约数据加载失败');
+                    return;
+                }
+                huStats.render.timing('timingChart', data.stages);
+                var html = '';
+                (data.stages || []).forEach(function (s) {
+                    html += '<div class="h-timeline__row"><b>' + esc(s.label) + '</b>'
+                        + '<div class="h-timeline__pills">'
+                        + '<span class="h-pill"><i>P25</i>' + huStats.hours(s.p25) + '</span>'
+                        + '<span class="h-pill"><i>P50</i>' + huStats.hours(s.p50) + '</span>'
+                        + '<span class="h-pill"><i>P90</i>' + huStats.hours(s.p90) + '</span></div>'
+                        + '<span>' + int(s.samples) + ' 单</span></div>';
+                });
+                if (data.promised > 0) {
+                    html += '<div class="h-timeline__row"><b>定时/时效承诺</b>'
+                        + '<span>承诺 ' + int(data.promised) + ' 单，超时 ' + int(data.late) + ' 单</span>'
+                        + '<span class="h-badge ' + (num(data.onTimePercent) >= 90 ? 'is-good' : 'is-warn') + '">准时 '
+                        + num(data.onTimePercent).toFixed(1) + '%</span></div>';
+                }
+                $('#timingList').html(html || '<div class="h-empty">本期暂无发货记录</div>');
+            }
+
+            function renderInventory(data) {
+                if (!data) {
+                    $('#stockKv').html('<div class="h-empty">库存数据加载失败</div>');
+                    return;
+                }
+                kv('#stockKv', [
+                    ['窗口销量', int(data.soldUnits) + '<em>件</em>'],
+                    ['在库库存', int(data.onHandStock) + '<em>件</em>'],
+                    ['库存周转率', num(data.turnoverRate).toFixed(2)],
+                    ['告急商品', int(data.alertCount) + '<em>款</em>']
+                ]);
+                huStats.render.turnover('turnoverChart', data.top || []);
+                var alerts = data.alerts || [];
+                if (!alerts.length) {
+                    $('#alertList').html('<li class="h-rank--empty">库存水位健康，暂无告急商品</li>');
+                    $('#alertFoot').text('告急判定：可售天数 < ' + num(data.coverDaysThreshold).toFixed(1)
+                        + ' 天，或库存 ≤ ' + int(data.stockFloorThreshold) + ' 件');
+                    return;
+                }
+                var html = '';
+                for (var i = 0; i < alerts.length; i++) {
+                    var a = alerts[i];
+                    html += '<li><span class="no">' + (i + 1) + '</span>'
+                        + '<span class="name">' + esc(a.productName) + '<span>' + esc(a.reason) + '</span></span>'
+                        + '<span class="h-bar is-danger"><i style="width:' + Math.min(100, 100 - Math.min(100, num(a.coverDays || 0) * 20)) + '%"></i></span>'
+                        + '<span class="amt">' + int(a.stock) + ' 件<span>窗口售出 ' + int(a.units) + ' 件</span></span></li>';
+                }
+                $('#alertList').html(html);
+                $('#alertFoot').text('共 ' + alerts.length + ' 款触发告急，建议优先补货或调价');
+            }
+
+            function renderCustomers(mix) {
+                if (!mix) {
+                    huStats.empty('mixChart', '客群数据加载失败');
+                    return;
+                }
+                huStats.render.mix('mixChart', mix);
+                var sources = mix.sources || [];
+                if (!sources.length) {
+                    $('#sourceList').html('<li class="h-rank--empty">本期没有新客成交</li>');
+                    return;
+                }
+                var html = '';
+                for (var i = 0; i < Math.min(sources.length, 6); i++) {
+                    var s = sources[i];
+                    html += '<li><span class="no">' + (i + 1) + '</span>'
+                        + '<span class="name">' + esc(s.name) + '<span>' + money(s.amount, 0) + '</span></span>'
+                        + '<span class="h-bar"><i style="width:' + Math.min(100, num(s.percent)) + '%"></i></span>'
+                        + '<span class="amt">' + int(s.users) + ' 人<span>' + num(s.percent).toFixed(1) + '%</span></span></li>';
+                }
+                $('#sourceList').html(html);
+            }
+
+            function renderReputation(data) {
+                if (!data) {
+                    $('#reviewKv').html('<div class="h-empty">口碑数据加载失败</div>');
+                    return;
+                }
+                kv('#reviewKv', [
+                    ['评价数', int(data.reviews) + huStats.deltaHtml(data.reviewsDelta, '环比')],
+                    ['平均分', num(data.avgRating).toFixed(2)],
+                    ['差评', int(data.bad) + '<em>' + num(data.badPercent).toFixed(1) + '%</em>'],
+                    ['五星好评', int(data.great) + '<em>' + num(data.greatPercent).toFixed(1) + '%</em>']
+                ]);
+            }
+
+            function loadReport() {
+                $('#reportCards').html('<div class="h-loading"><i class="fas fa-spinner fa-pulse"></i> 数据加载中…</div>');
+                huStats.request({
+                    url: '/api/admin/stats/report', data: qs(), silent: true,
+                    ok: function (res) { renderReport(res.data || {}); },
+                    fail: function (res) {
+                        huAdmin.toast((res && res.msg) || '报表数据加载失败', 'err');
+                        $('#reportCards').html('<div class="h-empty">报表数据加载失败，请稍后重试</div>');
+                    }
+                });
+            }
+
+            laydate.render({elem: '#dateFrom', type: 'date', format: 'yyyy-MM-dd',
+                done: function (value) { state.from = value; if (state.range === 'custom') loadReport(); }});
+            laydate.render({elem: '#dateTo', type: 'date', format: 'yyyy-MM-dd',
+                done: function (value) { state.to = value; if (state.range === 'custom') loadReport(); }});
+
+            $('#rangeSeg').on('click', 'button', function () {
+                $('#rangeSeg button').removeClass('is-active');
+                jQuery(this).addClass('is-active');
+                state.range = this.getAttribute('data-range');
+                $('#rangeDates').toggle(state.range === 'custom');
+                if (state.range === 'custom') {
+                    if (!state.from) state.from = huStats.todayOffset(-29);
+                    if (!state.to) state.to = huStats.todayOffset(0);
+                    $('#dateFrom').val(state.from);
+                    $('#dateTo').val(state.to);
+                }
+                loadReport();
+            });
+
+            $('#granSeg').on('click', 'button', function () {
+                var gran = this.getAttribute('data-gran');
+                if (gran === state.granularity) return;
+                state.granularity = gran;
+                $('#granSeg button').removeClass('is-active');
+                jQuery(this).addClass('is-active');
+                loadReport();
+            });
+
+            $('#reportRefresh').on('click', function () {
+                /* 先清服务端缓存再重拉，否则 60s TTL 内看到的还是旧聚合 */
+                huStats.request({url: '/api/admin/stats/refresh', type: 'POST', silent: true,
+                    ok: loadReport, fail: loadReport});
+            });
+
+            $('#exportSummary').on('click', function () {
+                window.location.href = exportUrl('summary');
+            });
+
+            loadReport();
+        });
+    </script>
+</body>
+</html>

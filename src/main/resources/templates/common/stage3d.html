@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head><title>stage3d</title></head>
+<body>
+<!--
+  立体展台 + 实拍图集（J 组）自包含片段，页面侧接线只需要一行：
+
+      <div th:replace="~{common/stage3d :: stage(${product.images}, '')}"></div>
+
+  · views    可以是 List，也可以是逗号分隔字符串（详情页的 product.images 就是字符串）
+  · modelUrl 传空串即让 stage3d.js 去 /api/media/models/resolve 按品类解析（J01）；
+             解析不到模型 / WebGL 不可用 / GLB 拉取失败时，面板自动落到实拍 2D 图集
+  · 需要显式指定品类、关键词与默认取景时用 stageFor(views, modelUrl, category, keyword, preset, product)
+  样式在 /css/f-j.css，行为在 /js/stage3d.js + /js/hu-media.js，脚本引用已在本片段内，页面不用另加。
+  品类与关键词从调用方上下文里的 ${product} 自动取（安全导航，页面没有 product 变量时走接口兜底）。
+-->
+<th:block th:fragment="stage(views, modelUrl)"
+          th:with="cat=${product?.category?.name},
+                   kw=${(product?.name ?: '') + ' ' + (product?.material ?: '')},
+                   pname=${product?.name ?: '花礼'}">
+    <th:block th:replace="~{common/stage3d :: stageFor(${views}, ${modelUrl}, ${cat}, ${kw}, 'full', ${pname})}"></th:block>
+</th:block>
+
+<th:block th:fragment="stageFor(views, modelUrl, category, keyword, preset, product)"
+          th:with="viewStr=${views == null ? '' : (views instanceof T(java.util.List) ? #strings.listJoin(views, ',') : #strings.toString(views))},
+                   viewArr=${#strings.arraySplit(viewStr, ',')},
+                   mainSrc=${#strings.isEmpty(viewStr) ? '/img/product-placeholder.svg' : #strings.trim(#strings.arraySplit(viewStr, ',')[0])}">
+    <section class="hu-stage"
+             th:if="${!#strings.isEmpty(viewStr) or !#strings.isEmpty(modelUrl)}"
+             data-hu-stage
+             th:data-model="${modelUrl}"
+             th:data-category="${category}"
+             th:data-keyword="${keyword}"
+             th:data-preset="${preset}"
+             th:data-product="${product}">
+
+        <header class="hu-stage__head">
+            <div class="hu-stage__heading">
+                <span class="hu-stage__eyebrow"><i class="fa fa-cube"></i> HUAYUXUAN · 3D STAGE</span>
+                <h2 class="hu-stage__title" data-hu-title>立体展台</h2>
+                <p class="hu-stage__hintline" data-hu-captionline>拖动可环绕，滚轮可拉近；模型不可用时自动切到实拍图集</p>
+            </div>
+
+            <div class="hu-stage__switch" role="tablist" aria-label="展示方式">
+                <button type="button" class="hu-stage__tab is-active" role="tab" aria-selected="true"
+                        data-hu-tab="model"><i class="fa fa-cube"></i> 立体展台</button>
+                <button type="button" class="hu-stage__tab" role="tab" aria-selected="false" tabindex="-1"
+                        data-hu-tab="photo"><i class="fa fa-camera"></i> 实拍图集</button>
+            </div>
+
+            <div class="hu-stage__tools">
+                <label class="hu-stage__speed">
+                    <span class="hu-stage__speedlabel"><i class="fa fa-repeat"></i> 转速</span>
+                    <input type="range" min="0" max="100" step="1" value="27"
+                           data-hu-spin aria-label="自动旋转速度">
+                </label>
+                <div class="hu-stage__modes" role="group" aria-label="视图模式">
+                    <button type="button" class="hu-stage__mode is-active" data-hu-mode="shaded" aria-pressed="true">材质</button>
+                    <button type="button" class="hu-stage__mode" data-hu-mode="clay" aria-pressed="false">素模</button>
+                    <button type="button" class="hu-stage__mode" data-hu-mode="wire" aria-pressed="false">线框</button>
+                </div>
+                <button type="button" class="hu-stage__tool" data-hu-capture title="导出当前视角 PNG">
+                    <i class="fa fa-camera-retro"></i> 截图
+                </button>
+                <button type="button" class="hu-stage__tool" data-hu-reset title="回到全景与默认转速">
+                    <i class="fa fa-undo"></i> 复位
+                </button>
+            </div>
+        </header>
+
+        <div class="hu-stage__body">
+            <!-- 模型视口：canvas 由 flower3d.js 注入，遮罩承担进度、失败与回落文案 -->
+            <div class="hu-stage__viewport" data-hu-viewport>
+                <div class="hu-stage__canvas" data-hu-canvas></div>
+                <div class="hu-stage__overlay" data-hu-overlay data-state="loading">
+                    <div class="hu-stage__progress"><i data-hu-bar></i></div>
+                    <p class="hu-stage__status" data-hu-status>正在准备立体展台…</p>
+                    <div class="hu-stage__actions">
+                        <button type="button" class="hu-btn hu-btn--solid hu-btn--sm" data-hu-retry hidden>
+                            <i class="fa fa-refresh"></i>&nbsp;重试载入
+                        </button>
+                        <button type="button" class="hu-btn hu-btn--ghost hu-btn--sm" data-hu-fallback-cta hidden>
+                            <i class="fa fa-camera-o"></i>&nbsp;看实拍图集
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <aside class="hu-stage__side" data-hu-side>
+                <h3 class="hu-stage__sidetitle">取景</h3>
+                <div class="hu-stage__presets" data-hu-presets></div>
+
+                <h3 class="hu-stage__sidetitle">操作</h3>
+                <ul class="hu-stage__keys">
+                    <li><kbd>拖拽</kbd> 环绕 · <kbd>滚轮</kbd> 拉近</li>
+                    <li><kbd>←</kbd> <kbd>→</kbd> 环绕 · <kbd>↑</kbd> <kbd>↓</kbd> 俯仰</li>
+                    <li><kbd>+</kbd> <kbd>−</kbd> 缩放 · <kbd>0</kbd> 复位 · <kbd>W</kbd> 切视图</li>
+                    <li>移动端：单指环绕、双指缩放</li>
+                </ul>
+
+                <p class="hu-stage__license" data-hu-license>
+                    模型为公共领域（CC0）花束资产，用于感受体量与层次；本束花的实际花材与开放度以门店当日为准。
+                </p>
+            </aside>
+
+            <!-- 实拍图集：服务端渲染，脚本没跑也能看，与模型在同一面板里用 Tab 切换（J12） -->
+            <div class="hu-stage__photos" data-hu-photos data-hu-gallery hidden>
+                <div class="hu-stage__shot">
+                    <img class="hu-stage__shotimg"
+                         th:src="${mainSrc}"
+                         th:alt="${product} + ' 实拍图'"
+                         th:data-hu-full="${mainSrc}"
+                         data-hu-caption="实拍图"
+                         data-hu-main data-hu-zoom="3.2" data-hu-thumb="1000" data-hu-viewer data-hu-img>
+                    <p class="hu-stage__shotcap" data-hu-shot-caption>实拍图 · 悬停可放大细节，点击看全屏</p>
+                </div>
+                <div class="hu-stage__strip" data-hu-thumbs>
+                    <img th:each="v, st : ${viewArr}" th:if="${!#strings.isEmpty(v)}"
+                         th:src="@{/img/thumb(path=${#strings.trim(v)}, w=${240})}"
+                         th:alt="'实拍 ' + ${st.count}"
+                         th:data-hu-full="${#strings.trim(v)}"
+                         th:data-hu-caption="'实拍 ' + ${st.count}"
+                         th:classappend="${st.first} ? 'is-active'"
+                         data-hu-img>
+                </div>
+            </div>
+        </div>
+
+        <script th:src="@{/js/hu-media.js}" defer></script>
+        <script type="module" th:src="@{/js/stage3d.js}"></script>
+    </section>
+</th:block>
+</body>
+</html>

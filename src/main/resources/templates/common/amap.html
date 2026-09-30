@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--
+  高德底图装载片段：页面 th:replace 之后统一用 window.huAmap.ready(cb, onErr) 拿 AMap 命名空间。
+
+  为什么不在模板里直写 <script src="webapi.amap.com">：本项目原本零外网请求，地图是唯一的例外，
+  集中在这里装载才能做到「没配密钥 / 断网 / 被拦截」时只少一块图，而不是整页脚本报错。
+  安全码走页面明文注入只适用于本地与内网演示；正式环境须换成官方「安全代理」并把 key 绑到域名白名单。
+-->
+<th:block th:fragment="loader">
+    <script th:inline="javascript">
+        window.huAmap = (function () {
+            const KEY = /*[[${amapWebKey}]]*/ '';
+            const SECURE = /*[[${amapWebSecureKey}]]*/ '';
+            const PLUGINS = ['AMap.ToolBar', 'AMap.Scale', 'AMap.MoveAnimation'];
+            let pending = null;
+
+            function bootstrap() {
+                if (SECURE) {
+                    window._AMapSecurityConfig = {securityJsCode: SECURE};
+                }
+                return new Promise(function (resolve, reject) {
+                    if (!KEY) {
+                        reject(new Error('未配置高德 Web 端密钥'));
+                        return;
+                    }
+                    if (window.AMapLoader) {
+                        resolve();
+                        return;
+                    }
+                    const script = document.createElement('script');
+                    script.src = 'https://webapi.amap.com/loader.js';
+                    script.async = true;
+                    script.onerror = function () {
+                        reject(new Error('底图脚本加载失败，可能是网络或广告拦截'));
+                    };
+                    script.onload = function () {
+                        window.AMapLoader ? resolve() : reject(new Error('底图装载器未就绪'));
+                    };
+                    document.head.appendChild(script);
+                });
+            }
+
+            function load() {
+                if (!pending) {
+                    pending = bootstrap().then(function () {
+                        return window.AMapLoader.load({key: KEY, version: '2.0', plugins: PLUGINS});
+                    });
+                }
+                return pending;
+            }
+
+            return {
+                configured: function () {
+                    return !!KEY;
+                },
+                /** 成功回调拿到 AMap 命名空间；失败时把原因交给调用方做文字降级 */
+                ready: function (onReady, onError) {
+                    load().then(function (AMap) {
+                        onReady(AMap, window.AMap);
+                    }).catch(function (err) {
+                        if (onError) {
+                            onError(err && err.message ? err.message : '地图不可用');
+                        }
+                    });
+                }
+            };
+        })();
+    </script>
+</th:block>
+</body>
+</html>

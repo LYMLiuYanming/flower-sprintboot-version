@@ -6,6 +6,7 @@
     <title>用户管理 - 花语轩管理后台</title>
     <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/css/f-g.css}" rel="stylesheet">
     <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
     <style>
         body {background: #f1f1f1;}
@@ -102,6 +103,25 @@
                                     </div>
                                 </div>
                                 <div class="layui-inline">
+                                    <label class="layui-form-label">等级:</label>
+                                    <div class="layui-input-inline">
+                                        <select name="memberLevel">
+                                            <option value="">全部</option>
+                                            <option value="ordinary">普通会员</option>
+                                            <option value="vip">VIP会员</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="layui-inline">
+                                    <label class="layui-form-label">注册区间:</label>
+                                    <div class="layui-input-inline" style="width: 130px;">
+                                        <input type="text" name="registeredFrom" id="regFrom" placeholder="开始日期" class="layui-input" readonly>
+                                    </div>
+                                    <div class="layui-input-inline" style="width: 130px;">
+                                        <input type="text" name="registeredTo" id="regTo" placeholder="结束日期" class="layui-input" readonly>
+                                    </div>
+                                </div>
+                                <div class="layui-inline">
                                     <button class="layui-btn" lay-submit lay-filter="search">
                                         <i class="fas fa-search"></i> 搜索
                                     </button>
@@ -123,8 +143,8 @@
 
     <script type="text/html" id="toolbar">
         <div class="layui-btn-container">
-            <button class="layui-btn layui-btn-sm" lay-event="refresh">
-                <i class="fas fa-sync"></i> 刷新
+            <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="cols">
+                <i class="fas fa-columns"></i> 列设置
             </button>
         </div>
     </script>
@@ -132,6 +152,8 @@
     <script type="text/html" id="statusTpl">
         {{# var statusText = {active: '正常', inactive: '禁用', locked: '锁定'}[d.status] || d.status; }}
         <span class="user-status status-{{ d.status || '' }}">{{ statusText || '-' }}</span>
+        <!-- 禁用/锁定原因由服务端随列表带回复用审计留痕，这里只留占位，渲染完再回填 -->
+        {{# if(d.status !== 'active'){ }}<span class="fg-reason" data-user="{{d.id}}"></span>{{# } }}
     </script>
 
     <script type="text/html" id="memberTpl">
@@ -156,147 +178,270 @@
 
     <script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
     <script th:src="@{/jquery-3.7.1.min.js}"></script>
+    <script th:src="@{/js/site.js}"></script>
     <script th:src="@{/js/admin-common.js}"></script>
+    <script th:src="@{/js/hu-admin-ui.js}"></script>
     <script th:inline="none">
-        layui.use(['table', 'form', 'layer'], function(){
+        layui.use(['table', 'form', 'layer', 'laydate'], function(){
             var table = layui.table;
             var form = layui.form;
             var layer = layui.layer;
+            var laydate = layui.laydate;
             var FILTER_KEY = 'hu-admin-filter-user';
+            var COLS_KEY = 'user-list';
+            var TABLE = 'userTable';
+            var URL = '/api/admin/users';
             var state = huAdmin.listState('user');
+            /* 最近一次处置留痕：userId → {reason, operatorName, createdAt, targetStatus} */
+            var dispositions = {};
+
+            ['regFrom', 'regTo'].forEach(function (id) {
+                laydate.render({elem: '#' + id, type: 'date', trigger: 'click'});
+            });
 
             /** 后端 LocalDateTime 序列化为 ISO 字符串，直接截断展示，避免时区二次换算 */
             function fmtTime(v) {
                 if (!v) return '-';
-                return String(v).replace('T', ' ').replace(/\.\d+$/, '');
+                return String(v).replace('T', ' ').replace(/\.\d+$/, '').slice(0, 16);
             }
 
-            table.render({
-                elem: '#userTable',
-                url: '/api/admin/users',
-                toolbar: '#toolbar',
-                defaultToolbar: ['filter', 'exports', 'print'],
-                cols: [[
-                    {field: 'username', title: '用户名', width: 130, fixed: 'left', templet: function(d) {return huAdmin.esc(d.username);}},
-                    {field: 'fullName', title: '姓名', width: 110, templet: function(d) {return huAdmin.esc(d.fullName || '-');}},
-                    {field: 'phone', title: '手机号', width: 130, templet: function(d) {return huAdmin.esc(d.phone || '-');}},
-                    {field: 'email', title: '邮箱', minWidth: 180, templet: function(d) {return huAdmin.esc(d.email || '-');}},
-                    {field: 'userType', title: '身份', width: 88, align: 'center', templet: '#typeTpl'},
-                    {field: 'memberLevel', title: '会员等级', width: 100, align: 'center', templet: '#memberTpl'},
-                    {field: 'points', title: '积分', width: 76, align: 'center', templet: function(d) {return d.points == null ? 0 : d.points;}},
-                    {field: 'status', title: '状态', width: 84, align: 'center', templet: '#statusTpl'},
-                    {field: 'lastLoginTime', title: '最后登录', width: 165, templet: function(d) {return d.lastLoginTime ? fmtTime(d.lastLoginTime) : '从未登录';}},
-                    {field: 'createdAt', title: '注册时间', width: 172, templet: function(d) {return fmtTime(d.createdAt);}},
-                    {title: '操作', width: 250, toolbar: '#operateTpl', fixed: 'right'}
-                ]],
-                page: state.pageConfig(),
-                limit: state.limit(),
-                limits: [10, 20, 30, 50],
-                done: state.done('/api/admin/users')
-            });
-
-            /** 空值不参与查询串拼接，后端按 null 处理条件 */
-            function buildWhere(f) {
-                var where = {};
-                if (f.keyword) where.keyword = $.trim(f.keyword);
-                if (f.status) where.status = f.status;
-                if (f.userType) where.userType = f.userType;
-                return where;
-            }
+            var COLS = [
+                {field: 'username', title: '用户名', width: 130, fixed: 'left', sort: true, templet: function(d) {return huAdmin.esc(d.username);}},
+                {field: 'fullName', title: '姓名', width: 110, templet: function(d) {return huAdmin.esc(d.fullName || '-');}},
+                {field: 'phone', title: '手机号', width: 130, templet: function(d) {return huAdmin.esc(d.phone || '-');}},
+                {field: 'email', title: '邮箱', minWidth: 180, templet: function(d) {return huAdmin.esc(d.email || '-');}},
+                {field: 'userType', title: '身份', width: 88, align: 'center', templet: '#typeTpl'},
+                {field: 'memberLevel', title: '会员等级', width: 100, align: 'center', templet: '#memberTpl'},
+                {field: 'points', title: '积分', width: 88, align: 'center', sort: true, templet: function(d) {return d.points == null ? 0 : d.points;}},
+                {field: 'status', title: '状态 / 处置原因', width: 210, align: 'left', templet: '#statusTpl'},
+                {field: 'lastLoginTime', title: '最后登录', width: 165, sort: true, templet: function(d) {return d.lastLoginTime ? fmtTime(d.lastLoginTime) : '从未登录';}},
+                {field: 'createdAt', title: '注册时间', width: 165, sort: true, templet: function(d) {return fmtTime(d.createdAt);}},
+                {title: '操作', width: 250, toolbar: '#operateTpl', fixed: 'right'}
+            ];
+            huAdminUI.applyHidden(COLS, COLS_KEY);
 
             function currentFilter() {
                 try { return JSON.parse(sessionStorage.getItem(FILTER_KEY) || '{}'); } catch (e) { return {}; }
             }
 
+            /** 空值不参与查询串拼接，后端按 null 处理条件 */
+            function buildWhere(f) {
+                var where = {};
+                ['keyword', 'status', 'userType', 'memberLevel', 'registeredFrom', 'registeredTo']
+                    .forEach(function (key) { if (f[key]) where[key] = $.trim(f[key]); });
+                if (f.sort) { where.sort = f.sort; where.order = f.order || 'desc'; }
+                return where;
+            }
+
+            function hasFilter(f) {
+                f = f || currentFilter();
+                return !!(f.keyword || f.status || f.userType || f.memberLevel || f.registeredFrom || f.registeredTo);
+            }
+
+            /* G30：表格宿主是 Layui 的，空态/错误态由 huAdminUI 统一注入同一套模板 */
+            var hooks = huAdminUI.tableHooks(TABLE, {
+                url: URL, state: state, hasFilter: function () { return hasFilter(); }
+            });
+
+            table.render({
+                elem: '#' + TABLE,
+                url: URL,
+                cols: [COLS],
+                toolbar: '#toolbar',
+                defaultToolbar: [],
+                autoSort: false,
+                limit: state.limit(10),
+                limits: [10, 20, 30, 50],
+                page: huAdminUI.pageConfig(state, {limits: [10, 20, 30, 50]}),
+                done: function (res, curr, count) {
+                    dispositions = (res && res.dispositions) || {};
+                    hooks.done(res, curr, count);
+                    fillReasons();
+                },
+                error: hooks.error
+            });
+
+            /** 原因写在留痕里，渲染完按 data-user 回填，模板不参与服务端拼装 */
+            function fillReasons() {
+                jQuery('.fg-reason[data-user]').each(function () {
+                    var d = dispositions[this.getAttribute('data-user')];
+                    if (!d || !d.reason) {
+                        jQuery(this).text('未记录原因（历史操作）');
+                        return;
+                    }
+                    var who = (d.operatorName || '-') + ' · ' + fmtTime(d.createdAt);
+                    /* 单元格高度由 Layui 锁死，长原因折成一行并把全文放进 title，行高不会被撑开 */
+                    jQuery(this).attr('title', d.reason + '（' + who + '）')
+                        .text(d.reason.length > 18 ? d.reason.slice(0, 18) + '…' : d.reason);
+                });
+            }
+
             (function restore(){
                 var f = currentFilter();
-                if (!f.keyword && !f.status && !f.userType) return;
+                if (!hasFilter(f) && !f.sort) return;
                 form.val('searchForm', f);
-                table.reload('userTable', {where: buildWhere(f), page: {curr: state.pageConfig().curr || 1}});
+                table.reload(TABLE, {where: buildWhere(f), page: {curr: state.pageConfig().curr || 1}});
             })();
 
             form.on('submit(search)', function(data){
-                sessionStorage.setItem(FILTER_KEY, JSON.stringify(data.field));
+                var f = data.field;
+                var keep = currentFilter();
+                f.sort = keep.sort;
+                f.order = keep.order;
+                sessionStorage.setItem(FILTER_KEY, JSON.stringify(f));
                 state.reset();
-                table.reload('userTable', {where: buildWhere(data.field), page: {curr: 1}});
+                table.reload(TABLE, {where: buildWhere(f), page: {curr: 1}});
                 return false;
             });
 
             $('#btnReset').on('click', function(){
                 sessionStorage.removeItem(FILTER_KEY);
                 state.reset();
-                form.val('searchForm', {keyword: '', status: '', userType: ''});
-                table.reload('userTable', {where: {}, page: {curr: 1}});
+                form.val('searchForm', {keyword: '', status: '', userType: '', memberLevel: '',
+                    registeredFrom: '', registeredTo: ''});
+                table.reload(TABLE, {where: {}, page: {curr: 1}, initSort: {field: 'username', type: ''}});
             });
 
-            /** 状态跃迁：接口要求 JSON 请求体，统一走 huAdmin.request */
-            function changeStatus(id, status, message) {
-                layer.confirm(message, {icon: 3, title: '请确认'}, function(index){
-                    layer.close(index);
-                    huAdmin.request({
-                        url: '/api/admin/users/' + id + '/status',
-                        type: 'POST', data: {status: status},
-                        ok: function(res){ layer.msg(res.msg || '操作成功', {icon: 1}); table.reload('userTable'); }
-                    });
+            /* 表头排序交给服务端白名单（username / points / lastLoginTime / createdAt） */
+            table.on('sort(' + TABLE + ')', function(obj){
+                var f = currentFilter();
+                var params = huAdminUI.sortParams(obj);
+                f.sort = params.sort || '';
+                f.order = params.order || '';
+                sessionStorage.setItem(FILTER_KEY, JSON.stringify(f));
+                table.reload(TABLE, {where: buildWhere(f), initSort: {field: obj.field, type: obj.type}});
+            });
+
+            var REASON_RULES = [{field: 'reason', test: /原因|理由/}];
+
+            /**
+             * G17：禁用/锁定必须写明原因。原因随请求体进入审计留痕（不落 user 表新列），
+             * 列表与详情读的都是同一条留痕，不会出现「这里写着已禁用、那里查不到为什么」
+             */
+            function openDispositionDialog(row, status) {
+                var disabling = status !== 'active';
+                var title = (disabling ? '禁用' : '启用') + ' · ' + row.username;
+                var html = '<form class="layui-form fg-dlg" id="disposeForm" lay-filter="disposeForm">'
+                    + '<p class="fg-danger__subject">账号「' + huAdmin.esc(row.username) + '」'
+                    + (disabling ? '将被禁止登录。' : '将恢复登录能力。') + '</p>'
+                    + (disabling ? '<ul class="fg-danger__list">'
+                        + '<li>该账号立即无法登录，已登录的会话在下次请求时被挡下。</li>'
+                        + '<li>购物车、订单与券包保留，恢复后一切照旧。</li>'
+                        + '<li>原因会写入操作日志，可在「操作日志」页按用户名回查。</li></ul>' : '')
+                    + '<div class="layui-form-item" style="margin-top:14px">'
+                    + '<label class="layui-form-label">' + (disabling ? '禁用原因' : '备注') + '</label>'
+                    + '<div class="layui-input-block">'
+                    + '<textarea name="reason" class="layui-textarea" rows="3" maxlength="200" '
+                    + 'placeholder="' + (disabling ? '必填，如：多次恶意刷单，客服工单 #2318' : '选填，如：申诉通过，恢复使用') + '"></textarea>'
+                    + '</div></div>'
+                    + '<label class="fg-danger__ack"><input type="checkbox" data-fg-ack="1"><span>'
+                    + (disabling ? '我已了解上述影响，确认禁用该账号' : '确认启用该账号') + '</span></label>'
+                    + '</form>';
+                layer.open({
+                    type: 1, title: title, area: ['520px', 'auto'], content: html,
+                    btn: [disabling ? '确认禁用' : '确认启用', '取消'],
+                    success: function () { huAdminUI.clearFields('#disposeForm'); },
+                    yes: function (index, layero) {
+                        var f = form.val('disposeForm');
+                        var reason = $.trim(f.reason || '');
+                        if (disabling && reason.length < 2) {
+                            huAdminUI.markField(layero, 'reason', '请填写禁用原因（至少 2 个字），原因要写进审计留痕');
+                            return;
+                        }
+                        if (!jQuery(layero).find('[data-fg-ack]').prop('checked')) {
+                            layer.msg('请先勾选「' + (disabling ? '我已了解上述影响' : '确认启用') + '」', {icon: 7});
+                            return;
+                        }
+                        huAdmin.request({
+                            url: '/api/admin/users/' + row.id + '/status', type: 'POST',
+                            data: {status: status, reason: reason}, silent: true,
+                            ok: function (res) {
+                                layer.close(index);
+                                layer.msg(res.msg || '状态已更新', {icon: 1});
+                                table.reload(TABLE);
+                            },
+                            fail: function (res) { huAdminUI.applyServerErrors(layero, res, REASON_RULES); }
+                        });
+                    }
                 });
             }
 
-            /** 管理员重置密码：理由必填，初始密码留空则由后端随机生成 */
-            function openResetPwdDialog(data) {
+            var PWD_RULES = [
+                {field: 'newPassword', test: /初始密码|密码/},
+                {field: 'reason', test: /理由|原因/}
+            ];
+
+            /**
+             * 管理员重置密码（G16/G31）：服务端不接受空口令，也不回显生成值，
+             * 所以这里必须手填并当场校验，别让运营提交完才知道要填
+             */
+            function openResetPwdDialog(row) {
+                var html = '<form class="layui-form fg-dlg" id="resetForm" lay-filter="resetForm">'
+                    + '<div class="layui-form-item"><label class="layui-form-label">初始密码</label>'
+                    + '<div class="layui-input-block"><input id="resetPwd" name="newPassword" type="text" autocomplete="off" '
+                    + 'class="layui-input" placeholder="8-32 位，需同时含字母与数字"></div></div>'
+                    + '<div class="layui-form-item"><label class="layui-form-label">重置理由</label>'
+                    + '<div class="layui-input-block"><input id="resetReason" name="reason" type="text" maxlength="200" '
+                    + 'class="layui-input" placeholder="必填，便于售后追溯"></div></div>'
+                    + '<ul class="fg-danger__list">'
+                    + '<li>系统不代生成分发口令，请填写并由你本人线下转交。</li>'
+                    + '<li>重置后该账号下次登录会被强制修改密码，原密码立即失效。</li>'
+                    + '<li>口令本身不会写入日志（审计里只留 ****** ），理由与操作人会留痕。</li></ul>'
+                    + '</form>';
                 layer.open({
-                    type: 1,
-                    title: '重置密码 · ' + huAdmin.esc(data.username),
-                    area: ['460px', '320px'],
-                    content: '<div style="padding:20px 24px"><div class="layui-form">' +
-                        '<div class="layui-form-item"><label class="layui-form-label">初始密码</label>' +
-                        '<div class="layui-input-block"><input id="resetPwd" type="text" autocomplete="off" class="layui-input" placeholder="留空则系统生成随机初始密码"></div></div>' +
-                        '<div class="layui-form-item"><label class="layui-form-label">重置理由</label>' +
-                        '<div class="layui-input-block"><input id="resetReason" type="text" maxlength="200" autocomplete="off" class="layui-input" placeholder="必填，便于售后追溯"></div></div>' +
-                        '<div style="color:#999;font-size:12px;padding-left:24px">重置后该用户下次登录将被强制修改密码</div>' +
-                        '</div></div>',
-                    btn: ['确认重置', '取消'],
-                    yes: function(index){
-                        var pwd = $.trim($('#resetPwd').val());
-                        var reason = $.trim($('#resetReason').val());
-                        if (pwd && (pwd.length < 8 || pwd.length > 32)) { layer.msg('初始密码长度需为 8-32 位', {icon: 2}); return; }
-                        if (!reason) { layer.msg('请填写重置理由', {icon: 2}); return; }
-                        var payload = {reason: reason};
-                        if (pwd) payload.newPassword = pwd;
-                        huAdmin.request({
-                            url: '/api/admin/users/' + data.id + '/reset-password',
-                            type: 'POST', data: payload,
-                            ok: function(res){
-                                layer.close(index);
-                                var init = (res.data && res.data.initialPassword) || '';
-                                layer.alert((res.msg || '密码已重置') +
-                                    (init ? '<div style="margin-top:8px">初始密码：<b style="font-size:15px">' + huAdmin.esc(init) + '</b></div>' : '') +
-                                    '<div style="color:#999;margin-top:8px">请线下转交该用户，并提醒其首次登录后改密</div>',
-                                    {icon: 1, title: '重置完成'});
+                    type: 1, title: '重置密码 · ' + huAdmin.esc(row.username), area: ['520px', 'auto'],
+                    content: html, btn: ['确认重置', '取消'],
+                    success: function () { huAdminUI.clearFields('#resetForm'); },
+                    yes: function (index, layero) {
+                        var f = form.val('resetForm');
+                        var pwd = f.newPassword || '';
+                        var reason = $.trim(f.reason || '');
+                        if (!/^(?=.*[A-Za-z])(?=.*\d).{8,32}$/.test(pwd)) {
+                            huAdminUI.markField(layero, 'newPassword', '初始密码需 8-32 位，且同时包含字母和数字');
+                            return;
+                        }
+                        if (!reason) {
+                            huAdminUI.markField(layero, 'reason', '请填写重置理由，便于售后追溯');
+                            return;
+                        }
+                        huAdminUI.confirmDanger({
+                            title: '确认重置该账号密码',
+                            subject: '「' + row.username + '」的密码将被覆盖为你填写的初始密码。',
+                            consequences: ['原密码立即失效，用户本人若不知情会无法登录。', '该操作写入审计日志，记录操作人与理由。'],
+                            confirmText: '确认重置',
+                            onOk: function () {
+                                huAdmin.request({
+                                    url: '/api/admin/users/' + row.id + '/reset-password', type: 'POST',
+                                    data: {newPassword: pwd, reason: reason}, silent: true,
+                                    ok: function (res) {
+                                        layer.close(index);
+                                        layer.alert('密码已重置。请把初始密码线下转交本人，并提醒其首次登录后改密。',
+                                            {icon: 1, title: res.msg || '重置完成'});
+                                    },
+                                    fail: function (res) { huAdminUI.applyServerErrors(layero, res, PWD_RULES); }
+                                });
                             }
                         });
                     }
                 });
             }
 
-            table.on('toolbar(userTable)', function(obj){
-                if(obj.event === 'refresh'){
-                    table.reload('userTable');
-                }
+            table.on('toolbar(' + TABLE + ')', function(obj){
+                if (obj.event === 'cols') huAdminUI.openColumnPicker(TABLE, COLS, COLS_KEY);
             });
 
-            table.on('tool(userTable)', function(obj){
+            table.on('tool(' + TABLE + ')', function(obj){
                 var data = obj.data;
                 if(obj.event === 'detail'){
                     layer.open({
-                        type: 2,
-                        title: '用户详情',
+                        type: 2, title: '用户详情',
                         content: '/admin/user-detail/' + data.id,
-                        area: ['620px', '540px']
+                        area: ['760px', '640px']
                     });
                 } else if(obj.event === 'disable'){
-                    changeStatus(data.id, 'inactive', '确定要禁用「' + huAdmin.esc(data.username) + '」吗？禁用后该账号无法登录。');
+                    openDispositionDialog(data, 'inactive');
                 } else if(obj.event === 'enable'){
-                    changeStatus(data.id, 'active', '确定要启用「' + huAdmin.esc(data.username) + '」吗？');
+                    openDispositionDialog(data, 'active');
                 } else if(obj.event === 'resetPwd'){
                     openResetPwdDialog(data);
                 }

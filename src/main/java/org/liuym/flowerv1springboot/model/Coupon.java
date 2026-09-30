@@ -31,6 +31,20 @@ public class Coupon {
     public static final String STATUS_ACTIVE = "active";
     public static final String STATUS_INACTIVE = "inactive";
 
+    /** 停用后已领券保留可用 */
+    public static final String DISABLE_KEEP = "keep";
+    /** 停用后未领券立即作废 */
+    public static final String DISABLE_VOID = "void";
+
+    /** 领券中心可领 */
+    public static final String SCENE_CLAIM = "claim";
+    /** 仅后台直发或活动内部发放，不进领券中心 */
+    public static final String SCENE_ADMIN = "admin";
+    /** 支付成功后自动返券 */
+    public static final String SCENE_AFTER_PAY = "after_pay";
+    /** 邀请奖励券 */
+    public static final String SCENE_INVITE = "invite";
+
     @Id
     @GeneratedValue(generator = "uuid2")
     @GenericGenerator(name = "uuid2", strategy = "org.hibernate.id.UUIDGenerator")
@@ -89,6 +103,46 @@ public class Coupon {
 
     @Column(name = "category_id", columnDefinition = "uuid")
     private UUID categoryId;
+
+    /** E02：限品类多选，逗号分隔的 category.id；与 categoryId 同时存在时取并集 */
+    @Column(name = "category_ids", length = 500)
+    private String categoryIds;
+
+    /** E03：限定商品白名单，逗号分隔的 product.id；非空时只有名单内商品参与算价 */
+    @Column(name = "product_ids", length = 1000)
+    private String productIds;
+
+    /** E01：满减阶梯 "199:20,399:60"，非空时优先于 threshold + amount 单档口径 */
+    @Column(name = "ladder_rule", length = 200)
+    private String ladderRule;
+
+    /** E04：每人每日可领张数，0 表示不按天限制 */
+    @Column(name = "per_user_daily_limit", nullable = false)
+    private Integer perUserDailyLimit = 0;
+
+    /** E05：新客专享，判定口径见 CouponService#isNewCustomer */
+    @Column(name = "new_user_only", nullable = false)
+    private Boolean newUserOnly = false;
+
+    /** E07：是否允许转赠给其他用户 */
+    @Column(name = "allow_transfer", nullable = false)
+    private Boolean allowTransfer = false;
+
+    /** E18：会员专享，非空时只有该等级及以上会员可领取 */
+    @Column(name = "member_only", nullable = false)
+    private Boolean memberOnly = false;
+
+    /** E12：停用后已领券的处理策略 keep/void */
+    @Column(name = "disable_policy", nullable = false, length = 10)
+    private String disablePolicy = DISABLE_KEEP;
+
+    /** 发放场景：claim/admin/after_pay/invite */
+    @Column(name = "trigger_scene", nullable = false, length = 20)
+    private String triggerScene = SCENE_CLAIM;
+
+    /** E15：返券门槛，实付满此数才发 */
+    @Column(name = "grant_min_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal grantMinAmount = BigDecimal.ZERO;
 
     @Column(name = "status", nullable = false, length = 20)
     private String status = STATUS_ACTIVE;

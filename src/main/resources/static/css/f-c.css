@@ -1,0 +1,972 @@
+/* f-c.css · 功能批次样式扩展（A-L 分组专用，勿跨组改动本文件） */
+
+/* ==========================================================
+   C 组 · 订单与履约（C01-C20、C26）
+   沿用 theme.css 的令牌：冷灰画布 + 墨青主色 + 翡翠点缀，商务精致，不做复古处理
+   ========================================================== */
+
+/* ---------- 弹窗：取消/退款的二次确认（C06/C19） ---------- */
+.hu-c-mask {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(16, 22, 35, .46);
+    backdrop-filter: blur(3px);
+}
+
+.hu-c-mask.is-open {
+    display: flex;
+}
+
+.hu-c-dialog {
+    width: 100%;
+    max-width: 520px;
+    background: var(--hu-surface);
+    border: 1px solid var(--hu-line);
+    border-radius: var(--hu-radius-lg);
+    box-shadow: var(--hu-shadow-lg);
+    overflow: hidden;
+    animation: hu-c-pop .22s var(--hu-ease);
+}
+
+@keyframes hu-c-pop {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(.985);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.hu-c-dialog__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 22px 14px;
+    border-bottom: 1px solid var(--hu-line);
+}
+
+.hu-c-dialog__head h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 650;
+    letter-spacing: -.01em;
+    color: var(--hu-ink);
+}
+
+.hu-c-dialog__head p {
+    margin: 6px 0 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--hu-muted);
+}
+
+.hu-c-dialog__close {
+    border: 0;
+    background: transparent;
+    color: var(--hu-muted);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: var(--hu-radius);
+}
+
+.hu-c-dialog__close:hover {
+    background: var(--hu-surface-alt);
+    color: var(--hu-ink);
+}
+
+.hu-c-dialog__body {
+    padding: 18px 22px 6px;
+}
+
+.hu-c-dialog__foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 22px 20px;
+}
+
+.hu-c-field {
+    margin-bottom: 16px;
+}
+
+.hu-c-field__label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--hu-ink-soft);
+}
+
+.hu-c-field__hint {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--hu-muted);
+}
+
+/* 原因候选：chip 网格一行两条，选中态由 .hu-chip.is-active 承担 */
+.hu-c-reasons {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+}
+
+.hu-c-reasons .hu-chip {
+    justify-content: flex-start;
+    text-align: left;
+    font-size: 13px;
+}
+
+.hu-c-amount {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    background: var(--hu-accent-soft);
+    border: 1px solid rgba(15, 123, 99, .18);
+    border-radius: var(--hu-radius);
+    font-size: 13px;
+    color: var(--hu-ink-soft);
+}
+
+.hu-c-amount b {
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--hu-accent-deep);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 提示条：倒计时、售后进度、评价引导（C08/C19/C26） ---------- */
+.hu-c-alert {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    margin-bottom: 18px;
+    border-radius: var(--hu-radius);
+    font-size: 13.5px;
+    line-height: 1.6;
+    border: 1px solid var(--hu-line);
+    background: var(--hu-surface-alt);
+    color: var(--hu-ink-soft);
+}
+
+.hu-c-alert i {
+    font-size: 15px;
+    flex: none;
+}
+
+.hu-c-alert--warn {
+    border-color: rgba(192, 138, 51, .38);
+    background: #fdf6ea;
+    color: var(--hu-warn-text);
+}
+
+.hu-c-alert--danger {
+    border-color: rgba(176, 52, 39, .3);
+    background: #fbeeec;
+    color: var(--hu-danger-text);
+}
+
+.hu-c-alert--ok {
+    border-color: rgba(15, 123, 99, .26);
+    background: var(--hu-accent-soft);
+    color: var(--hu-accent-deep);
+}
+
+.hu-c-alert__main {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.hu-c-alert__act {
+    flex: none;
+}
+
+.hu-c-count {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    letter-spacing: .02em;
+}
+
+/* ---------- 详情明细：时段窗口、偏好徽标、行备注（C15/C16/B01/B02） ---------- */
+.hu-c-slot {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 9px;
+    border-radius: var(--hu-radius-pill);
+    background: var(--hu-accent-soft);
+    color: var(--hu-accent-deep);
+    font-size: 12.5px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.hu-c-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.hu-c-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 11px;
+    border: 1px solid var(--hu-line-strong);
+    border-radius: var(--hu-radius-pill);
+    background: var(--hu-surface);
+    font-size: 12.5px;
+    color: var(--hu-ink-soft);
+}
+
+.hu-c-badge i {
+    color: var(--hu-accent);
+    font-size: 12px;
+}
+
+.hu-c-badge--muted i {
+    color: var(--hu-muted);
+}
+
+.hu-c-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    margin-top: 6px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--hu-muted);
+}
+
+.hu-c-note i {
+    margin-top: 3px;
+    color: var(--hu-clay);
+    font-size: 11px;
+}
+
+.hu-c-tag {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 7px;
+    border-radius: var(--hu-radius-pill);
+    background: #f3f4f7;
+    border: 1px solid var(--hu-line);
+    font-size: 11.5px;
+    color: var(--hu-muted-strong);
+}
+
+/* ---------- 退款进度（C19）：三段竖向时间轴，终态不画空心点 ---------- */
+.hu-c-flow {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.hu-c-flow li {
+    position: relative;
+    padding: 0 0 16px 20px;
+    border-left: 2px solid var(--hu-line);
+}
+
+.hu-c-flow li:last-child {
+    padding-bottom: 0;
+    border-left-color: transparent;
+}
+
+.hu-c-flow li::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 3px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--hu-surface);
+    border: 2px solid var(--hu-line-strong);
+}
+
+.hu-c-flow li.is-done::before {
+    background: var(--hu-accent);
+    border-color: var(--hu-accent);
+}
+
+.hu-c-flow li.is-bad::before {
+    background: var(--hu-clay);
+    border-color: var(--hu-clay);
+}
+
+.hu-c-flow b {
+    display: block;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--hu-ink);
+}
+
+.hu-c-flow span {
+    display: block;
+    margin-top: 2px;
+    font-size: 12.5px;
+    color: var(--hu-muted);
+}
+
+/* ---------- 列表筛选条（C01/C02/C03） ---------- */
+.hu-c-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px 16px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    border: 1px solid var(--hu-line);
+    border-radius: var(--hu-radius);
+    background: var(--hu-surface-alt);
+}
+
+.hu-c-filter__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.hu-c-filter__field > label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--hu-muted-strong);
+}
+
+.hu-c-filter__field input,
+.hu-c-filter__field select {
+    height: 34px;
+    font-size: 13px;
+}
+
+.hu-c-filter__field--kw {
+    flex: 1 1 240px;
+}
+
+.hu-c-filter__submit {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.hu-c-listhint {
+    margin: -8px 0 16px;
+    font-size: 12.5px;
+    color: var(--hu-muted);
+}
+
+/* ---------- 再次购买回执（B24 接线） ---------- */
+.hu-c-report {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--hu-line);
+    border-radius: var(--hu-radius);
+    background: var(--hu-surface);
+    font-size: 12.5px;
+    color: var(--hu-ink-soft);
+}
+
+.hu-c-report ul {
+    margin: 6px 0 0;
+    padding-left: 18px;
+}
+
+.hu-c-report li {
+    margin-top: 3px;
+}
+
+.hu-c-report--skip {
+    border-color: rgba(192, 138, 51, .34);
+    background: #fdf8ef;
+}
+
+/* ---------- 贺卡打印（C17）：屏显保持原样，只替换打印时的排版 ---------- */
+.hu-card-print {
+    display: none;
+}
+
+@media print {
+    body.hu-print-card * {
+        visibility: hidden;
+    }
+
+    .hu-card-print,
+    .hu-card-print * {
+        visibility: visible;
+    }
+
+    .hu-card-print {
+        display: block;
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 40px 56px;
+        box-sizing: border-box;
+        background: #fff;
+        font-family: var(--hu-font-body);
+    }
+
+    .hu-card-print__to,
+    .hu-card-print__sign {
+        font-size: 15px;
+        color: #333;
+    }
+
+    .hu-card-print__msg {
+        font-size: 19px;
+        line-height: 2.1;
+        margin: 26px 0;
+        white-space: pre-wrap;
+        color: #111;
+    }
+
+    .hu-card-print__mark {
+        display: block;
+        margin-top: 30px;
+        font-size: 11px;
+        letter-spacing: .22em;
+        color: #999;
+    }
+
+    .hu-c-mask {
+        display: none !important;
+    }
+}
+
+/* 窄屏：弹窗与筛选条收成一列，避免原因 chip 挤成三行 */
+@media (max-width: 720px) {
+    .hu-c-filter__submit {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .hu-c-dialog__foot .hu-btn {
+        flex: 1 1 auto;
+    }
+
+    .hu-c-reasons {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* ==========================================================================
+   后台订单操作批次（C11–C14 / C21–C25 / G19–G21）· 只用 hu-admin-order-* 前缀
+   沿用 admin-theme.css 的 --ad-* 变量与 f-g.css 的 fg-* 组件，不重复定义色板
+   ========================================================================== */
+
+/* ---------- C25 异常看板 ---------- */
+.hu-admin-order-board {
+    margin-bottom: 15px;
+}
+
+.hu-admin-order-board .layui-card-body {
+    padding-top: 16px;
+    padding-bottom: 16px;
+}
+
+.hu-admin-order-board__reset {
+    float: right;
+    font-size: 12.5px;
+    font-weight: 400;
+    color: var(--ad-muted, #8f8b80);
+}
+
+.hu-admin-order-board__reset:hover {
+    color: var(--ad-accent-deep, #454f39);
+}
+
+.hu-admin-order-board .fg-stats {
+    margin-bottom: 0;
+}
+
+.hu-admin-order-tile {
+    display: block;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+    position: relative;
+    padding-left: 19px;
+    transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+.hu-admin-order-tile::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 14px;
+    bottom: 14px;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--ad-line-strong, #d8d2c5);
+}
+
+.hu-admin-order-tile:hover {
+    border-color: var(--ad-accent, #6f7d5c);
+    box-shadow: 0 8px 22px -18px rgba(33, 31, 26, .5);
+    transform: translateY(-1px);
+}
+
+.hu-admin-order-tile.is-empty {
+    cursor: default;
+    opacity: .72;
+}
+
+.hu-admin-order-tile.is-empty:hover {
+    transform: none;
+    border-color: var(--ad-line, #e8e3d9);
+    box-shadow: none;
+}
+
+.hu-admin-order-tile--any::before { background: var(--ad-ink, #211f1a); }
+.hu-admin-order-tile--ship_overdue::before { background: #c2762c; }
+.hu-admin-order-tile--pay_pending::before { background: #a9906a; }
+.hu-admin-order-tile--refunding::before { background: #b3897a; }
+
+.hu-admin-order-tile .fg-stat__sub {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.55;
+}
+
+/* ---------- 筛选与提示 ---------- */
+.hu-admin-order-search .layui-form-item {
+    margin-bottom: 12px;
+}
+
+.hu-admin-order-filtertip {
+    margin: -2px 0 12px;
+    font-size: 12px;
+    color: var(--ad-muted, #8f8b80);
+}
+
+.hu-admin-order-filtertip b {
+    color: var(--ad-accent-deep, #454f39);
+    font-weight: 600;
+}
+
+.hu-admin-order-filtertip a {
+    margin-left: 10px;
+    color: var(--ad-clay, #b3897a);
+}
+
+/* ---------- G20 一键定位 ---------- */
+.hu-admin-order-locate {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 11px 14px;
+    margin-bottom: 12px;
+    border: 1px dashed var(--ad-line-strong, #d8d2c5);
+    border-radius: 4px;
+    background: #fbfaf7;
+}
+
+.hu-admin-order-locate > label {
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    color: var(--ad-accent-deep, #454f39);
+    white-space: nowrap;
+}
+
+.hu-admin-order-locate > input {
+    flex: 1 1 300px;
+    min-width: 220px;
+    letter-spacing: .04em;
+}
+
+.hu-admin-order-locate__tip {
+    flex: 1 1 100%;
+    font-size: 11.5px;
+    color: var(--ad-muted, #8f8b80);
+}
+
+.hu-admin-order-pick {
+    padding: 12px 16px 16px;
+}
+
+.hu-admin-order-pick p {
+    margin: 0 0 8px;
+    font-size: 12.5px;
+    color: var(--ad-muted, #8f8b80);
+}
+
+.hu-admin-order-pick ul {
+    max-height: 320px;
+    margin: 0;
+    padding: 0;
+    overflow: auto;
+    list-style: none;
+}
+
+.hu-admin-order-pick__row {
+    display: grid;
+    grid-template-columns: 168px 1fr auto;
+    align-items: baseline;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 10px;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid var(--ad-line, #e8e3d9);
+}
+
+.hu-admin-order-pick__row:hover {
+    background: var(--ad-accent-soft, #eef0e8);
+}
+
+.hu-admin-order-pick__row b {
+    color: var(--ad-ink, #211f1a);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.hu-admin-order-pick__row span {
+    font-size: 12px;
+    color: var(--ad-ink-soft, #4b483f);
+}
+
+.hu-admin-order-pick__row em {
+    font-size: 11.5px;
+    font-style: normal;
+    color: var(--ad-muted, #8f8b80);
+}
+
+/* ---------- 单元格里的复制 / 外链小按钮 ---------- */
+.hu-admin-order-no {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.hu-admin-order-express {
+    font-size: 12px;
+    color: #555;
+}
+
+.hu-admin-order-express__co {
+    display: block;
+    font-size: 11.5px;
+    color: var(--ad-muted, #8f8b80);
+}
+
+.hu-admin-order-express code {
+    display: inline-block;
+    max-width: 150px;
+    padding: 1px 5px;
+    overflow: hidden;
+    color: var(--ad-accent-deep, #454f39);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+    background: #f1efe9;
+    border-radius: 3px;
+}
+
+.hu-admin-order-inlinebtns {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.hu-admin-order-copy,
+.hu-admin-order-track {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    font-size: 11.5px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--ad-muted, #8f8b80);
+    background: #fff;
+    border: 1px solid var(--ad-line-strong, #d8d2c5);
+    border-radius: 3px;
+    transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+
+.hu-admin-order-copy:hover,
+.hu-admin-order-track:hover {
+    color: var(--ad-accent-deep, #454f39);
+    border-color: var(--ad-accent, #6f7d5c);
+    background: var(--ad-accent-soft, #eef0e8);
+}
+
+/* site.js 复制成功后给按钮挂 is-copied；后台页没引 theme.css，这里自己收口 */
+.hu-admin-order-copy.is-copied {
+    color: #2f7d5e;
+    background: #f2fbf6;
+    border-color: #bfe0d0;
+}
+
+.hu-admin-order-track {
+    width: auto;
+    gap: 4px;
+    padding: 0 7px;
+    text-decoration: none;
+}
+
+.hu-admin-order-track.is-off {
+    cursor: not-allowed;
+    color: #b8b2a5;
+    background: #f6f5f1;
+}
+
+.hu-admin-order-pref {
+    font-size: 11.5px;
+    color: #b85c17;
+}
+
+/* ---------- 弹层内共用的说明与规则行 ---------- */
+.hu-admin-order-rule,
+.hu-admin-order-note {
+    margin: 0 0 12px 96px;
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: var(--ad-muted, #8f8b80);
+}
+
+.hu-admin-order-rule {
+    margin-bottom: 10px;
+    color: var(--ad-accent-deep, #454f39);
+}
+
+.hu-admin-order-note {
+    margin: 4px 0 6px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--ad-line, #e8e3d9);
+}
+
+.hu-admin-order-ship {
+    margin: 0 0 12px;
+}
+
+.hu-admin-order-ship td {
+    vertical-align: middle;
+}
+
+.hu-admin-order-ship small {
+    color: var(--ad-muted, #8f8b80);
+}
+
+/* ---------- 详情页：头部工具与备注格 ---------- */
+.hu-admin-order-headtools {
+    float: right;
+}
+
+.hu-admin-order-remark {
+    display: block;
+    margin-bottom: 6px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.hu-admin-order-empty {
+    font-style: normal;
+    color: #b8b2a5;
+}
+
+/* ---------- C14 轨迹节点：按类型给图标与配色 ---------- */
+.hu-admin-order-node {
+    --tone: #8a94a6;
+    --tone-soft: #f4f6f9;
+}
+
+.hu-admin-order-trace {
+    padding-left: 34px;
+}
+
+.hu-admin-order-trace::before {
+    left: 14px;
+    background: linear-gradient(180deg, var(--ad-accent, #6f7d5c), var(--ad-line, #e8e3d9));
+}
+
+/* 老样式在 li 上画了个空心点，改由带图标的圆点承担，两套会重叠 */
+.hu-admin-order-trace li::before {
+    content: none;
+}
+
+.hu-admin-order-node--neutral { --tone: #8a94a6; --tone-soft: #f4f6f9; }
+.hu-admin-order-node--paid { --tone: #1d6fd0; --tone-soft: #e9f2fd; }
+.hu-admin-order-node--ship { --tone: #eb2f96; --tone-soft: #fff0f6; }
+.hu-admin-order-node--sign { --tone: #2f7d5e; --tone-soft: #ecf8f1; }
+.hu-admin-order-node--bad { --tone: #b3897a; --tone-soft: #f7ece7; }
+.hu-admin-order-node--warn { --tone: #c2762c; --tone-soft: #fdf4e6; }
+.hu-admin-order-node--info { --tone: #722ed1; --tone-soft: #f6f0fd; }
+.hu-admin-order-node--custom { --tone: #454f39; --tone-soft: #eef0e8; }
+
+.hu-admin-order-node__dot {
+    position: absolute;
+    left: -32px;
+    top: 1px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+    line-height: 1;
+    color: var(--tone);
+    background: #fff;
+    border: 1px solid var(--tone);
+    border-radius: 50%;
+}
+
+.hu-admin-order-node.is-last .hu-admin-order-node__dot {
+    background: var(--tone-soft);
+    box-shadow: 0 0 0 4px rgba(33, 31, 26, .05);
+}
+
+.hu-admin-order-node__kind {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 7px;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--tone);
+    background: var(--tone-soft);
+    border-radius: 9px;
+}
+
+.hu-admin-order-node .adm-trace__title span {
+    margin-left: 10px;
+    font-size: 12px;
+    font-weight: 400;
+    color: #8a94a6;
+}
+
+.hu-admin-order-node .adm-trace__title .hu-admin-order-node__kind {
+    margin-left: 8px;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--tone);
+    background: var(--tone-soft);
+}
+
+.hu-admin-order-del {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-left: 8px;
+    padding: 0;
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    color: #b3897a;
+    background: none;
+    border: 1px solid #e6cdc2;
+    border-radius: 3px;
+}
+
+.hu-admin-order-del:hover {
+    color: #8f4f3f;
+    background: #f7ece7;
+}
+
+.hu-admin-order-legend {
+    margin-top: 14px;
+    padding-top: 10px;
+    font-size: 11.5px;
+    color: var(--ad-muted, #8f8b80);
+    border-top: 1px dashed var(--ad-line, #e8e3d9);
+}
+
+.hu-admin-order-legend__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 4px 10px 0 0;
+    padding: 1px 8px 1px 6px;
+    /* 类型色由同元素上的 hu-admin-order-node--* 提供；这里不写 --tone 默认值，
+       否则同优先级的后写规则会把八种类型色全部盖成灰色 */
+    color: var(--tone, #8a94a6);
+    background: #fbfaf7;
+    border: 1px solid var(--ad-line, #e8e3d9);
+    border-radius: 9px;
+}
+
+/* ---------- 留痕面板 ---------- */
+.hu-admin-order-ops__group:empty {
+    display: none;
+}
+
+.hu-admin-order-ops__group .layui-table {
+    margin-top: 4px;
+    font-size: 12.5px;
+}
+
+.hu-admin-order-ops__group td {
+    color: var(--ad-ink-soft, #4b483f);
+    font-variant-numeric: tabular-nums;
+}
+
+.hu-admin-order-ops__group td b {
+    color: var(--ad-accent-deep, #454f39);
+}
+
+.hu-admin-order-ops__group td.is-before {
+    color: #b8b2a5;
+    text-decoration: line-through;
+    text-decoration-color: #ddd6c8;
+}
+
+.hu-admin-order-ops__group td.is-after {
+    color: var(--ad-ink, #211f1a);
+}
+
+.hu-admin-order-ops__foot {
+    margin: 10px 0 2px;
+    font-size: 11.5px;
+    color: var(--ad-muted, #8f8b80);
+}
+
+@media (max-width: 900px) {
+    .hu-admin-order-board .fg-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .hu-admin-order-rule,
+    .hu-admin-order-note {
+        margin-left: 0;
+    }
+}
+
+/* ---------- 再次购买回执容器（C 组 · 我的订单 / 订单详情）：空容器不占位，有回执时留出一段间距 ---------- */
+.hu-report-slot:not(:empty) {
+    margin-top: 18px;
+}

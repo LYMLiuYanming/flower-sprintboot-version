@@ -6,6 +6,7 @@
     <title>用户详情 - 花语轩管理后台</title>
     <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/css/f-g.css}" rel="stylesheet">
     <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
     <style>
         body {background: #f1f1f1;}
@@ -20,6 +21,8 @@
                         <i class="fas fa-user-circle"></i> 用户详情
                     </div>
                     <div class="layui-card-body">
+                        <!-- G18：订单数 / 消费额 / 券包 / 积分四张概览卡，读的是服务端聚合，页面不再自己凑 -->
+                        <div class="fg-stats" id="statsHost"></div>
                         <table class="layui-table" lay-skin="line">
                             <colgroup>
                                 <col width="150">
@@ -28,6 +31,8 @@
                             <tbody id="userInfo">
                             </tbody>
                         </table>
+                        <div class="fg-section">处置记录</div>
+                        <div id="disposeHost"></div>
                     </div>
                 </div>
             </div>
@@ -36,23 +41,51 @@
 
     <script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
     <script th:src="@{/jquery-3.7.1.min.js}"></script>
+    <script th:src="@{/js/site.js}"></script>
     <script th:src="@{/js/admin-common.js}"></script>
+    <script th:src="@{/js/hu-admin-ui.js}"></script>
     <script th:inline="none">
         layui.use(['layer'], function () {
             var id = window.location.pathname.split('/').pop();
+            var esc = huAdmin.esc;
 
-            function esc(value) {
-                return huAdmin.esc(value === null || value === undefined || value === '' ? '-' : value);
+            function dash(value) {
+                return esc(value === null || value === undefined || value === '' ? '-' : value);
             }
 
             /** 后端 LocalDateTime / LocalDate 直接截断展示，避免 Date 解析带来的时区偏移 */
             function fmtDateTime(v) {
                 if (!v) return '-';
-                return String(v).replace('T', ' ').replace(/\.\d+$/, '');
+                return String(v).replace('T', ' ').replace(/\.\d+$/, '').slice(0, 16);
             }
 
             function row(label, value) {
                 return '<tr><td>' + label + '</td><td>' + value + '</td></tr>';
+            }
+
+            function stat(label, num, unit, sub, accent) {
+                return '<div class="fg-stat' + (accent ? ' fg-stat--accent' : '') + '">'
+                    + '<span class="fg-stat__label">' + esc(label) + '</span>'
+                    + '<span class="fg-stat__num">' + num + (unit ? '<small>' + esc(unit) + '</small>' : '') + '</span>'
+                    + (sub ? '<span class="fg-stat__sub">' + sub + '</span>' : '') + '</div>';
+            }
+
+            /**
+             * 概览四卡：消费额只算已成交口径（服务端 DEAL_STATUSES），
+             * 券包把「未使用」和「其中已过期」分开亮，否则运营催的是用不了的券
+             */
+            function renderStats(s) {
+                s = s || {};
+                var coupons = '未用 ' + (s.unused || 0) + ' · 已用 ' + (s.used || 0)
+                    + (Number(s.unusedExpired) ? ' · 其中过期 ' + s.unusedExpired : '');
+                jQuery('#statsHost').html(
+                    stat('累计下单', Number(s.orderCount || 0), '笔',
+                        s.lastOrderAt ? '最近 ' + fmtDateTime(s.lastOrderAt) : '还没有下过单')
+                    + stat('已消费', '¥' + huAdmin.money(s.dealAmount || 0), '',
+                        '已成交 ' + (s.dealCount || 0) + ' 笔', true)
+                    + stat('券包', Number(s.total || 0), '张', coupons)
+                    + stat('积分', Number(s.points || 0), '分', '下单与评价累计')
+                );
             }
 
             function render(user) {
@@ -62,30 +95,77 @@
 
                 // 字段全部取自 UserView（后端已剔除 password），文本一律转义后再写入 DOM
                 $('#userInfo').html(
-                    row('用户名：', esc(user.username)) +
-                    row('姓名：', esc(user.fullName)) +
-                    row('身份：', user.userType === 'admin' ? '管理员' : '顾客') +
-                    row('手机号：', esc(user.phone)) +
-                    row('邮箱：', esc(user.email)) +
-                    row('性别：', esc(genderMap[user.gender] || '未填写')) +
-                    row('生日：', esc(user.birthday)) +
-                    row('会员等级：', esc(memberMap[user.memberLevel] || user.memberLevel)) +
-                    row('积分：', esc(user.points == null ? 0 : user.points)) +
-                    row('账号状态：', esc(statusMap[user.status] || user.status)) +
-                    row('需改密码：', user.mustChangePassword ? '是（下次登录必须修改）' : '否') +
-                    row('最后登录：', user.lastLoginTime ? fmtDateTime(user.lastLoginTime) : '从未登录') +
-                    row('注册时间：', fmtDateTime(user.createdAt))
+                    row('用户名：', dash(user.username))
+                    + row('姓名：', dash(user.fullName))
+                    + row('身份：', user.userType === 'admin' ? '管理员' : '顾客')
+                    + row('手机号：', dash(user.phone))
+                    + row('邮箱：', dash(user.email))
+                    + row('性别：', dash(genderMap[user.gender] || '未填写'))
+                    + row('生日：', dash(user.birthday))
+                    + row('会员等级：', dash(memberMap[user.memberLevel] || user.memberLevel))
+                    + row('积分：', dash(user.points == null ? 0 : user.points))
+                    + row('账号状态：', dash(statusMap[user.status] || user.status))
+                    + row('需改密码：', user.mustChangePassword ? '是（下次登录必须修改）' : '否')
+                    + row('最后登录：', user.lastLoginTime ? fmtDateTime(user.lastLoginTime) : '从未登录')
+                    + row('注册时间：', fmtDateTime(user.createdAt))
+                    + (user.deletionRequestedAt
+                        ? row('注销申请：', fmtDateTime(user.deletionRequestedAt) + '（冷静期内）') : '')
                 );
+            }
+
+            /**
+             * G17：处置记录来自审计留痕，禁用原因、操作人、时间一条列全，
+             * 客服接电话时不必再回头翻服务器日志
+             */
+            function renderDispositions(rows, current) {
+                var host = jQuery('#disposeHost');
+                if (!rows.length) {
+                    host.html('<p style="font-size:12.5px;color:#8f8b80;margin:0">'
+                        + (current && current.reason ? '' : '暂无禁用 / 启用 / 重置密码的处置留痕。') + '</p>');
+                    return;
+                }
+                host.html('<ul class="fg-timeline">' + rows.map(function (item) {
+                    var label = {inactive: '禁用', locked: '锁定', active: '启用'}[item.targetStatus]
+                        || (item.action === '重置密码' ? '重置密码' : item.action);
+                    var failed = item.resultCode && item.resultCode !== 200;
+                    var chip = failed ? 'fg-chip fg-chip--warn' : (label === '启用' ? 'fg-chip fg-chip--ok' : 'fg-chip fg-chip--bad');
+                    return '<li><time>' + esc(fmtDateTime(item.createdAt)) + '</time>'
+                        + '<span class="' + chip + '">' + esc(label) + (failed ? ' 未生效' : '') + '</span> '
+                        + esc(item.operatorName || '-')
+                        + (item.reason ? '<span class="fg-reason" style="max-width:520px" title="'
+                            + esc(item.reason) + '">' + esc(item.reason) + '</span>' : '')
+                        + '</li>';
+                }).join('') + '</ul>');
             }
 
             huAdmin.request({
                 url: '/api/admin/users/' + encodeURIComponent(id),
                 silent: true,
-                ok: function (res) { render(res.data || {}); },
+                ok: function (res) {
+                    var user = res.data || {};
+                    render(user);
+                    renderStats(res.stats);
+                    var current = (res.dispositions || {})[String(user.id)];
+                    huAdmin.request({
+                        url: '/api/admin/users/' + encodeURIComponent(id) + '/dispositions',
+                        data: {limit: 10}, silent: true,
+                        ok: function (r2) { renderDispositions(r2.data || [], current); }
+                    });
+                },
+                /* G30：详情加载失败也要给统一的错误态与重试，而不是只有一句 toast */
                 fail: function (res) {
-                    huAdmin.toast(res.msg || '用户信息加载失败', 'err');
-                    $('#userInfo').html('<tr><td colspan="2" style="text-align:center;color:#b3646a">'
-                        + esc(res.msg || '用户信息加载失败') + '</td></tr>');
+                    var message = (res && res.msg) || '用户信息加载失败';
+                    var host = jQuery('#statsHost');
+                    host.html(window.huError
+                        ? window.huError.html({
+                            message: message, hint: '这个账号的信息没取回来，可点重试。', retryText: '重新加载'
+                        })
+                        : '<div class="fg-errstate"><strong>' + esc(message)
+                            + '</strong><button type="button" class="layui-btn layui-btn-sm">重新加载</button></div>');
+                    host.find('button').on('click', function () { window.location.reload(); });
+                    $('#userInfo').html('<tr><td colspan="2"><span style="color:#9d5c4c">'
+                        + esc(message) + '</span></td></tr>');
+                    renderDispositions([], null);
                 }
             });
         });

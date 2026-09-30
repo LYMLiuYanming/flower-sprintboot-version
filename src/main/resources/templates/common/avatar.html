@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--
+  D05 头像统一片段：全站账户头像用同一份「首字 + 由姓名派生的稳定底色」规则，
+  底色算法与 AccountPolicy.avatarColor 一致（同一名字到处同色）。
+  initial / color 由服务端 UserView 预算好后传入，页面不再各自 charAt(0) 现算。
+-->
+<span th:fragment="avatar(initial, color, cssClass)"
+      class="hu-avatar"
+      th:classappend="${cssClass}"
+      th:style="'background:' + (${color} ?: '#0f7b63')"
+      th:text="${initial} ?: '花'">花</span>
+
+<!--
+  供个人中心各页复用的一份「异步回填」实现：
+  侧栏 #avatar 是服务端静态片段，资料经 API 拉取后再用它把首字与底色对齐到服务端口径，
+  取代此前 profile/settings/addresses 每页各写一遍 $('#avatar').html(...) 的做法。
+-->
+<th:block th:fragment="avatarSync">
+    <script>
+        window.huSyncAvatar = function (user) {
+            if (!user) return;
+            var el = document.getElementById('avatar');
+            if (el) {
+                el.textContent = user.avatarInitial || '花';
+                if (user.avatarColor) el.style.background = user.avatarColor;
+            }
+            var side = document.getElementById('sideName');
+            if (side && (user.fullName || user.username)) side.textContent = user.fullName || user.username;
+            var phone = document.getElementById('sidePhone');
+            if (phone && user.phone) phone.textContent = user.phone;
+        };
+    </script>
+</th:block>
+</body>
+</html>

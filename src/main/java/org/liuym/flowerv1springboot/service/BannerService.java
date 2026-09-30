@@ -23,12 +23,20 @@ public interface BannerService {
 
     long count();
 
+    /** 当前排最前的排序值，新增时 +10 就是「插到第一位」（F14） */
+    int nextTopSortOrder();
+
     /**
      * 前台轮播：仅取启用且在投放时间窗内的记录
      */
     List<Banner> findDisplayableBanners();
 
+    /** F13/F14 前台可见数量：后台用它提示「当前前台播放 N 张」 */
+    long countDisplayable();
+
     Page<Banner> searchByTitle(String title, Pageable pageable);
+
+    Page<Banner> searchAdmin(String status, String keyword, Pageable pageable);
 
     Banner createByForm(ContentDtos.BannerForm form);
 

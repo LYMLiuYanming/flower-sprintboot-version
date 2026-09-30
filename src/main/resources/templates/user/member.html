@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>会员权益 · 花语轩</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<div class="hu-pagehead">
+    <div class="hu-container hu-pagehead__row">
+        <div>
+            <div class="hu-crumb"><a href="/index">首页</a> / <a href="/user/profile">个人中心</a> / <span>会员权益</span></div>
+            <h1>会员权益</h1>
+            <p class="hu-pagehead__sub">折扣、包邮门槛与专享券都按等级自动生效，结算时不需要手动勾选</p>
+        </div>
+        <div class="hu-pagehead__aside">
+            <span class="hu-muted" style="font-size:13px">当前等级</span>
+            <span class="hu-e-member__badge" id="levelBadge">—</span>
+        </div>
+    </div>
+</div>
+
+<div class="hu-container">
+    <div class="hu-account">
+        <aside th:replace="~{common/account-nav :: accountNav('member')}"></aside>
+        <div>
+
+            <!-- 等级与折扣：折扣率与文案由服务端生成，页面只读字段 -->
+            <section class="hu-panel hu-e-member" style="margin-top:0">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2><i class="fa fa-diamond" style="color:var(--hu-accent);margin-right:9px"></i><span id="levelName">花友</span></h2>
+                        <p id="levelSub">正在读取会员状态…</p>
+                    </div>
+                    <div class="hu-e-member__rate" id="rateBox">—</div>
+                </div>
+                <div class="hu-panel__body">
+                    <div class="hu-e-stats">
+                        <div class="hu-e-stat"><span>累计成交</span><b id="statPaid">—</b></div>
+                        <div class="hu-e-stat"><span id="gapLabel">距下一档</span><b id="statGap">—</b></div>
+                        <div class="hu-e-stat"><span>可用积分</span><b id="statPoints">—</b></div>
+                        <div class="hu-e-stat"><span>会员到期</span><b id="statExpire">—</b></div>
+                    </div>
+                    <div class="hu-e-openbox">
+                        <div class="hu-e-openbox__text">
+                            <strong id="openTitle">积分开通会员</strong>
+                            <p id="openHint">—</p>
+                        </div>
+                        <div class="hu-e-openbox__btns" id="openBtns">
+                            <button type="button" class="hu-btn hu-btn--solid" data-years="1">开通 1 年</button>
+                            <button type="button" class="hu-btn hu-btn--ghost" data-years="2">续费 2 年</button>
+                            <button type="button" class="hu-btn hu-btn--ghost" data-years="3">续费 3 年</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 权益清单：条目由 CampaignPolicy.memberBenefits 给出 -->
+            <section class="hu-panel" style="margin-top:26px">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2><i class="fa fa-list-ul" style="color:var(--hu-accent);margin-right:9px"></i>权益说明</h2>
+                        <p>等级由「累计成交额自动升级」与「积分开通/续费」两条线共同决定，取更高的一档</p>
+                    </div>
+                </div>
+                <div class="hu-panel__body">
+                    <ul class="hu-e-benefits" id="benefits"></ul>
+                    <p class="hu-e-hint">会员专享券在领券中心会打上「会员专享」标记，非会员领取会被拦截并说明原因。</p>
+                </div>
+            </section>
+
+            <section class="hu-panel" style="margin-top:26px">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2><i class="fa fa-ticket" style="color:var(--hu-accent);margin-right:9px"></i>相关入口</h2>
+                        <p>券与会员折扣可以同享，结算页会给出最划算的组合建议</p>
+                    </div>
+                </div>
+                <div class="hu-panel__body hu-e-links">
+                    <a class="hu-link" href="/user/coupon-center">领券中心</a>
+                    <a class="hu-link" href="/user/coupons">我的券包</a>
+                    <a class="hu-link" href="/user/invite">邀请有礼</a>
+                    <a class="hu-link" href="/user/points">积分明细</a>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<script>
+    var member = null;
+
+    function esc(v) {
+        return window.huEscape(v == null ? '' : String(v));
+    }
+
+    function money(v) {
+        return '¥' + (window.huPrice ? huPrice(v) : Number(v || 0).toFixed(2));
+    }
+
+    function dateOf(v) {
+        return String(v || '').slice(0, 10);
+    }
+
+    function render(data) {
+        member = data;
+        $('#levelBadge').text(data.levelName).toggleClass('is-member', data.member);
+        $('#levelName').text(data.levelName);
+        $('#rateBox').text(data.discountText);
+        $('#statPaid').text(money(data.paidAmount));
+        $('#statPoints').text(data.pointsBalance);
+        $('#statExpire').text(data.expireAt ? dateOf(data.expireAt) + '（剩 ' + data.remainingDays + ' 天）' : '长期');
+        if (data.upgradeThreshold) {
+            $('#gapLabel').text('距下一档还需');
+            $('#statGap').text(money(data.upgradeGap));
+            $('#levelSub').text('累计成交满 ' + money(data.upgradeThreshold) + ' 元自动升级，当前 ' + money(data.paidAmount));
+        } else {
+            $('#gapLabel').text('等级');
+            $('#statGap').text('已是最高档');
+            $('#levelSub').text(data.member ? '全场花礼 ' + data.discountText + ' 结算' : '累计成交满额即可自动开通会员');
+        }
+        $('#openTitle').text(data.member ? '积分续费' : '积分开通');
+        $('#openHint').text(data.openHint);
+        $('#openBtns button').each(function () {
+            var years = Number($(this).data('years'));
+            $(this).text((data.member ? '续费 ' : '开通 ') + years + ' 年 · ' + (data.costPoints * years) + ' 积分')
+                .prop('disabled', !data.canOpen && years === 1);
+        });
+        $('#benefits').html((data.benefits || []).map(function (b) {
+            return '<li>' + esc(b) + '</li>';
+        }).join(''));
+    }
+
+    function load() {
+        huApi({url: '/api/promotions/member', ok: render});
+    }
+
+    $(function () {
+        load();
+
+        $('#openBtns').on('click', 'button', function () {
+            var btn = $(this);
+            if (btn.prop('disabled')) return;
+            var years = Number(btn.data('years'));
+            btn.prop('disabled', true).text('处理中…');
+            huApi({
+                url: '/api/promotions/member/open',
+                type: 'POST',
+                data: {years: years},
+                ok: function (data) {
+                    window.huToast('会员已更新，权益立即生效', 'ok');
+                    load();
+                },
+                fail: function () { load(); }
+            });
+        });
+    });
+</script>
+</body>
+</html>

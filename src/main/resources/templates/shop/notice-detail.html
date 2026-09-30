@@ -11,30 +11,73 @@
     <div class="hu-container hu-pagehead__row">
         <div>
             <div class="hu-crumb"><a href="/index">首页</a> / <span>公告详情</span></div>
-            <h1 th:text="${notice.title}">公告标题</h1>
+            <h1>
+                <span class="hu-pill hu-pill--warn" th:if="${notice.isTop}">置顶</span>
+                <span th:text="${notice.title}">公告标题</span>
+            </h1>
             <p class="hu-pagehead__sub">
                 <span th:switch="${notice.noticeType}">
                     <span th:case="'system'">系统公告</span>
                     <span th:case="'activity'">活动公告</span>
                     <span th:case="*">通用公告</span>
                 </span>
-                · <span th:text="${#strings.replace(#strings.substring(notice.createdAt.toString(), 0, 16), 'T', ' ')}">发布时间</span>
+                · <span th:text="${#strings.replace(#strings.substring((notice.publishAt != null ? notice.publishAt : notice.createdAt).toString(), 0, 16), 'T', ' ')}">发布时间</span>
                 · 浏览 <span th:text="${notice.viewCount}">0</span> 次
+                <!-- F12：已读只统计登录用户，人数去重、次数累加，两个口径分开看 -->
+                <span th:if="${notice.readTimes != null and notice.readTimes > 0}">
+                    · 已有 <span th:text="${notice.readUserCount}">0</span> 位顾客读过
+                </span>
+            </p>
+            <p class="hu-notice__window" th:if="${notice.offlineAt != null}">
+                <i class="fa fa-clock-o"></i>
+                本公告将于
+                <span th:text="${#strings.replace(#strings.substring(notice.offlineAt.toString(), 0, 16), 'T', ' ')}">下线时间</span>
+                自动从前台下架
             </p>
         </div>
         <div class="hu-pagehead__aside">
             <a class="hu-btn hu-btn--ghost" href="/index"><i class="fa fa-arrow-left"></i> 返回首页</a>
+            <a class="hu-btn hu-btn--solid" href="/products">去挑花礼</a>
         </div>
     </div>
 </div>
 
 <div class="hu-container" style="padding-bottom: 64px">
     <div class="hu-panel hu-panel--pad">
+        <img class="hu-notice__cover" th:if="${notice.coverImage != null and !#strings.isEmpty(notice.coverImage)}"
+             th:src="${notice.coverImage}" th:alt="${notice.title}">
         <!-- 正文由后台富文本录入，入库前已经 HtmlSanitizer 白名单清洗 -->
         <div class="hu-prose" th:utext="${notice.content}">公告正文</div>
+        <div class="hu-notice__foot">
+            <span class="hu-muted" style="font-size:12.5px">花语轩 HUAYUXUAN · 公告</span>
+            <span class="hu-muted" style="font-size:12.5px" id="readState">正在记录阅读…</span>
+        </div>
     </div>
 </div>
 
 <div th:replace="~{common/footer :: footer}"></div>
+
+<script th:inline="javascript">
+    var NOTICE_ID = /*[[${notice.id}]]*/ '';
+    var LOGGED = /*[[${loginUser != null}]]*/ false;
+    jQuery(function () {
+        if (!LOGGED) {
+            jQuery('#readState').text('登录后可以标记已读，方便回看时知道是否已经看过');
+            return;
+        }
+        /* 已读上报失败不影响阅读，只把状态文案收掉（F12） */
+        jQuery.ajax({
+            url: '/api/notices/' + NOTICE_ID + '/read', type: 'POST', dataType: 'json',
+            contentType: 'application/json;charset=UTF-8', data: '{}',
+            success: function (res) {
+                if (res.code !== 200) { jQuery('#readState').text(''); return; }
+                var d = res.data || {};
+                jQuery('#readState').text('已记录：共 ' + (d.readUserCount || 0) + ' 位顾客读过，累计 '
+                    + (d.readTimes || 0) + ' 次');
+            },
+            error: function () { jQuery('#readState').text(''); }
+        });
+    });
+</script>
 </body>
 </html>

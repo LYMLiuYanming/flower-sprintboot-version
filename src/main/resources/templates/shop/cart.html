@@ -11,19 +11,22 @@
     <div class="hu-container">
         <div class="hu-crumb"><a href="/index">首页</a> / <span>购物车</span></div>
         <h1>购物车</h1>
-        <p class="hu-muted" style="margin:8px 0 0;font-size:14px">确认花礼清单，随时调整数量与勾选状态</p>
+        <p class="hu-muted" style="margin:8px 0 0;font-size:14px">确认花礼清单，随时调整数量、包装与每束的单独说明</p>
     </div>
 </div>
 
 <div class="hu-container">
-    <div id="emptyCart" class="hu-empty" style="display:none;margin:36px 0 80px">
+    <div class="hu-account">
+        <aside th:replace="~{common/account-nav :: accountNav('cart')}"></aside>
+        <div>
+    <div id="emptyCart" class="hu-empty" style="display:none;margin:0 0 40px">
         <i class="fa fa-shopping-bag"></i>
         <strong>购物车还是空的</strong>
         <p style="margin:6px 0 22px">去挑一束今天的好心情吧</p>
         <a href="/products" class="hu-btn hu-btn--solid">去选购花礼</a>
     </div>
 
-    <div id="cartContent" class="hu-cart" style="display:none">
+    <div id="cartContent" class="hu-cart hu-cart--inside" style="display:none">
         <div style="min-width:0">
             <div class="hu-panel hu-toolbar" style="margin-bottom:16px">
                 <div class="hu-toolbar__left">
@@ -31,14 +34,41 @@
                     <button type="button" id="removeSelected" class="hu-btn hu-btn--sm hu-btn--plain">
                         <i class="fa fa-trash-o"></i>&nbsp;删除选中
                     </button>
+                    <button type="button" id="clearInvalid" class="hu-btn hu-btn--sm hu-btn--plain" style="display:none">
+                        <i class="fa fa-ban"></i>&nbsp;清空失效商品<span id="invalidBadge"></span>
+                    </button>
                 </div>
-                <div class="hu-toolbar__right hu-muted" style="font-size:13px">
-                    会员下单自动享 95 折 · 支持随时改数量
+                <div class="hu-toolbar__right hu-muted" style="font-size:13px" id="policyNote">
+                    数量按库存自动钳制 · 金额由服务端核算
                 </div>
             </div>
 
             <div class="hu-panel">
                 <div id="cartItems" class="hu-cart__list"></div>
+            </div>
+
+            <!-- 失效商品分组（B05）：单独列出且不参与合计 -->
+            <div class="hu-panel" id="invalidPanel" style="display:none;margin-top:18px">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2><i class="fa fa-exclamation-circle" style="color:var(--hu-clay);margin-right:9px"></i>失效花礼</h2>
+                        <p>已下架或暂时缺货，不计入合计，可直接清空（B06）</p>
+                    </div>
+                    <span class="hu-muted" style="font-size:13px">原值 ¥<b id="invalidAmount">0.00</b></span>
+                </div>
+                <div id="invalidItems" class="hu-cart__list"></div>
+            </div>
+
+            <!-- 再次购买（B24） -->
+            <div class="hu-panel" id="reorderPanel" style="display:none;margin-top:18px">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2><i class="fa fa-repeat" style="color:var(--hu-accent);margin-right:9px"></i>再次购买</h2>
+                        <p>把上次订单里的花礼一次性加回购物车，库存不足会自动按上限加</p>
+                    </div>
+                    <a href="/user/orders" class="hu-link" style="font-size:13px">全部订单 <i class="fa fa-long-arrow-right"></i></a>
+                </div>
+                <div id="reorderList" class="hu-b-reorder"></div>
             </div>
 
             <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:20px">
@@ -51,22 +81,36 @@
             <h3>结算摘要</h3>
             <div class="hu-summary__row"><span>已选商品</span><span id="selectedCount">0 种</span></div>
             <div class="hu-summary__row"><span>商品金额</span><span>¥<span id="totalAmount">0.00</span></span></div>
+            <div class="hu-summary__row" id="dropRow" style="display:none">
+                <span>比加入时降价</span><span style="color:var(--hu-accent-deep)">−¥<span id="dropAmount">0.00</span></span>
+            </div>
             <div class="hu-summary__row" id="vipRow" style="display:none"><span>VIP 会员 95 折</span><span style="color:var(--hu-accent-deep)">−¥<span id="vipDiscount">0.00</span></span></div>
-            <div class="hu-summary__row"><span>配送费用</span><span style="color:var(--hu-accent-deep)">同城当日达 · 免运费</span></div>
+            <div class="hu-summary__row" id="couponRow" style="display:none">
+                <span>优惠券<span class="hu-muted" id="couponName" style="font-size:12px"></span></span>
+                <span style="color:var(--hu-accent-deep)">−¥<span id="couponDiscount">0.00</span></span>
+            </div>
+            <div class="hu-summary__row" id="wrapRow" style="display:none">
+                <span>礼品包装<span class="hu-muted" style="font-size:12px"> · 整单</span></span>
+                <span>+¥<span id="wrapFee">0.00</span></span>
+            </div>
+            <div class="hu-summary__row" id="freightRow"><span>配送费用</span><span id="freightText">—</span></div>
             <div class="hu-summary__row"><span>贺卡定制</span><span style="color:var(--hu-accent-deep)">免费随单</span></div>
             <div class="hu-summary__total">
                 <span class="hu-muted">合计</span>
                 <span class="hu-price"><small>¥</small><span id="payAmount">0.00</span></span>
             </div>
+            <p class="hu-b-floor" id="floorHint" style="display:none"></p>
             <div class="hu-summary__hint">
                 <span>预估可得积分</span><b id="pointsHint">0</b>
             </div>
             <div class="hu-summary__hint">
-                <span>结算口径</span><b>以下单页服务端核算为准</b>
+                <span>结算口径</span><b id="quoteState">服务端实时核算</b>
             </div>
             <button type="button" id="checkoutBtn" class="hu-btn hu-btn--solid hu-btn--block" style="margin-top:22px">去结算</button>
             <a href="/products" class="hu-btn hu-btn--ghost hu-btn--block" style="margin-top:12px">继续挑选花礼</a>
         </aside>
+    </div>
+        </div>
     </div>
     <div style="height:64px"></div>
 </div>
@@ -75,98 +119,267 @@
 
 <script th:inline="javascript">
     const PH_IMAGE = /*[[@{/img/product-placeholder.svg}]]*/ '/img/product-placeholder.svg';
-    const IS_VIP = /*[[${loginUser != null and loginUser.memberLevel == 'vip'}]]*/ false;
     const CHECKOUT_KEY = 'huCheckoutItems';
     let items = [];
+    let invalids = [];
+    let invalidAmountValue = 0;
+    /** 勾选态必须独立于 DOM 保存：改数量会重新拉取并整表重绘，否则勾选会被重置 */
+    const picked = new Set();
+    let pickedSeeded = false;
+    /** 服务端按更新时间返回，改数量会让行跳到最前；首次加载锁定顺序后不再跳动 */
+    let rowOrder = [];
+    /** 结算试算回执：金额区唯一的数字来源，页面不再自算会员折扣与下限（B01/B07/B23） */
+    let quote = null;
+    let quoteTimer = null;
 
     function money(v) {
         return window.huMoney(v);
+    }
+
+    /** 服务端钳制/操作文案同源展示（B03/B04/B06） */
+    function say(res) {
+        if (res && res.notice) window.huToast(res.notice, 'ok');
+    }
+
+    /** 服务端每次改动都回传整份视图：可购行、失效行与失效原值一次同步 */
+    function applyView(data) {
+        items = (data && data.items) || [];
+        invalids = (data && data.invalidItems) || [];
+        invalidAmountValue = Number(data && data.invalidAmount) || 0;
+        render();
     }
 
     function render() {
         if (!items.length) {
             $('#cartContent').hide();
             $('#emptyCart').show();
-            return;
+        } else {
+            $('#emptyCart').hide();
+            $('#cartContent').css('display', 'grid');
         }
-        $('#emptyCart').hide();
-        $('#cartContent').css('display', 'grid');
 
-        let html = '';
-        items.forEach(function (item) {
-            const p = item.product || {};
-            const stock = item.stock == null ? 0 : item.stock;
-            const unavailable = item.productActive === false || stock <= 0;
-            const lack = !unavailable && stock < item.quantity;
-            let flags = '';
-            if (unavailable) {
-                flags = '<span class="hu-pill hu-pill--muted">' + (item.productActive === false ? '已下架' : '暂时缺货') + '</span>';
-            } else if (lack) {
-                flags = '<span class="hu-pill hu-pill--warn">库存仅剩 ' + stock + ' 件，请调整数量</span>';
-            }
-            html += '<div class="hu-cart-row' + (unavailable ? ' is-unavailable' : '') + '" data-item="' + item.id + '">' +
-                '<div class="hu-cart-row__check"><label class="hu-check"><input type="checkbox" class="item-check"' +
-                (unavailable ? ' disabled' : ' checked') + '></label></div>' +
-                '<a href="/product/' + p.id + '" class="hu-cart-row__media"><img src="' + window.huEscape(p.mainImage || PH_IMAGE) + '" alt="' + window.huEscape(p.name || '') + '"></a>' +
-                '<div class="hu-cart-row__info">' +
-                '<a href="/product/' + p.id + '" class="hu-cart-row__name">' + window.huEscape(p.name || '商品已失效') + '</a>' +
-                '<div class="hu-cart-row__cat">' + window.huEscape(p.category ? p.category.name : '鲜花') + ' · ' + window.huEscape(p.unit || '束') + '</div>' +
-                (flags ? '<div class="hu-cart-row__flags">' + flags + '</div>' : '') +
-                '</div>' +
-                '<div class="hu-cart-row__unit">¥' + money(item.price) + '</div>' +
-                '<div class="hu-cart-row__qty"><div class="hu-qty">' +
-                '<button type="button" data-step="-1">−</button>' +
-                '<input type="number" value="' + item.quantity + '" min="1" max="99" inputmode="numeric">' +
-                '<button type="button" data-step="1">+</button>' +
-                '</div></div>' +
-                '<div class="hu-cart-row__sub hu-cart-row__price">¥' + money(item.subtotal) + '</div>' +
-                '<button type="button" class="hu-cart-row__del" title="移除"><i class="fa fa-trash-o"></i></button>' +
-                '</div>';
+        const availableIds = items.map(function (i) { return String(i.id); });
+        if (!pickedSeeded) {
+            availableIds.forEach(function (id) { picked.add(id); });
+            pickedSeeded = true;
+        }
+        // 商品失效/被移除后清掉残留勾选，避免金额与结算清单不一致
+        Array.from(picked).forEach(function (id) {
+            if (availableIds.indexOf(id) < 0) picked.delete(id);
         });
-        $('#cartItems').html(html);
+
+        $('#cartItems').html(items.map(rowHtml).join(''));
+        renderInvalid();
         syncSelection();
     }
 
-    function selectedItems() {
-        return items.filter(function (item) {
-            const box = rowOf(item.id).find('.item-check');
-            return box.length && box.prop('checked');
-        });
+    function rowHtml(item) {
+        const p = item.product || {};
+        const stock = item.stock == null ? 0 : item.stock;
+        const max = item.maxQuantity == null ? stock : item.maxQuantity;
+        const lack = stock < item.quantity;
+        let flags = '';
+        if (lack) {
+            flags += '<span class="hu-pill hu-pill--warn">库存仅剩 ' + stock + ' 件，已按上限计算</span>';
+        }
+        if (Number(item.priceDrop) > 0) {
+            flags += '<span class="hu-pill hu-pill--ok">比加入时降价 ¥' + money(item.priceDrop) + '</span>';
+        }
+        return '<div class="hu-cart-row hu-b-row" data-item="' + item.id + '">' +
+            '<div class="hu-cart-row__check"><label class="hu-check"><input type="checkbox" class="item-check"' +
+            (picked.has(String(item.id)) ? ' checked' : '') + '></label></div>' +
+            '<a href="/product/' + p.id + '" class="hu-cart-row__media"><img src="' + window.huEscape(p.mainImage || PH_IMAGE) + '" alt="' + window.huEscape(p.name || '') + '"></a>' +
+            '<div class="hu-cart-row__info">' +
+            '<a href="/product/' + p.id + '" class="hu-cart-row__name">' + window.huEscape(p.name || '商品已失效') + '</a>' +
+            '<div class="hu-cart-row__cat">' + window.huEscape(p.category ? p.category.name : '鲜花') + ' · ' + window.huEscape(p.unit || '束') + ' · 库存 ' + stock + '</div>' +
+            (flags ? '<div class="hu-cart-row__flags">' + flags + '</div>' : '') +
+            '<div class="hu-b-line">' +
+            '<label class="hu-b-switch"><input type="checkbox" class="wrap-check"' + (item.giftWrap ? ' checked' : '') + '>' +
+            '<span class="hu-b-switch__track"><span class="hu-b-switch__dot"></span></span>礼品包装</label>' +
+            '<input type="text" class="hu-input hu-b-note note-input" maxlength="100" ' +
+            'value="' + window.huEscape(item.note || '') + '" placeholder="这一束单独交代一句（如“卡片写妈妈辛苦了”）">' +
+            '</div>' +
+            '</div>' +
+            '<div class="hu-cart-row__unit">¥' + money(item.price) + '</div>' +
+            '<div class="hu-cart-row__qty"><div class="hu-qty">' +
+            '<button type="button" data-step="-1">−</button>' +
+            '<input type="number" value="' + item.quantity + '" min="1" max="' + max + '" inputmode="numeric">' +
+            '<button type="button" data-step="1">+</button>' +
+            '</div></div>' +
+            '<div class="hu-cart-row__sub hu-cart-row__price">¥' + money(item.subtotal) + '</div>' +
+            '<div class="hu-cart-row__del hu-b-actions">' +
+            '<button type="button" class="hu-b-act fav-btn" title="移入收藏并删除"><i class="fa fa-heart-o"></i></button>' +
+            '<button type="button" class="hu-b-act del-btn" title="移除"><i class="fa fa-trash-o"></i></button>' +
+            '</div></div>';
+    }
+
+    /** 失效行（B05）：只给原因与操作，不出现勾选框，避免被算进结算清单 */
+    function renderInvalid() {
+        if (!invalids.length) {
+            $('#invalidPanel').hide();
+            $('#clearInvalid').hide();
+            return;
+        }
+        $('#invalidPanel').show();
+        $('#clearInvalid').show();
+        $('#invalidBadge').text('（' + invalids.length + '）');
+        $('#invalidAmount').text(money(invalidAmountValue));
+        $('#invalidItems').html(invalids.map(function (item) {
+            const p = item.product || {};
+            return '<div class="hu-cart-row hu-b-invalid is-unavailable" data-item="' + item.id + '">' +
+                '<div class="hu-cart-row__media"><img src="' + window.huEscape(p.mainImage || PH_IMAGE) + '" alt=""></div>' +
+                '<div class="hu-cart-row__info">' +
+                '<div class="hu-cart-row__name">' + window.huEscape(p.name || '商品已失效') + '</div>' +
+                '<div class="hu-cart-row__cat">' + window.huEscape(item.invalidReason || '已下架') + ' · ¥' + money(item.price) + ' × ' + item.quantity + '</div>' +
+                '</div>' +
+                '<div class="hu-cart-row__sub hu-cart-row__price">¥' + money(item.subtotal) + '</div>' +
+                '<div class="hu-cart-row__del hu-b-actions">' +
+                (p.id ? '<button type="button" class="hu-b-act fav-btn" data-item="' + item.id + '" title="移入收藏并删除"><i class="fa fa-heart-o"></i></button>' : '') +
+                '<button type="button" class="hu-b-act del-btn" title="删除"><i class="fa fa-trash-o"></i></button>' +
+                '</div></div>';
+        }).join(''));
     }
 
     function rowOf(itemId) {
-        return $('#cartItems .hu-cart-row[data-item="' + itemId + '"]');
+        return $('#cartItems .hu-cart-row[data-item="' + itemId + '"]').add(
+            $('#invalidItems .hu-cart-row[data-item="' + itemId + '"]'));
+    }
+
+    function selectedItems() {
+        return items.filter(function (item) { return picked.has(String(item.id)); });
     }
 
     function syncSelection() {
-        const picked = selectedItems();
-        let total = 0;
+        const chosen = selectedItems();
         let units = 0;
-        picked.forEach(function (item) {
-            total += Number(item.subtotal) || 0;
-            units += Number(item.quantity) || 0;
-        });
-        const vip = IS_VIP ? Number((total * 0.05).toFixed(2)) : 0;
-        const pay = Math.max(total - vip, 0);
-        $('#selectedCount').text(picked.length + ' 种 · ' + units + ' 件');
-        $('#totalAmount').text(money(total));
+        chosen.forEach(function (item) { units += Number(item.quantity) || 0; });
+        const boxes = $('#cartItems .item-check');
+        $('#selectedCount').text(chosen.length + ' 种 · ' + units + ' 件');
+        $('#selectAll').prop('checked', boxes.length > 0 && boxes.length === chosen.length)
+            .prop('indeterminate', chosen.length > 0 && chosen.length < boxes.length);
+        $('#checkoutBtn').prop('disabled', chosen.length === 0)
+            .text(chosen.length ? '去结算（' + chosen.length + ' 种）' : '请先勾选商品');
+        renderQuote(chosen);
+        quoteTotals(chosen);
+    }
+
+    /**
+     * 金额区只渲染服务端回执（B01/B07/B23）：商品额、降价、会员折扣、券、包装、运费、合计全部取 summary 的字段。
+     * 回执没到或失败时只显示商品小计并把口径写清楚，绝不页面内乘 95 折或自兜 ¥0.01，
+     * 否则购物车与结算页会出现两套账
+     */
+    function renderQuote(chosen) {
+        let subtotal = 0;
+        chosen.forEach(function (item) { subtotal += Number(item.subtotal) || 0; });
+        const a = quote && quote.amounts ? quote.amounts : null;
+        $('#totalAmount').text(money(a ? Number(a.goodsAmount) : subtotal));
+
+        const drop = a ? Number(quote.priceDropAmount) : 0;
+        $('#dropRow').toggle(drop > 0);
+        $('#dropAmount').text(money(drop));
+
+        const vip = a ? Number(a.vipDiscount) : 0;
         $('#vipRow').toggle(vip > 0);
         $('#vipDiscount').text(money(vip));
-        $('#payAmount').text(money(pay));
-        $('#pointsHint').text(Math.floor(pay));
-        const boxes = $('#cartItems .item-check').not(':disabled');
-        $('#selectAll').prop('checked', boxes.length > 0 && boxes.length === picked.length)
-            .prop('indeterminate', picked.length > 0 && picked.length < boxes.length);
-        $('#checkoutBtn').prop('disabled', picked.length === 0).text(picked.length ? '去结算（' + picked.length + ' 种）' : '请先勾选商品');
+
+        const coupon = a ? Number(a.couponDiscount) : 0;
+        $('#couponRow').toggle(coupon > 0);
+        $('#couponDiscount').text(money(coupon));
+        $('#couponName').text(coupon > 0 && quote.suggestedCouponText ? ' · ' + quote.suggestedCouponText : '');
+
+        const wrap = a ? Number(a.giftWrapFee) : 0;
+        $('#wrapRow').toggle(wrap > 0);
+        $('#wrapFee').text(money(wrap));
+
+        const freight = a ? Number(a.freight) : null;
+        $('#freightText').html(freight == null
+            ? (chosen.length ? '结算页确认' : '—')
+            : (freight > 0 ? '¥' + money(freight) : '<span style="color:var(--hu-accent-deep)">免运费</span>')
+              + ' <span class="hu-muted" style="font-size:12px">' + window.huEscape(quote.deliveryMethodName || '') + '</span>');
+
+        $('#payAmount').text(money(a ? Number(a.payAmount) : subtotal));
+        $('#floorHint').toggle(!!(a && a.floored)).text(a && a.floored ? (a.payFloorText || '') : '');
+        $('#pointsHint').text(a ? Math.floor(Number(a.payAmount) || 0) : 0);
+
+        const messages = (quote && quote.messages) || null;
+        $('#policyNote').text(messages
+            ? messages.giftWrap + ' · ' + messages.points
+            : '数量按库存自动钳制 · 金额由服务端核算');
+    }
+
+    /**
+     * 试算走结算接口：与结算页同一份服务端计价，购物车承诺的合计就是下单页的合计。
+     * 积分不参与（购物车不是提交入口），传 0 让服务端跳过抵扣
+     */
+    function quoteTotals(chosen) {
+        clearTimeout(quoteTimer);
+        if (!chosen.length) {
+            quote = null;
+            renderQuote(chosen);
+            return;
+        }
+        quoteTimer = setTimeout(function () {
+            $('#quoteState').text('服务端核算中…');
+            huApi({
+                url: '/api/checkout/summary',
+                type: 'POST',
+                silent: true,
+                data: {
+                    cartItemIds: chosen.map(function (i) { return i.id; }),
+                    pointsDeduction: 0
+                },
+                ok: function (data) {
+                    quote = data || null;
+                    $('#quoteState').text('服务端实时核算');
+                    renderQuote(selectedItems());
+                },
+                fail: function () {
+                    quote = null;
+                    $('#quoteState').text('以下单页服务端核算为准');
+                    renderQuote(selectedItems());
+                }
+            });
+        }, 260);
     }
 
     function load() {
         huApi({
             url: '/api/cart',
             ok: function (data, res) {
-                items = (data && data.items) || [];
+                applyView(data);
+                if (!rowOrder.length) rowOrder = items.map(function (i) { return String(i.id); });
+                else stabilizeOrder();
                 render();
                 jQuery('.hu-cart-count').text(res.itemCount || 0).toggle(!!res.itemCount);
+            }
+        });
+    }
+
+    function stabilizeOrder() {
+        const rank = function (id) {
+            const idx = rowOrder.indexOf(String(id));
+            return idx < 0 ? rowOrder.length : idx;
+        };
+        items.sort(function (a, b) { return rank(a.id) - rank(b.id); });
+    }
+
+    /** 一次 PATCH 只带变化的字段，服务端负责钳制并回传同源文案（B01/B02/B03） */
+    function patchItem(itemId, params) {
+        const query = Object.keys(params)
+            .filter(function (k) { return params[k] !== undefined && params[k] !== null; })
+            .map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); })
+            .join('&');
+        huApi({
+            url: '/api/cart/item/' + itemId + (query ? '?' + query : ''),
+            type: 'PUT',
+            data: {},
+            silent: true,
+            ok: function (data, res) {
+                applyView(data);
+                say(res);
+            },
+            fail: function (res) {
+                window.huToast(res.msg || '更新失败', 'err');
             }
         });
     }
@@ -174,24 +387,13 @@
     function setQuantity(itemId, quantity) {
         const item = items.find(function (i) { return i.id === itemId; });
         if (!item) return;
-        const stock = item.stock == null ? 99 : item.stock;
-        let next = Math.min(Math.max(parseInt(quantity, 10) || 1, 1), Math.min(Math.max(stock, 1), 99));
+        const max = Math.min(Math.max(item.stock == null ? 0 : item.stock, 1), item.maxQuantity || 99);
+        const next = Math.min(Math.max(parseInt(quantity, 10) || 1, 1), max);
         if (next === item.quantity) {
             render();
             return;
         }
-        huApi({
-            url: '/api/cart/item/' + itemId + '?quantity=' + next,
-            type: 'PUT',
-            data: {},
-            silent: true,
-            ok: function () {
-                load();
-            },
-            fail: function (res) {
-                window.huToast(res.msg || '数量更新失败', 'err');
-            }
-        });
+        patchItem(itemId, {quantity: next});
     }
 
     function removeItems(ids, done) {
@@ -208,15 +410,48 @@
         });
     }
 
+    /** 再次购买（B24）：取最近 3 单，一键把花礼加回购物车 */
+    function loadReorder() {
+        huApi({
+            url: '/api/orders/recent',
+            silent: true,
+            ok: function (list) {
+                const orders = list || [];
+                if (!orders.length) return;
+                $('#reorderPanel').show();
+                $('#reorderList').html(orders.map(function (o) {
+                    const kinds = (o.items || []).length;
+                    const names = (o.items || []).slice(0, 2).map(function (i) { return i.productName; }).join('、');
+                    const date = String(o.createdAt || '').replace('T', ' ').slice(0, 16);
+                    return '<div class="hu-b-reorder__row">' +
+                        '<div class="hu-b-reorder__main"><b>' + window.huEscape(o.orderNo) + '</b>' +
+                        '<span>' + window.huEscape(date) + ' · 共 ' + kinds + ' 种 · 实付 ¥' + money(o.payAmount) + '</span>' +
+                        '<em>' + window.huEscape(names) + (kinds > 2 ? ' 等' + kinds + ' 种花礼' : '') + '</em></div>' +
+                        '<button type="button" class="hu-btn hu-btn--sm hu-btn--ghost" data-reorder="' + o.id + '">再次购买</button>' +
+                        '</div>';
+                }).join(''));
+            }
+        });
+    }
+
     $(function () {
         load();
+        loadReorder();
 
         $('#selectAll').on('change', function () {
-            $('#cartItems .item-check').not(':disabled').prop('checked', $(this).prop('checked'));
+            const checked = $(this).prop('checked');
+            $('#cartItems .item-check').each(function () { this.checked = checked; });
+            picked.clear();
+            if (checked) items.forEach(function (i) { picked.add(String(i.id)); });
             syncSelection();
         });
 
-        $('#cartItems').on('change', '.item-check', syncSelection)
+        $('#cartItems')
+            .on('change', '.item-check', function () {
+                const id = String($(this).closest('.hu-cart-row').data('item'));
+                if (this.checked) picked.add(id); else picked.delete(id);
+                syncSelection();
+            })
             .on('click', '.hu-qty button', function () {
                 const row = $(this).closest('.hu-cart-row');
                 const input = row.find('input[type=number]');
@@ -225,11 +460,40 @@
             .on('change', 'input[type=number]', function () {
                 setQuantity($(this).closest('.hu-cart-row').data('item'), $(this).val());
             })
-            .on('click', '.hu-cart-row__del', function () {
+            .on('change', '.wrap-check', function () {
+                const row = $(this).closest('.hu-cart-row');
+                patchItem(row.data('item'), {giftWrap: this.checked});
+            })
+            .on('blur', '.note-input', function () {
+                const row = $(this).closest('.hu-cart-row');
+                const item = items.find(function (i) { return String(i.id) === String(row.data('item')); });
+                if (!item || (item.note || '') === $(this).val()) return;
+                patchItem(row.data('item'), {note: $(this).val()});
+            })
+            .on('click', '.fav-btn', function () {
+                const id = $(this).closest('.hu-cart-row').data('item');
+                huApi({
+                    url: '/api/cart/item/' + id + '/favorite',
+                    type: 'POST',
+                    data: {},
+                    ok: function (data, res) {
+                        applyView(data);
+                        say(res);
+                    }
+                });
+            })
+            .on('click', '.del-btn', function () {
                 const row = $(this).closest('.hu-cart-row');
                 if (!confirm('确定要移出购物车吗？')) return;
                 removeItems([row.data('item')], load);
             });
+
+        $('#invalidItems').on('click', '.fav-btn', function () {
+            const id = $(this).closest('.hu-cart-row').data('item');
+            huApi({url: '/api/cart/item/' + id + '/favorite', type: 'POST', data: {}, ok: load});
+        }).on('click', '.del-btn', function () {
+            removeItems([$(this).closest('.hu-cart-row').data('item')], load);
+        });
 
         $('#removeSelected').on('click', function () {
             const ids = selectedItems().map(function (i) { return i.id; });
@@ -241,13 +505,36 @@
             removeItems(ids, load);
         });
 
+        // 清空失效商品（B06）：一次请求而不是逐行 DELETE，文案由服务端给
+        $('#clearInvalid').on('click', function () {
+            if (!confirm('将删除 ' + invalids.length + ' 件下架或缺货的花礼，确定继续？')) return;
+            huApi({url: '/api/cart/invalid', type: 'DELETE', ok: function (data, res) { load(); say(res); }});
+        });
+
+        $('#reorderList').on('click', '[data-reorder]', function () {
+            const btn = $(this);
+            btn.prop('disabled', true);
+            huApi({
+                url: '/api/cart/reorder/' + btn.data('reorder'),
+                type: 'POST',
+                data: {},
+                ok: function (data, res) {
+                    load();
+                    window.huToast(res.notice || '已加回购物车', 'ok');
+                    if (res.skipped && res.skipped.length) window.huToast(res.skipped.join('；'), 'err');
+                    btn.prop('disabled', false);
+                },
+                fail: function () { btn.prop('disabled', false); }
+            });
+        });
+
         $('#checkoutBtn').on('click', function () {
-            const picked = selectedItems();
-            if (!picked.length) {
+            const chosen = selectedItems();
+            if (!chosen.length) {
                 window.huToast('请先勾选要结算的商品', 'err');
                 return;
             }
-            sessionStorage.setItem(CHECKOUT_KEY, JSON.stringify(picked.map(function (i) { return i.id; })));
+            sessionStorage.setItem(CHECKOUT_KEY, JSON.stringify(chosen.map(function (i) { return i.id; })));
             window.location.href = '/order/confirm';
         });
     });

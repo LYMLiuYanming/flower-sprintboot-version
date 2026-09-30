@@ -6,6 +6,7 @@
     <title>商品管理 - 花语轩</title>
     <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/css/f-g.css}" rel="stylesheet">
     <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
     <style>
         * {margin: 0;padding: 0;}
@@ -22,7 +23,13 @@
         .btn-add:hover {background: #454f39 !important;}
         .product-img {width: 56px;height: 56px;object-fit: cover;border-radius: 4px;cursor: zoom-in;background: #fff;}
         .layui-table-view {border-radius: 4px;}
+        /* 库存告急阈值由服务端 lowStock 给出（≤5），页面不再自己写一个不同的数 */
         .stock-low {color: #b3897a;font-weight: 600;}
+        .stock-out {color: #9a958a;font-size: 12px;}
+        #priceBar, .disc {letter-spacing: .02em;}
+        code {background: #f1efe9;padding: 1px 5px;border-radius: 3px;font-size: 12px;color: #454f39;}
+        .filter-tip {margin: -6px 0 12px;font-size: 12px;color: #8a8578;}
+        .filter-tip b {color: #454f39;font-weight: 600;}
     </style>
 </head>
 <body>
@@ -39,6 +46,7 @@
             <div class="layui-card">
                 <div class="layui-card-header"><i class="fas fa-box"></i> 商品管理</div>
                 <div class="layui-card-body">
+                    <!-- G04：关键词 + 分类 + 上架状态 + 库存告急四个条件全部交给服务端，分页也是服务端的 -->
                     <div class="search-bar">
                         <form class="layui-form" lay-filter="searchForm">
                             <div class="layui-inline">
@@ -47,7 +55,7 @@
                                 </select>
                             </div>
                             <div class="layui-inline">
-                                <input type="text" name="keyword" placeholder="搜索名称或编码" class="layui-input" style="width: 200px;">
+                                <input type="text" name="keyword" placeholder="名称 / 编码 / 花材 / 标签" class="layui-input" style="width: 220px;">
                             </div>
                             <div class="layui-inline">
                                 <select name="isActive">
@@ -57,12 +65,19 @@
                                 </select>
                             </div>
                             <div class="layui-inline">
+                                <select name="lowStockOnly">
+                                    <option value="">库存不限</option>
+                                    <option value="true">仅看告急（≤5）</option>
+                                </select>
+                            </div>
+                            <div class="layui-inline">
                                 <button type="button" class="layui-btn" lay-submit lay-filter="search"><i class="fas fa-search"></i> 搜索</button>
                                 <button type="button" class="layui-btn layui-btn-primary" id="btnReset"><i class="fas fa-undo"></i> 重置</button>
                                 <button type="button" class="layui-btn layui-btn-normal btn-add" id="btnAdd"><i class="fas fa-plus"></i> 添加商品</button>
                             </div>
                         </form>
                     </div>
+                    <div class="filter-tip" id="filterTip"></div>
                     <table class="layui-hide" id="productTable" lay-filter="productTable"></table>
                 </div>
             </div>
@@ -73,7 +88,11 @@
         <div class="layui-btn-container">
             <button class="layui-btn layui-btn-sm" lay-event="batchOn"><i class="fas fa-check"></i> 批量上架</button>
             <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="batchOff"><i class="fas fa-times"></i> 批量下架</button>
+            <button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="batchPrice"><i class="fas fa-tag"></i> 批量改价</button>
+            <button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="batchStock"><i class="fas fa-boxes"></i> 批量调库存</button>
             <button class="layui-btn layui-btn-sm layui-btn-danger" lay-event="batchDel"><i class="fas fa-trash"></i> 批量删除</button>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="cols"><i class="fas fa-columns"></i> 列设置</button>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="export"><i class="fas fa-file-csv"></i> 导出 CSV</button>
         </div>
     </script>
 
@@ -93,10 +112,26 @@
         {{# if(d.originalPrice && Number(d.originalPrice) > Number(d.price)){ }}
         <del style="color: #999; font-size: 12px;">¥{{huAdmin.money(d.originalPrice)}}</del>
         {{# } }}
+        <!-- 折扣文案与前台同一口径：服务端算好的 discountLabel，页面不再自己除 -->
+        {{# if(d.discountLabel){ }}<span class="layui-badge layui-bg-red disc">{{d.discountLabel}}</span>{{# } }}
     </script>
 
     <script type="text/html" id="stockBar">
-        {{# if(Number(d.stock) <= 10){ }}<span class="stock-low">{{d.stock}}</span>{{# } else { }}{{d.stock}}{{# } }}
+        {{# if(Number(d.stock) <= 0){ }}
+        <span class="stock-out">缺货</span>
+        {{# } else if(d.lowStock){ }}
+        <span class="stock-low" title="库存告急阈值 5 束">{{d.stock}}</span>
+        {{# } else { }}{{d.stock}}{{# } }}
+    </script>
+
+    <script type="text/html" id="soldBar">
+        {{ Number(d.salesCount || 0) }}
+        {{# if(d.subtitle){ }}<small class="layui-hide-xs" style="color:#999" title="{{huAdmin.esc(d.subtitle)}}"> · 有副标题</small>{{# } }}
+    </script>
+
+    <script type="text/html" id="codeBar">
+        {{# if(d.code){ }}<code>{{huAdmin.esc(d.code)}}</code>{{# } else { }}
+        <span style="color:#b3897a" title="编辑保存留空即可自动编码">未编码</span>{{# } }}
     </script>
 
     <script type="text/html" id="statusBar">
@@ -110,15 +145,13 @@
 
     <script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
     <script th:src="@{/jquery-3.7.1.min.js}"></script>
+    <script th:src="@{/js/site.js}"></script>
     <script th:src="@{/js/admin-common.js}"></script>
+    <script th:src="@{/js/hu-admin-ui.js}"></script>
     <script th:inline="none">
         function showImage(src) {
             layui.layer.open({
-                type: 1,
-                title: false,
-                closeBtn: 1,
-                area: ['auto', 'auto'],
-                shadeClose: true,
+                type: 1, title: false, closeBtn: 1, area: ['auto', 'auto'], shadeClose: true,
                 content: '<img src="' + src + '" style="max-width:640px;max-height:80vh;display:block">'
             });
         }
@@ -128,74 +161,135 @@
             var form = layui.form;
             var layer = layui.layer;
             var FILTER_KEY = 'hu-admin-filter-product';
+            var COLS_KEY = 'product-list';
+            var TABLE = 'productTable';
+            var URL = '/api/admin/products';
             var state = huAdmin.listState('product');
+            var lowStockTotal = 0;
 
-            huAdmin.request({url: '/api/admin/categories', data: {page: 1, limit: 100}, silent: true, ok: function(res){
-                var html = '<option value="">全部分类</option>';
-                (res.data || []).forEach(function(cat){
-                    html += '<option value="' + cat.id + '">' + huAdmin.esc(cat.name) + '</option>';
-                });
-                $('#categorySelect').html(html);
-                restoreFilter();
-                form.render('select');
-            }});
+            /* G03：列字段名 → 后台排序键。价格/库存/销量交给服务端按方向折叠，评分只有倒序有意义 */
+            var SORT_KEYS = {name: 'name', code: 'code', price: 'price', stock: 'stock',
+                salesCount: 'salesCount', rating: 'ratingDesc'};
 
-            table.render({
-                elem: '#productTable',
-                url: '/api/admin/products',
-                page: state.pageConfig(),
-                limit: state.limit(),
-                done: state.done('/api/admin/products'),
-                toolbar: '#toolbar',
-                defaultToolbar: ['filter', 'exports'],
-                cols: [[
-                    {type: 'checkbox', fixed: 'left'},
-                    {field: 'mainImage', title: '图片', width: 100, templet: '#imageBar', align: 'center'},
-                    {field: 'name', title: '商品名称', fixed: 'left', minWidth: 190},
-                    {field: 'code', title: '编码', width: 110},
-                    {field: 'categoryName', title: '分类', width: 90, templet: function(d){ return d.categoryName || (d.category ? d.category.name : '-'); }},
-                    {field: 'price', title: '价格', width: 142, templet: '#priceBar', align: 'center'},
-                    {field: 'stock', title: '库存', width: 78, templet: '#stockBar', align: 'center'},
-                    {field: 'salesCount', title: '销量', width: 72, align: 'center'},
-                    {field: 'rating', title: '评分', width: 78, align: 'center', templet: function(d){ return d.rating == null ? '-' : Number(d.rating).toFixed(1) + ' <small style="color:#999">(' + (d.reviewCount || 0) + ')</small>'; }},
-                    {field: 'isActive', title: '状态', width: 96, templet: '#statusBar', align: 'center'},
-                    {field: 'tags', title: '标签', width: 96, templet: '#tagBar', align: 'center'},
-                    {fixed: 'right', title: '操作', toolbar: '#operateBar', width: 214}
-                ]]
-            });
+            /* G02：列定义集中声明，列设置面板与隐藏记忆都读这一份 */
+            var COLS = [
+                {type: 'checkbox', fixed: 'left'},
+                {field: 'mainImage', title: '图片', width: 100, templet: '#imageBar', align: 'center'},
+                {field: 'name', title: '商品名称', fixed: 'left', minWidth: 190, sort: true, templet: function (d) {
+                    var name = '<b>' + huAdmin.esc(d.name) + '</b>';
+                    if (d.subtitle) name += '<small style="display:block;color:#8a8578;font-size:11px">' + huAdmin.esc(d.subtitle) + '</small>';
+                    return name;
+                }},
+                {field: 'code', title: '编码', width: 128, sort: true, templet: '#codeBar'},
+                {field: 'categoryName', title: '分类', width: 90, templet: function(d){ return d.categoryName || (d.category ? d.category.name : '-'); }},
+                {field: 'price', title: '价格', width: 168, sort: true, templet: '#priceBar', align: 'center'},
+                {field: 'stock', title: '库存', width: 92, sort: true, templet: '#stockBar', align: 'center'},
+                {field: 'salesCount', title: '已售', width: 96, sort: true, align: 'center', templet: '#soldBar'},
+                {field: 'rating', title: '评分', width: 92, align: 'center', templet: function(d){ return d.rating == null ? '-' : Number(d.rating).toFixed(1) + ' <small style="color:#999">(' + (d.reviewCount || 0) + ')</small>'; }},
+                {field: 'isActive', title: '状态', width: 96, templet: '#statusBar', align: 'center'},
+                {field: 'tags', title: '标签', width: 96, templet: '#tagBar', align: 'center'},
+                {fixed: 'right', title: '操作', toolbar: '#operateBar', width: 214}
+            ];
+            huAdminUI.applyHidden(COLS, COLS_KEY);
 
-            /* 同 tab 内返回列表页时保留上次筛选条件与页码 */
-            function restoreFilter() {
-                var saved = sessionStorage.getItem(FILTER_KEY);
-                if (!saved) return;
-                try {
-                    var f = JSON.parse(saved);
-                    form.val('searchForm', f);
-                    table.reload('productTable', {where: buildWhere(f), page: {curr: state.pageConfig().curr || 1}});
-                } catch (e) { sessionStorage.removeItem(FILTER_KEY); state.reset(); }
+            function currentFilter() {
+                try { return JSON.parse(sessionStorage.getItem(FILTER_KEY) || '{}'); } catch (e) { return {}; }
             }
 
+            /** 服务端筛选条件（G04）+ 排序键（G03）合成一个 where */
             function buildWhere(f) {
                 var where = {};
                 if (f.categoryId) where.categoryId = f.categoryId;
                 if (f.keyword) where.keyword = f.keyword;
                 if (f.isActive) where.isActive = f.isActive;
+                if (f.lowStockOnly) where.lowStockOnly = f.lowStockOnly;
+                if (f.sort) { where.sort = f.sort; where.order = f.order || 'desc'; }
                 return where;
             }
 
+            function hasFilter(f) {
+                f = f || currentFilter();
+                return !!(f.categoryId || f.keyword || f.isActive || f.lowStockOnly);
+            }
+
+            function refreshTip(f) {
+                var parts = [];
+                if (f.keyword) parts.push('关键词「' + f.keyword + '」');
+                if (f.categoryId) parts.push('分类 #' + f.categoryId);
+                if (f.isActive) parts.push(f.isActive === 'true' ? '仅上架' : '仅下架');
+                if (f.lowStockOnly) parts.push('库存告急（≤5，当前 ' + lowStockTotal + ' 款）');
+                if (f.sort) parts.push('按 ' + f.sort + ' ' + (f.order === 'asc' ? '升序' : '降序'));
+                $('#filterTip').html(parts.length ? '<b>当前条件：</b>' + huAdmin.esc(parts.join(' · '))
+                    : '价格 / 库存 / 已售 / 名称 / 编码列头可排序；右上角「列设置」可隐藏不关心的列');
+            }
+
+            var hooks = huAdminUI.tableHooks(TABLE, {
+                url: URL, state: state,
+                hasFilter: function () { return hasFilter(); }
+            });
+
+            table.render({
+                elem: '#' + TABLE,
+                url: URL,
+                cols: [COLS],
+                toolbar: '#toolbar',
+                /* G02 只保留「列设置」一条路径：Layui 自带的列筛选不记忆，两套并存一定对不上 */
+                defaultToolbar: [],
+                // 排序交给服务端：前台和后台点同一个列头看到的是同一份顺序
+                autoSort: false,
+                limit: state.limit(10),
+                limits: [10, 20, 30, 50, 100],
+                page: huAdminUI.pageConfig(state, {limits: [10, 20, 30, 50, 100]}),
+                initSort: initSortOf(currentFilter()),
+                done: hooks.done,
+                error: hooks.error
+            });
+
+            function initSortOf(f) {
+                if (!f.sort) return undefined;
+                var field = Object.keys(SORT_KEYS).filter(function (k) { return SORT_KEYS[k] === f.sort; })[0];
+                if (!field) return undefined;
+                return {field: field, type: f.order === 'asc' ? 'asc' : 'desc'};
+            }
+
+            /* 同 tab 内返回列表页时保留上次筛选、页码与排序 */
+            (function restoreFilter() {
+                var saved = currentFilter();
+                if (!hasFilter(saved) && !saved.sort) return;
+                form.val('searchForm', saved);
+                refreshTip(saved);
+                table.reload(TABLE, {where: buildWhere(saved), page: {curr: state.pageConfig().curr || 1}});
+            })();
+
             form.on('submit(search)', function(data){
                 var f = data.field;
+                var keep = currentFilter();
+                if (f.sort === undefined) { f.sort = keep.sort; f.order = keep.order; }
                 sessionStorage.setItem(FILTER_KEY, JSON.stringify(f));
                 state.reset();
-                table.reload('productTable', {where: buildWhere(f), page: {curr: 1}});
+                refreshTip(f);
+                table.reload(TABLE, {where: buildWhere(f), page: {curr: 1}});
                 return false;
             });
 
             $('#btnReset').on('click', function(){
                 sessionStorage.removeItem(FILTER_KEY);
                 state.reset();
-                form.val('searchForm', {keyword: '', categoryId: '', isActive: ''});
-                table.reload('productTable', {where: {}, page: {curr: 1}});
+                form.val('searchForm', {keyword: '', categoryId: '', isActive: '', lowStockOnly: ''});
+                refreshTip({});
+                // initSort 传一个真实列名把表头箭头摘掉，字段名不存在时 Layui 只写一条 console 错误
+                table.reload(TABLE, {where: {}, page: {curr: 1}, initSort: {field: 'name', type: ''}});
+            });
+
+            /* G03：表头点击 → 写回 where → 服务端重排，页面不动本地数据 */
+            table.on('sort(' + TABLE + ')', function(obj){
+                var f = currentFilter();
+                var params = huAdminUI.sortParams(obj, SORT_KEYS);
+                f.sort = params.sort || '';
+                f.order = params.order || '';
+                sessionStorage.setItem(FILTER_KEY, JSON.stringify(f));
+                refreshTip(f);
+                table.reload(TABLE, {where: buildWhere(f), initSort: {field: obj.field, type: obj.type}});
             });
 
             form.on('switch(statusSwitch)', function(obj){
@@ -212,41 +306,263 @@
                 });
             });
 
-            function checkedIds(btn, callback) {
-                var rows = table.checkStatus('productTable').data;
-                if (!rows.length) { layer.msg('请先勾选记录', {icon: 7}); return; }
-                callback(rows.map(function(r){ return r.id; }), rows.length);
+            function checkedRows() {
+                return table.checkStatus(TABLE).data || [];
             }
 
-            table.on('toolbar(productTable)', function(obj){
-                if (obj.event === 'batchOn' || obj.event === 'batchOff') {
-                    checkedIds(obj, function(ids){
+            function needSelection(callback) {
+                var rows = checkedRows();
+                if (!rows.length) { layer.msg('请先勾选记录', {icon: 7}); return; }
+                callback(rows.map(function(r){ return r.id; }), rows);
+            }
+
+            /* G08：导出走服务端，条件与当前列表完全一致，导出来的就是屏幕上看到的这批 */
+            function exportUrl(f) {
+                var where = buildWhere(f || currentFilter());
+                var pairs = Object.keys(where).map(function (k) {
+                    return encodeURIComponent(k) + '=' + encodeURIComponent(where[k]);
+                });
+                return '/api/admin/products/export' + (pairs.length ? '?' + pairs.join('&') : '');
+            }
+
+            /* G06：先预览再落库，改前/改后由服务端算，页面不复制一套算法 */
+            function openBatchPriceDialog(ids, rows) {
+                var html = '<form class="layui-form fg-dlg" id="priceForm" lay-filter="priceForm">'
+                    + '<div class="layui-form-item"><label class="layui-form-label">方式</label>'
+                    + '<div class="layui-input-block"><select name="mode" id="priceMode">'
+                    + '<option value="percent">按百分比（-10 表示降价 10%）</option>'
+                    + '<option value="delta">按固定金额增减</option>'
+                    + '<option value="set">统一设为某个价</option></select></div></div>'
+                    + '<div class="layui-form-item"><label class="layui-form-label">幅度</label>'
+                    + '<div class="layui-input-inline"><input type="number" step="0.01" name="value" id="priceValue" class="layui-input" placeholder="如 -10"></div>'
+                    + '<div class="layui-input-inline" style="width:120px">'
+                    + '<select name="roundTo"><option value="0">取整到元</option><option value="1">到角</option><option value="2">到分</option></select></div></div>'
+                    + '<div class="layui-form-item"><label class="layui-form-label">价格下限</label>'
+                    + '<div class="layui-input-inline"><input type="number" step="0.01" min="0.01" name="minPrice" id="priceFloor" class="layui-input" placeholder="默认 0.01"></div>'
+                    + '<div class="layui-form-mid layui-word-aux">低于下限会被抬到下限</div></div>'
+                    + '<div class="fg-dlg__preview" id="pricePreview"></div></form>';
+                layer.open({
+                    type: 1, title: '批量改价 · 已选 ' + rows.length + ' 款', area: ['560px', 'auto'],
+                    content: html, btn: ['预览改动', '取消'],
+                    success: function () {
+                        form.render('select');
+                        huAdminUI.clearFields('#priceForm');
+                    },
+                    yes: function (index, layero) {
+                        var f = form.val('priceForm');
+                        var payload = {ids: ids, mode: f.mode, value: parseFloat(f.value),
+                            roundTo: parseInt(f.roundTo, 10),
+                            minPrice: f.minPrice === '' ? null : parseFloat(f.minPrice), preview: true};
+                        if (!f.value) {
+                            huAdminUI.markField(layero, 'value', '请填写调整幅度');
+                            return;
+                        }
+                        huAdminUI.clearFields(layero);
                         huAdmin.request({
-                            url: '/api/admin/products/batch-status', type: 'POST',
-                            data: {ids: ids, isActive: obj.event === 'batchOn'},
-                            ok: function(){ table.reload('productTable'); }
+                            url: '/api/admin/products/batch-price-preview', type: 'POST', data: payload, silent: true,
+                            ok: function (res) {
+                                renderPricePreview(layero, res.data);
+                                // 预览之后这一步才是真正确认：把范围与不可逆性点名
+                                huAdminUI.confirmDanger({
+                                    title: '确认批量改价',
+                                    subject: '将把 ' + rows.length + ' 款商品的售价按「' + modeText(f) + '」改写，共 '
+                                        + ((res.data && res.data.succeeded) || 0) + ' 款价格会变化。',
+                                    consequences: [
+                                        '改价立即生效，前台展示价与购物车里的价格同步变化。',
+                                        '已经下单的订单金额不会回溯修改，只影响之后的下单。',
+                                        '本次操作会写入操作审计，逐条记录改前改后价格。'
+                                    ],
+                                    note: '可先在预览表里核对，取消不会改动任何数据。',
+                                    confirmText: '确认改价',
+                                    onOk: function () {
+                                        payload.preview = false;
+                                        huAdmin.request({
+                                            url: '/api/admin/products/batch-price', type: 'POST', data: payload,
+                                            ok: function (r) { huAdminUI.batchReceipt(r); layer.close(index); table.reload(TABLE); }
+                                        });
+                                    }
+                                });
+                            },
+                            fail: function (res) { huAdminUI.applyServerErrors(layero, res, PRICE_RULES); }
+                        });
+                    }
+                });
+            }
+
+            var PRICE_RULES = [
+                {field: 'value', test: /幅度|调整数量|数值/},
+                {field: 'mode', test: /改价方式|方式/},
+                {field: 'minPrice', test: /下限|最低/}
+            ];
+
+            function modeText(f) {
+                var v = f.value;
+                if (f.mode === 'percent') return v + '%';
+                if (f.mode === 'delta') return (v > 0 ? '+' : '') + '¥' + v;
+                return '统一 ¥' + v;
+            }
+
+            function renderPricePreview(host, data) {
+                var items = (data && data.items) || [];
+                var rows = items.map(function (item) {
+                    var changed = item.before != null && item.after != null;
+                    return '<tr><td>' + huAdmin.esc(item.name) + '</td><td>'
+                        + (changed ? '¥' + huAdmin.money(item.before) : '-') + '</td><td>'
+                        + (changed ? '<b>¥' + huAdmin.money(item.after) + '</b>' : '-') + '</td><td>'
+                        + (item.ok ? huAdmin.esc(item.reason || '将调整') : '<span class="fg-bad">' + huAdmin.esc(item.reason) + '</span>')
+                        + '</td></tr>';
+                }).join('');
+                jQuery(host).find('#pricePreview').html(
+                    '<div class="fg-dlg__title">预览（服务端口径，未落库）：共 ' + items.length + ' 条</div>'
+                    + '<table class="layui-table" lay-size="sm"><thead><tr><th>商品</th><th>改前</th><th>改后</th><th>说明</th></tr></thead>'
+                    + '<tbody>' + rows + '</tbody></table>');
+            }
+
+            /* G07：批量调库存同样是条件 UPDATE，不足的那条单独失败 */
+            function openBatchStockDialog(ids, rows) {
+                var html = '<form class="layui-form fg-dlg" id="batchStockForm" lay-filter="batchStockForm">'
+                    + '<div class="layui-form-item"><label class="layui-form-label">方式</label>'
+                    + '<div class="layui-input-block"><select name="mode">'
+                    + '<option value="increase">在当前库存上增加</option>'
+                    + '<option value="reduce">在当前库存上减少</option>'
+                    + '<option value="set">统一设为该数量</option></select></div></div>'
+                    + '<div class="layui-form-item"><label class="layui-form-label">数量</label>'
+                    + '<div class="layui-input-inline"><input type="number" min="0" step="1" name="quantity" class="layui-input" placeholder="请输入数量"></div>'
+                    + '<div class="layui-form-mid layui-word-aux">减少时库存不足的商品会单独失败，不会被压成负数</div></div></form>';
+                layer.open({
+                    type: 1, title: '批量调库存 · 已选 ' + rows.length + ' 款', area: ['480px', 'auto'],
+                    content: html, btn: ['确认调整', '取消'],
+                    success: function () { form.render('select'); },
+                    yes: function (index, layero) {
+                        var f = form.val('batchStockForm');
+                        if (f.quantity === '' || Number(f.quantity) < 0) {
+                            huAdminUI.markField(layero, 'quantity', '请输入不小于 0 的数量');
+                            return;
+                        }
+                        huAdminUI.confirmDanger({
+                            title: '确认批量调库存',
+                            subject: '将把 ' + rows.length + ' 款商品的库存' + stockModeText(f) + '。',
+                            consequences: [
+                                '库存直接决定前台「有货 / 缺货」，调低后可能立刻挡单。',
+                                '已被订单占用的库存不会回溯，只影响之后的下单。',
+                                '逐条执行，失败的商品会单独列出原因。'
+                            ],
+                            requireAck: f.mode !== 'increase',
+                            confirmText: '确认调整',
+                            onOk: function () {
+                                huAdmin.request({
+                                    url: '/api/admin/products/batch-stock', type: 'POST',
+                                    data: {ids: ids, mode: f.mode, quantity: Number(f.quantity)},
+                                    ok: function (res) { huAdminUI.batchReceipt(res); layer.close(index); table.reload(TABLE); }
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+
+            function stockModeText(f) {
+                if (f.mode === 'increase') return '增加 ' + f.quantity;
+                if (f.mode === 'reduce') return '减少 ' + f.quantity;
+                return '统一设为 ' + f.quantity;
+            }
+
+            /* G12/G32：删除前先要影响面，把「会被归档」讲在点确定之前 */
+            function guardDelete(row) {
+                huAdmin.request({
+                    url: '/api/admin/products/' + row.id + '/impact', silent: true,
+                    ok: function (res) { askDelete(row, res.data); },
+                    fail: function () {
+                        huAdminUI.confirmDanger({
+                            title: '确认删除商品', subject: '删除「' + row.name + '」',
+                            consequences: ['影响面没能取回来，服务端仍会守卫：有订单或评价引用的商品只下架归档。'],
+                            onOk: function () { doDelete(row); }
+                        });
+                    }
+                });
+            }
+
+            function askDelete(row, d) {
+                d = d || {};
+                var archived = !d.deletable;
+                huAdminUI.confirmDanger({
+                    title: archived ? '该商品会被下架归档' : '确认删除商品',
+                    subject: '「' + (d.name || row.name) + '」' + (d.hint || (archived
+                        ? '已有订单或评价引用，删除会改为下架归档。' : '还没有任何引用，可以直接删除。')),
+                    consequences: [
+                        archived ? '归档后：从前台与列表检索消失，历史订单仍可点开看当时买了什么。'
+                            : '删除后：该商品记录不可恢复，收藏会被一并清除。',
+                        '操作写入审计日志，可在「操作日志」页按商品名回查。'
+                    ],
+                    note: (d.actions || []).join(' ／ ') || '',
+                    confirmText: archived ? '确认下架归档' : '确认删除',
+                    onOk: function () { doDelete(row); }
+                });
+            }
+
+            function doDelete(row) {
+                huAdmin.request({
+                    url: '/api/admin/products/' + row.id, type: 'DELETE',
+                    ok: function (res) { layer.msg(res.msg || '已处理', {icon: 1}); table.reload(TABLE); }
+                });
+            }
+
+            table.on('toolbar(' + TABLE + ')', function(obj){
+                if (obj.event === 'cols') {
+                    huAdminUI.openColumnPicker(TABLE, COLS, COLS_KEY);
+                } else if (obj.event === 'export') {
+                    window.location.href = exportUrl();
+                } else if (obj.event === 'batchOn' || obj.event === 'batchOff') {
+                    needSelection(function (ids, rows) {
+                        var on = obj.event === 'batchOn';
+                        huAdminUI.confirmDanger({
+                            title: on ? '确认批量上架' : '确认批量下架',
+                            subject: '将把选中的 ' + rows.length + ' 款商品' + (on ? '上架' : '下架') + '。',
+                            consequences: [on ? ['上架后立即对顾客可见，库存为 0 的会显示缺货。']
+                                          : ['下架后前台与搜索立刻不可见，已在购物车里的会被挡单。'],
+                                '已经是目标状态的商品计入「无需处理」，不会被重复写入。'],
+                            requireAck: !on,
+                            confirmText: on ? '确认上架' : '确认下架',
+                            onOk: function () {
+                                huAdmin.request({
+                                    url: '/api/admin/products/batch-status', type: 'POST',
+                                    data: {ids: ids, isActive: on},
+                                    ok: function (res) { huAdminUI.batchReceipt(res); table.reload(TABLE); }
+                                });
+                            }
                         });
                     });
+                } else if (obj.event === 'batchPrice') {
+                    needSelection(function (ids, rows) { openBatchPriceDialog(ids, rows); });
+                } else if (obj.event === 'batchStock') {
+                    needSelection(function (ids, rows) { openBatchStockDialog(ids, rows); });
                 } else if (obj.event === 'batchDel') {
-                    checkedIds(obj, function(ids, n){
-                        layer.confirm('确定删除选中的 ' + n + ' 个商品？已产生订单的商品会自动下架归档。', {icon: 3}, function(index){
-                            layer.close(index);
-                            huAdmin.request({
-                                url: '/api/admin/products/batch-delete', type: 'POST',
-                                data: {ids: ids},
-                                ok: function(res){ layer.msg(res.msg || '已处理', {icon: 1}); table.reload('productTable'); }
-                            });
+                    needSelection(function (ids, rows) {
+                        var names = rows.slice(0, 5).map(function (r) { return r.name; }).join('、');
+                        huAdminUI.confirmDanger({
+                            title: '确认批量删除 ' + rows.length + ' 款商品',
+                            subject: '删除「' + names + (rows.length > 5 ? ' 等 ' + rows.length + ' 款' : '') + '」',
+                            consequences: [
+                                '有订单或评价引用的商品不会被物理删除，而是下架归档（前台消失、历史可查）。',
+                                '没有引用的商品将从库中移除，收藏一并清除，不可恢复。',
+                                '逐条处置结果会在完成后列出，失败的商品保持原样。'
+                            ],
+                            confirmText: '确认删除',
+                            onOk: function () {
+                                huAdmin.request({
+                                    url: '/api/admin/products/batch-delete', type: 'POST', data: {ids: ids},
+                                    ok: function (res) { huAdminUI.batchReceipt(res); table.reload(TABLE); }
+                                });
+                            }
                         });
                     });
                 }
             });
 
-            table.on('tool(productTable)', function(obj){
+            table.on('tool(' + TABLE + ')', function(obj){
                 var data = obj.data;
                 if (obj.event === 'del'){
-                    huAdmin.confirmDelete('确定删除「' + data.name + '」？', '/api/admin/products/' + data.id, function(){
-                        obj.del();
-                    });
+                    guardDelete(data);
                 } else if (obj.event === 'edit'){
                     layer.open({
                         type: 2, title: '编辑商品', area: ['92%', '92%'],
@@ -261,23 +577,35 @@
                 layer.open({
                     type: 1,
                     title: '调整库存 · ' + huAdmin.esc(data.name),
-                    area: ['420px', '260px'],
-                    content: '<div style="padding:20px 24px">' +
-                        '<div class="layui-form"><div class="layui-form-item">' +
-                        '<label class="layui-form-label">当前库存</label><div class="layui-input-block"><input class="layui-input" value="' + (data.stock == null ? 0 : data.stock) + '" readonly style="background:#f6f5f1"></div></div>' +
-                        '<div class="layui-form-item"><label class="layui-form-label">方式</label><div class="layui-input-block">' +
-                        '<select id="stockType"><option value="increase">增加</option><option value="reduce">减少</option></select></div></div>' +
-                        '<div class="layui-form-item"><label class="layui-form-label">数量</label><div class="layui-input-block"><input type="number" id="stockQty" min="1" class="layui-input" placeholder="请输入调整数量"></div></div>' +
-                        '</div></div>',
-                    success: function(){ form.render('select'); },
+                    area: ['440px', '300px'],
+                    content: '<form class="layui-form" id="stockForm" lay-filter="stockForm">'
+                        + '<div class="layui-form-item"><label class="layui-form-label">当前库存</label>'
+                        + '<div class="layui-input-block"><input class="layui-input" value="'
+                        + (data.stock == null ? 0 : data.stock) + '" readonly style="background:#f6f5f1"></div></div>'
+                        + '<div class="layui-form-item"><label class="layui-form-label">方式</label><div class="layui-input-block">'
+                        + '<select name="type"><option value="increase">增加</option><option value="reduce">减少</option></select></div></div>'
+                        + '<div class="layui-form-item"><label class="layui-form-label">数量</label><div class="layui-input-block">'
+                        + '<input type="number" name="quantity" min="1" class="layui-input" placeholder="请输入调整数量"></div></div>'
+                        + '</form>',
+                    success: function () { form.render('select'); huAdminUI.clearFields('#stockForm'); },
                     btn: ['确定', '取消'],
-                    yes: function(index){
-                        var qty = parseInt($('#stockQty').val(), 10);
-                        if (!qty || qty < 1) { layer.msg('请输入正确的调整数量', {icon: 2}); return; }
+                    yes: function(index, layero){
+                        var f = form.val('stockForm');
+                        var qty = parseInt(f.quantity, 10);
+                        if (!qty || qty < 1) {
+                            huAdminUI.markField(layero, 'quantity', '请输入至少为 1 的整数');
+                            return;
+                        }
+                        huAdminUI.clearFields(layero);
+                        if (f.type === 'reduce' && qty > Number(data.stock || 0)) {
+                            huAdminUI.markField(layero, 'quantity', '最多只能减少 ' + Number(data.stock || 0) + '，库存不会被压成负数');
+                            return;
+                        }
                         huAdmin.request({
                             url: '/api/admin/products/' + data.id + '/stock', type: 'POST',
-                            data: {quantity: qty, type: $('#stockType').val(), remark: '后台手工调整'},
-                            ok: function(){ layer.close(index); table.reload('productTable'); }
+                            data: {quantity: qty, type: f.type, remark: '后台手工调整'}, silent: true,
+                            ok: function(){ layer.close(index); table.reload(TABLE); layer.msg('库存已调整', {icon: 1}); },
+                            fail: function(res){ huAdminUI.applyServerErrors(layero, res, [{field: 'quantity', test: /数量|库存/}]); }
                         });
                     }
                 });
@@ -286,6 +614,27 @@
             $('#btnAdd').click(function(){
                 layer.open({type: 2, title: '添加商品', area: ['92%', '92%'], content: '/admin/product-edit'});
             });
+
+            huAdmin.request({url: '/api/admin/categories', data: {page: 1, limit: 100}, silent: true, ok: function(res){
+                var html = '<option value="">全部分类</option>';
+                (res.data || []).forEach(function(cat){
+                    html += '<option value="' + cat.id + '">' + huAdmin.esc(cat.name) + '</option>';
+                });
+                $('#categorySelect').html(html);
+                var saved = currentFilter();
+                if (hasFilter(saved) || saved.sort) {
+                    form.val('searchForm', saved);
+                    refreshTip(saved);
+                    table.reload(TABLE, {where: buildWhere(saved), page: {curr: state.pageConfig().curr || 1}});
+                }
+                form.render('select');
+            }});
+
+            /* 库存告急计数跟着筛选条走，运营点之前就知道能筛出多少 */
+            huAdmin.request({url: URL, data: {page: 1, limit: 1, lowStockOnly: 'true'}, silent: true, ok: function(res){
+                lowStockTotal = Number(res.count || 0);
+                refreshTip(currentFilter());
+            }});
         });
     </script>
 </body>

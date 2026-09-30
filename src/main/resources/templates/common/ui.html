@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head><title>UI</title></head>
+<body>
+
+<!--
+  K 组共享 UI 片段：空态 / 错误态 / 分页 / 面包屑 / 返回 / 复制 / 骨架屏。
+  这里的结构与 site.js 里 data-hu-* 生成的结构完全一致，
+  服务端渲染与前端渲染两套路径长得一样，样式只维护 theme.css + f-k.css。
+-->
+
+<!-- K04 空态：th:replace="~{common/ui :: empty('search')}" -->
+<div th:fragment="empty(state)" class="hu-empty" th:attr="data-hu-empty=${state}">
+    <th:block th:switch="${state}">
+        <i th:case="'search'" class="fa fa-search hu-empty__icon" aria-hidden="true"></i>
+        <i th:case="'filter'" class="fa fa-filter hu-empty__icon" aria-hidden="true"></i>
+        <i th:case="'cart'" class="fa fa-shopping-bag hu-empty__icon" aria-hidden="true"></i>
+        <i th:case="'order'" class="fa fa-file-text-o hu-empty__icon" aria-hidden="true"></i>
+        <i th:case="'favorite'" class="fa fa-heart-o hu-empty__icon" aria-hidden="true"></i>
+        <i th:case="'coupon'" class="fa fa-ticket hu-empty__icon" aria-hidden="true"></i>
+        <i th:case="'address'" class="fa fa-map-marker hu-empty__icon" aria-hidden="true"></i>
+        <i th:case="'review'" class="fa fa-comment-o hu-empty__icon" aria-hidden="true"></i>
+        <i th:case="'notice'" class="fa fa-bullhorn hu-empty__icon" aria-hidden="true"></i>
+        <i th:case="'garden'" class="fa fa-leaf hu-empty__icon" aria-hidden="true"></i>
+        <i th:case="'point'" class="fa fa-diamond hu-empty__icon" aria-hidden="true"></i>
+        <i th:case="'trace'" class="fa fa-truck hu-empty__icon" aria-hidden="true"></i>
+        <i th:case="'msg'" class="fa fa-envelope-o hu-empty__icon" aria-hidden="true"></i>
+        <i th:case="*" class="fa fa-inbox hu-empty__icon" aria-hidden="true"></i>
+    </th:block>
+    <th:block th:switch="${state}">
+        <th:block th:case="'search'"><strong class="hu-empty__title">没有找到匹配的花礼</strong>
+            <span class="hu-empty__desc">换个关键词，或清空筛选条件再看看</span></th:block>
+        <th:block th:case="'filter'"><strong class="hu-empty__title">当前筛选没有结果</strong>
+            <span class="hu-empty__desc">放宽一两个条件，选择会多起来</span></th:block>
+        <th:block th:case="'cart'"><strong class="hu-empty__title">购物车还空着</strong>
+            <span class="hu-empty__desc">挑一束喜欢的花，让它去见想见的人</span></th:block>
+        <th:block th:case="'order'"><strong class="hu-empty__title">暂无相关订单</strong>
+            <span class="hu-empty__desc">挑一束合心意的花，让今天有点不一样</span></th:block>
+        <th:block th:case="'favorite'"><strong class="hu-empty__title">还没有收藏</strong>
+            <span class="hu-empty__desc">看到心动的花礼，点一下卡片右上角的心形</span></th:block>
+        <th:block th:case="'coupon'"><strong class="hu-empty__title">券包空空的</strong>
+            <span class="hu-empty__desc">去领券中心看看今天有什么心意</span></th:block>
+        <th:block th:case="'address'"><strong class="hu-empty__title">还没有收货地址</strong>
+            <span class="hu-empty__desc">添加一个地址，结算时会自动带出</span></th:block>
+        <th:block th:case="'review'"><strong class="hu-empty__title">还没有评价</strong>
+            <span class="hu-empty__desc">收到花之后，来写下第一手感受</span></th:block>
+        <th:block th:case="'notice'"><strong class="hu-empty__title">暂无公告</strong>
+            <span class="hu-empty__desc">新的活动与配送说明会出现在这里</span></th:block>
+        <th:block th:case="'garden'"><strong class="hu-empty__title">花田还没开垦</strong>
+            <span class="hu-empty__desc">种下第一颗种子，每天浇水等它开花</span></th:block>
+        <th:block th:case="'point'"><strong class="hu-empty__title">还没有积分记录</strong>
+            <span class="hu-empty__desc">下单、评价都会慢慢攒下阳光与雨露</span></th:block>
+        <th:block th:case="'trace'"><strong class="hu-empty__title">暂无物流信息</strong>
+            <span class="hu-empty__desc">花束出库后会第一时间更新轨迹</span></th:block>
+        <th:block th:case="'msg'"><strong class="hu-empty__title">暂无消息</strong>
+            <span class="hu-empty__desc">订单与配送提醒会出现在这里</span></th:block>
+        <th:block th:case="*"><strong class="hu-empty__title">这里还是空的</strong>
+            <span class="hu-empty__desc">稍后再回来看看</span></th:block>
+    </th:block>
+</div>
+
+<!-- K05 错误态：data-hu-retry 的值可以是全局函数名，也可以是页面监听的 hu:retry 动作名 -->
+<div th:fragment="errorState(action, message, hint)" class="hu-errorstate" role="alert">
+    <span class="hu-errorstate__icon"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i></span>
+    <strong class="hu-errorstate__title" th:text="${message} ?: '这一屏没能加载出来'">这一屏没能加载出来</strong>
+    <span class="hu-errorstate__desc" th:text="${hint} ?: '网络稍不稳定，点下面重试一次就好'">网络稍不稳定，点下面重试一次就好</span>
+    <button type="button" class="hu-btn hu-btn--ghost hu-btn--sm hu-errorstate__btn" th:attr="data-hu-retry=${action}">
+        <i class="fa fa-refresh" aria-hidden="true"></i>重试
+    </button>
+</div>
+
+<!--
+  K13 分页（服务端链接版）：
+  th:replace="~{common/ui :: pager(${page}, ${totalPages}, '/products', 'sort=sales')}"
+  第四个参数是回显到每个链接上的附加查询串，没有就传 null。
+-->
+<th:block th:fragment="pager(page, pages, baseUrl, query)">
+    <nav th:if="${pages != null and pages > 1}" class="hu-pager" aria-label="分页导航">
+        <div class="hu-pager__nav">
+            <th:block th:with="prev=${(page == null ? 1 : page) - 1}">
+                <a th:href="@{${baseUrl}(page=${prev > 0 ? prev : 1})}" class="hu-pager__edge"
+                   th:attrappend="href=${query != null ? '&amp;' + query : ''}"
+                   th:attr="aria-disabled=${(page != null and page &lt;= 1) ? 'true' : null}"
+                   aria-label="上一页"><i class="fa fa-chevron-left" aria-hidden="true"></i></a>
+            </th:block>
+            <th:block th:each="i : ${#numbers.sequence(1, pages)}">
+                <a th:href="@{${baseUrl}(page=${i})}" th:attrappend="href=${query != null ? '&amp;' + query : ''}"
+                   th:classappend="${i == page} ? ' is-active'"
+                   th:attr="aria-current=${i == page ? 'page' : null}"
+                   th:text="${i}" th:aria-label="'第 ' + ${i} + ' 页'">1</a>
+            </th:block>
+            <th:block th:with="next=${(page == null ? 1 : page) + 1}">
+                <a th:href="@{${baseUrl}(page=${next > pages ? pages : next})}" class="hu-pager__edge"
+                   th:attrappend="href=${query != null ? '&amp;' + query : ''}"
+                   th:attr="aria-disabled=${(page != null and page >= pages) ? 'true' : null}"
+                   aria-label="下一页"><i class="fa fa-chevron-right" aria-hidden="true"></i></a>
+            </th:block>
+        </div>
+    </nav>
+</th:block>
+
+<!-- K17 面包屑：crumbs 用有序 map 字面量，最后一个 value 传 null 表示当前页 -->
+<nav th:fragment="breadcrumb(crumbs)" class="hu-crumb" aria-label="面包屑导航">
+    <ol>
+        <li th:each="entry : ${crumbs}">
+            <a th:if="${entry.value != null}" th:href="${entry.value}" th:text="${entry.key}">上级</a>
+            <span th:unless="${entry.value != null}" th:text="${entry.key}" aria-current="page">当前</span>
+        </li>
+    </ol>
+</nav>
+
+<!-- K17 返回上级：能回退走历史，不能回退时落到 href -->
+<a th:fragment="backLink(href, text)" class="hu-back" th:href="${href}" th:attr="data-hu-back=${href}"
+   data-hu-back-history="true">
+    <i class="fa fa-angle-left" aria-hidden="true"></i><span th:text="${text} ?: '返回上一级'">返回上一级</span>
+</a>
+
+<!-- K16 复制按钮：target 是被复制内容的选择器，label 用于播报与 toast -->
+<button th:fragment="copyBtn(target, label, extraClass)" type="button"
+        class="hu-copy" th:classappend="${extraClass}"
+        th:attr="data-hu-copy-target=${target},data-hu-copy-label=${label}" aria-hidden="false">
+    <i class="fa fa-clipboard hu-copy__todo" aria-hidden="true"></i>
+    <i class="fa fa-check hu-copy__done" aria-hidden="true"></i>
+    <span class="hu-copy__todo" th:text="${label} ?: '复制'">复制</span>
+    <span class="hu-copy__done">已复制</span>
+    <span class="hu-sr-only" th:text="'复制' + (${label} ?: '')">复制内容</span>
+</button>
+
+<!-- K03 骨架屏：kind = product|card|rows|order|lines|coupon，count 为张数 -->
+<th:block th:fragment="skeleton(kind, count)">
+    <th:block th:each="i : ${#numbers.sequence(1, count)}">
+        <div th:if="${kind == 'product'}" class="hu-product hu-product--ghost">
+            <div class="hu-skeleton hu-skeleton--media"></div>
+            <div style="padding:18px 18px 22px">
+                <div class="hu-skeleton hu-skeleton--line w40"></div>
+                <div class="hu-skeleton hu-skeleton--line w60"></div>
+                <div class="hu-skeleton hu-skeleton--line" style="width:80%"></div>
+            </div>
+        </div>
+        <div th:if="${kind == 'card'}" class="hu-panel hu-skeleton-card">
+            <div class="hu-skeleton hu-skeleton--line" style="width:35%;margin:0"></div>
+            <div class="hu-skeleton hu-skeleton--line w60"></div>
+            <div class="hu-skeleton hu-skeleton--line w40"></div>
+        </div>
+        <div th:if="${kind == 'rows'}" class="hu-skeleton-row">
+            <div class="hu-skeleton" style="width:56px;height:56px;border-radius:12px;flex:0 0 auto"></div>
+            <div style="flex:1 1 auto;min-width:0">
+                <div class="hu-skeleton hu-skeleton--line" style="width:45%;margin:0 0 10px"></div>
+                <div class="hu-skeleton hu-skeleton--line w60" style="margin:0"></div>
+            </div>
+        </div>
+        <div th:if="${kind == 'order'}" class="hu-ordercard">
+            <div class="hu-ordercard__head">
+                <div class="hu-skeleton hu-skeleton--line" style="width:220px;margin:0"></div>
+            </div>
+            <div class="hu-ordercard__body">
+                <div class="hu-skeleton hu-skeleton--line" style="width:60%"></div>
+                <div class="hu-skeleton hu-skeleton--line" style="width:40%;margin-top:14px"></div>
+            </div>
+        </div>
+        <div th:if="${kind == 'lines'}" class="hu-skeleton hu-skeleton--line" style="margin:0 0 12px"></div>
+    </th:block>
+</th:block>
+
+</body>
+</html>

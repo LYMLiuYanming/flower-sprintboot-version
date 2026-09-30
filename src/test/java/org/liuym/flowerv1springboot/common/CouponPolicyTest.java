@@ -41,20 +41,20 @@ class CouponPolicyTest {
     @Test
     void allScopeBasesOnWholeOrder() {
         UserCoupon u = coupon("cash", "200", "30", null, null, Coupon.SCOPE_ALL);
-        assertEquals(new BigDecimal("240.00"), CouponPolicy.baseAmount(u, cart()));
+        assertEquals(new BigDecimal("240.00"), CouponPolicy.baseAmount(u, List.of(), cart()));
         assertEquals(new BigDecimal("30.00"), CouponPolicy.discountOf(u, new BigDecimal("240.00")));
     }
 
     @Test
     void categoryScopeOnlyCountsItsOwnLines() {
         UserCoupon u = coupon("cash", "200", "30", null, null, Coupon.SCOPE_CATEGORY);
-        assertEquals(new BigDecimal("210.00"), CouponPolicy.baseAmount(u, cart()));
+        assertEquals(new BigDecimal("210.00"), CouponPolicy.baseAmount(u, List.of(), cart()));
     }
 
     @Test
     void thresholdIsInclusiveAndBasedOnScope() {
         UserCoupon u = coupon("cash", "200", "30", null, null, Coupon.SCOPE_CATEGORY);
-        BigDecimal base = CouponPolicy.baseAmount(u, cart());
+        BigDecimal base = CouponPolicy.baseAmount(u, List.of(), cart());
         assertTrue(CouponPolicy.meetsThreshold(u, new BigDecimal("200.00")));
         assertNull(CouponPolicy.discountOf(u, new BigDecimal("199.99")));
         assertNotNull(CouponPolicy.discountOf(u, base));
@@ -63,7 +63,7 @@ class CouponPolicyTest {
     @Test
     void cashCouponCannotExceedItsOwnBase() {
         UserCoupon u = coupon("cash", "0", "500", null, null, Coupon.SCOPE_CATEGORY);
-        assertEquals(new BigDecimal("210.00"), CouponPolicy.discountOf(u, CouponPolicy.baseAmount(u, cart())));
+        assertEquals(new BigDecimal("210.00"), CouponPolicy.discountOf(u, CouponPolicy.baseAmount(u, List.of(), cart())));
     }
 
     @Test
@@ -89,10 +89,24 @@ class CouponPolicyTest {
 
     @Test
     void nullSafeBase() {
-        assertEquals(BigDecimal.ZERO, CouponPolicy.baseAmount(null, cart()));
+        assertEquals(BigDecimal.ZERO, CouponPolicy.baseAmount(null, List.of(), cart()));
         assertEquals(new BigDecimal("180.00"),
                 CouponPolicy.baseAmount(coupon("cash", "0", "10", null, null, Coupon.SCOPE_CATEGORY),
+                        List.of(),
                         List.of(new CouponPolicy.Line(FLOWERS, new BigDecimal("180.00")),
                                 new CouponPolicy.Line(null, new BigDecimal("99.00")))));
+    }
+
+    /** 分类券按「本分类 + 直接子分类」取数：绑在「玫瑰系列」的券要能覆盖「玫瑰花」下的商品 */
+    @Test
+    void categoryScopeCoversChildCategory() {
+        UserCoupon u = coupon("cash", "200", "30", null, null, Coupon.SCOPE_CATEGORY);
+        List<CouponPolicy.Line> lines = List.of(
+                new CouponPolicy.Line(FLOWERS, new BigDecimal("150.00")),
+                new CouponPolicy.Line(CARDS, new BigDecimal("99.00")));
+        assertEquals(new BigDecimal("249.00"), CouponPolicy.baseAmount(u, List.of(FLOWERS, CARDS), lines));
+        assertEquals(new BigDecimal("150.00"), CouponPolicy.baseAmount(u, List.of(FLOWERS), lines));
+        // 空 scope 集合退回券自身绑定的分类
+        assertEquals(new BigDecimal("150.00"), CouponPolicy.baseAmount(u, List.of(), lines));
     }
 }

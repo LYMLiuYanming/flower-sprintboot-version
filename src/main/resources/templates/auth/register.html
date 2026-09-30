@@ -34,33 +34,46 @@
                 <div class="hu-form-grid">
                     <div class="hu-field" data-name="username">
                         <label for="username">用户名 *</label>
-                        <input id="username" type="text" name="username" class="hu-input" placeholder="3-20 个字符" autocomplete="username">
-                        <div class="hu-field__err">用户名长度需为 3-20 个字符</div>
+                        <input id="username" type="text" name="username" class="hu-input" placeholder="3-20 个字符" autocomplete="username" maxlength="20">
+                        <div class="hu-field__err">用户名为 3-20 位中英文、数字或下划线（首尾不含下划线）</div>
                     </div>
                     <div class="hu-field" data-name="fullName">
                         <label for="fullName">真实姓名 *</label>
-                        <input id="fullName" type="text" name="fullName" class="hu-input" placeholder="请输入真实姓名" autocomplete="name">
+                        <input id="fullName" type="text" name="fullName" class="hu-input" placeholder="请输入真实姓名" autocomplete="name" maxlength="100">
                         <div class="hu-field__err">请填写真实姓名</div>
                     </div>
                     <div class="hu-field" data-name="phone">
                         <label for="phone">手机号 *</label>
-                        <input id="phone" type="text" name="phone" class="hu-input" placeholder="11 位手机号" autocomplete="tel">
+                        <input id="phone" type="text" name="phone" class="hu-input" placeholder="11 位手机号" autocomplete="tel" maxlength="11" inputmode="numeric">
                         <div class="hu-field__err">请输入正确的手机号</div>
                     </div>
                     <div class="hu-field" data-name="email">
                         <label for="email">邮箱（选填）</label>
-                        <input id="email" type="text" name="email" class="hu-input" placeholder="name@example.com" autocomplete="email">
+                        <input id="email" type="text" name="email" class="hu-input" placeholder="name@example.com" autocomplete="email" maxlength="100">
                         <div class="hu-field__err">邮箱格式不正确</div>
                     </div>
                     <div class="hu-field" data-name="password">
                         <label for="password">密码 *</label>
-                        <input id="password" type="password" name="password" class="hu-input" placeholder="6-32 个字符" autocomplete="new-password">
-                        <div class="hu-field__err">密码长度需为 6-32 个字符</div>
+                        <input id="password" type="password" name="password" class="hu-input" placeholder="8-32 位，含字母与数字" autocomplete="new-password" maxlength="32">
+                        <div class="hu-strength" aria-hidden="true">
+                            <div class="hu-strength__bars"><i></i><i></i><i></i><i></i></div>
+                            <span class="hu-strength__label" id="pwdStrengthText">强度：—</span>
+                        </div>
+                        <div class="hu-field__err">密码需 8-32 位且至少包含字母与数字两类</div>
                     </div>
                     <div class="hu-field" data-name="confirmPassword">
                         <label for="confirmPassword">确认密码 *</label>
-                        <input id="confirmPassword" type="password" name="confirmPassword" class="hu-input" placeholder="再次输入密码" autocomplete="new-password">
+                        <input id="confirmPassword" type="password" name="confirmPassword" class="hu-input" placeholder="再次输入密码" autocomplete="new-password" maxlength="32">
                         <div class="hu-field__err">两次输入的密码不一致</div>
+                    </div>
+                    <div class="hu-field hu-span-all" data-name="captcha">
+                        <label for="captcha">图形验证码 *</label>
+                        <div class="hu-captcha-row">
+                            <input id="captcha" type="text" name="captcha" class="hu-input" placeholder="请输入右图字符" autocomplete="off" maxlength="6">
+                            <img id="captchaImg" class="hu-captcha-img" alt="点击刷新验证码" title="看不清？点击刷新">
+                        </div>
+                        <input type="hidden" id="captchaId" name="captchaId" value="">
+                        <div class="hu-field__err">请填写图形验证码</div>
                     </div>
                 </div>
 
@@ -85,13 +98,26 @@
 
 <script>
     $(function () {
+        // 与服务端 AccountPolicy 同口径：用户名 3-20（首尾非下划线）、手机号 11 位、密码 8-32 且至少两类字符
+        function usernameOk(v) {
+            return /^[一-龥A-Za-z0-9][一-龥A-Za-z0-9_]{1,18}[一-龥A-Za-z0-9]$/.test(v) && new Set(v).size > 1;
+        }
         var rules = {
-            username: function (v) { return v.length >= 3 && v.length <= 20; },
+            username: usernameOk,
             fullName: function (v) { return v.length > 0; },
             phone: function (v) { return /^1[3-9]\d{9}$/.test(v); },
             email: function (v) { return v === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); },
-            password: function (v) { return v.length >= 6 && v.length <= 32; },
-            confirmPassword: function (v) { return v === $('#password').val() && v.length > 0; }
+            password: function (v) {
+                if (v.length < 8 || v.length > 32) return false;
+                var cats = 0;
+                if (/[a-z]/.test(v)) cats++;
+                if (/[A-Z]/.test(v)) cats++;
+                if (/\d/.test(v)) cats++;
+                if (/[^A-Za-z0-9]/.test(v)) cats++;
+                return cats >= 2;
+            },
+            confirmPassword: function (v) { return v === $('#password').val() && v.length > 0; },
+            captcha: function (v) { return v.length > 0; }
         };
 
         function markField(name, ok) {
@@ -99,6 +125,38 @@
             $f.toggleClass('has-err', !ok);
             return ok;
         }
+
+        /* ---------- D03 密码强度条（与 AccountPolicy.evaluatePassword 打分思路一致） ---------- */
+        function scorePassword(v, username) {
+            var cats = 0;
+            if (/[a-z]/.test(v)) cats++;
+            if (/[A-Z]/.test(v)) cats++;
+            if (/\d/.test(v)) cats++;
+            if (/[^A-Za-z0-9]/.test(v)) cats++;
+            if (v.length < 8 || v.length > 32) {
+                return {percent: Math.min(v.length * 6, 30), level: 0, text: '太短'};
+            }
+            var percent = cats * 20;
+            if (v.length >= 12) percent += 20; else if (v.length >= 10) percent += 10;
+            if (username && v.toLowerCase().indexOf(username.toLowerCase()) >= 0) percent = Math.min(percent, 40);
+            percent = Math.max(0, Math.min(100, percent));
+            var level = percent >= 80 ? 4 : percent >= 55 ? 3 : cats >= 2 ? 2 : 1;
+            var text = percent >= 80 ? '强' : percent >= 55 ? '中' : '弱';
+            return {percent: percent, level: level, text: text};
+        }
+
+        function renderStrength() {
+            var v = $('#password').val() || '';
+            var s = scorePassword(v, $('#username').val());
+            var $bars = $('#registerForm').find('.hu-strength__bars i');
+            $bars.removeClass('is-on-weak is-on-mid is-on-strong');
+            var cls = s.level >= 4 ? 'is-on-strong' : s.level >= 3 ? 'is-on-mid' : 'is-on-weak';
+            $bars.slice(0, s.level).addClass(cls);
+            $('#pwdStrengthText').text('强度：' + (v ? s.text : '—'));
+        }
+
+        $('#password').on('input', renderStrength);
+        $('#username').on('input', renderStrength);
 
         function validateAll() {
             var ok = true;
@@ -121,14 +179,27 @@
             }
         });
 
+        /* ---------- 图形验证码：注册接口要求，随页面加载与点击刷新 ---------- */
+        function refreshCaptcha() {
+            $.get('/api/auth/captcha', function (res) {
+                if (res && res.code === 200 && res.data) {
+                    $('#captchaId').val(res.data.captchaId);
+                    $('#captchaImg').attr('src', res.data.imageBase64);
+                }
+            }, 'json');
+        }
+        $('#captchaImg').on('click', refreshCaptcha);
+        refreshCaptcha();
+
         $('#registerForm').on('submit', function (e) {
             e.preventDefault();
             if (!validateAll()) return false;
 
             var data = {};
-            $.each(['username', 'fullName', 'phone', 'email', 'password', 'confirmPassword'], function (i, name) {
+            $.each(['username', 'fullName', 'phone', 'email', 'password', 'confirmPassword', 'captcha'], function (i, name) {
                 data[name] = $.trim($('input[name="' + name + '"]').val() || '');
             });
+            data.captchaId = $('#captchaId').val();
 
             var $btn = $('#regSubmitBtn').prop('disabled', true).css('opacity', .6);
             $('#regError').hide();
@@ -144,11 +215,13 @@
                         setTimeout(function () { window.location.href = '/auth/login'; }, 900);
                     } else {
                         $('#regError').text(res.msg || '注册失败').show();
+                        refreshCaptcha();
                         $btn.prop('disabled', false).css('opacity', 1);
                     }
                 },
                 error: function () {
                     $('#regError').text('网络异常，请稍后重试').show();
+                    refreshCaptcha();
                     $btn.prop('disabled', false).css('opacity', 1);
                 }
             });

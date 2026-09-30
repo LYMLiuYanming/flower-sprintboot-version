@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>花语知识库 · 花语轩 HUAYUXUAN</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<div class="hu-pagehead">
+    <div class="hu-container hu-pagehead__row">
+        <div>
+            <div class="hu-crumb"><a href="/index">首页</a> / <span>花语知识库</span></div>
+            <h1>花语知识库</h1>
+            <p class="hu-pagehead__sub">花语寓意、到手养护、产地故事与送礼分寸，由门店花艺师逐篇整理。</p>
+        </div>
+        <div class="hu-pagehead__aside">
+            <form class="hu-search" id="kbSearchForm" role="search">
+                <i class="fa fa-search"></i>
+                <input type="search" id="kbKeyword" class="hu-input" placeholder="搜花材、场合或养护关键词"
+                       th:value="${keyword}">
+                <button type="submit" class="hu-btn hu-btn--solid hu-btn--sm">搜索</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="hu-container" style="padding-bottom:64px">
+    <div class="hu-chips" id="kbCats" style="margin-bottom:20px">
+        <button type="button" class="hu-chip is-active" data-cat="">全部分类</button>
+        <button type="button" class="hu-chip" th:each="c : ${categories}"
+                th:attr="data-cat=${c.code}" th:text="${c.label} + ' · ' + ${c.count}">养护指南</button>
+    </div>
+
+    <div class="hu-kb__grid" id="kbGrid"></div>
+    <div class="hu-empty" id="kbEmpty" hidden>
+        <i class="fa fa-book"></i>
+        <strong>没有匹配的知识库文章</strong>
+        <span style="font-size:14px">换个关键词，或者直接看热门养护指南</span>
+    </div>
+    <div class="hu-sc__more"><button type="button" class="hu-btn hu-btn--ghost" id="kbLoad" hidden>加载更多</button></div>
+</div>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<script th:inline="javascript">
+    var INIT_CAT = /*[[${selectedCategory}]]*/ '';
+    var INIT_KW = /*[[${keyword}]]*/ '';
+</script>
+<script>
+    (function ($) {
+        'use strict';
+        var state = {category: INIT_CAT || '', keyword: INIT_KW || '', page: 1, limit: 9, total: 0};
+        var LABELS = {care: '养护指南', language: '花语故事', story: '产地与花艺', guide: '送礼手册', festival: '节日特辑'};
+
+        function esc(s) { return $('<i>').text(s == null ? '' : String(s)).html(); }
+        function safeUrl(u) { return u && (u.charAt(0) === '/' || /^https?:\/\//i.test(u)) ? u : ''; }
+        function day(v) { return (v || '').toString().replace('T', ' ').slice(0, 10); }
+
+        function card(a) {
+            var mats = (a.materials || []).slice(0, 3).map(function (m) {
+                return '<span class="hu-rp__pill">' + esc(m) + '</span>';
+            }).join('');
+            return '<a class="hu-kbcard" href="/article/' + esc(a.id) + '">' +
+                '<span class="hu-kbcard__media">' +
+                (a.coverImage ? '<img src="' + esc(safeUrl(a.coverImage)) + '" alt="" loading="lazy">' : '') +
+                '<span class="hu-kbcard__cat">' + esc(a.categoryLabel || LABELS[a.category] || '知识库') + '</span>' +
+                '</span>' +
+                '<span class="hu-kbcard__body">' +
+                '<span class="hu-kbcard__title">' + esc(a.title) + '</span>' +
+                '<span class="hu-kbcard__sum">' + esc(a.summary || '') + '</span>' +
+                '<span class="hu-kbcard__foot">' + (mats ? '<span class="hu-kbcard__pills">' + mats + '</span>' : '') +
+                '<span class="hu-kbcard__meta">' + day(a.publishAt || a.createdAt) + ' · 阅读 ' + Number(a.viewCount || 0) + '</span>' +
+                '</span></span></a>';
+        }
+
+        function load(append) {
+            var params = {page: state.page, limit: state.limit};
+            if (state.category) params.category = state.category;
+            if (state.keyword) params.keyword = state.keyword;
+            $.getJSON('/api/knowledge/articles', params, function (res) {
+                if (res.code !== 200) { return; }
+                var list = res.data || [];
+                state.total = Number(res.count || 0);
+                var $grid = $('#kbGrid');
+                if (append) $grid.append(list.map(card).join(''));
+                else $grid.html(list.map(card).join(''));
+                $('#kbEmpty').prop('hidden', state.total > 0);
+                $('#kbLoad').prop('hidden', $grid.children().length >= state.total);
+            });
+        }
+
+        $(document).ready(function () {
+            load(false);
+            $('#kbCats').on('click', '.hu-chip', function () {
+                $('#kbCats .hu-chip').removeClass('is-active');
+                $(this).addClass('is-active');
+                state.category = String($(this).data('cat') || '');
+                state.page = 1;
+                load(false);
+            });
+            $('#kbSearchForm').on('submit', function (e) {
+                e.preventDefault();
+                state.keyword = $.trim($('#kbKeyword').val());
+                state.page = 1;
+                load(false);
+            });
+            $('#kbLoad').on('click', function () {
+                state.page += 1;
+                load(true);
+            });
+        });
+    })(jQuery);
+</script>
+</body>
+</html>

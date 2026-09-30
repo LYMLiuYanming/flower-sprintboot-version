@@ -37,22 +37,7 @@
         /* 标签 chips */
         .hu-tagpick { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
-        /* 弹层：无第三方插件，遮罩 + 居中卡片；开合用 .is-open 类切换，避免 jQuery 改写 display */
-        .hu-mask {
-            position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center;
-            padding: 16px; background: rgba(16, 22, 35, .52); backdrop-filter: blur(5px);
-            opacity: 0; visibility: hidden; pointer-events: none;
-            transition: opacity .22s var(--hu-ease), visibility .22s;
-        }
-        .hu-mask.is-open { opacity: 1; visibility: visible; pointer-events: auto; }
-        .hu-dialog {
-            width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 40px); overflow-y: auto;
-            box-shadow: var(--hu-shadow-lg);
-            transform: translateY(12px) scale(.985);
-            transition: transform .26s var(--hu-ease);
-        }
-        .hu-mask.is-open .hu-dialog { transform: none; }
-        .hu-dialog--sm { width: min(430px, calc(100vw - 32px)); }
+        /* 遮罩与卡片样式已上收到 theme.css（.hu-mask / .hu-dialog），此处只留本页专属 */
         .hu-dialog__note { font-size: 13px; color: var(--hu-muted); line-height: 1.8; margin: 0; }
 
         .hu-addr-tip { display: flex; gap: 12px; align-items: flex-start; font-size: 13px; color: var(--hu-muted); line-height: 1.8; margin-top: 22px; }
@@ -79,27 +64,7 @@
 <div class="hu-container">
     <div class="hu-account">
         <!-- 左侧账户栏 -->
-        <aside>
-            <div class="hu-panel hu-idcard">
-                <div class="hu-idcard__avatar" id="avatar"><i class="fa fa-user"></i></div>
-                <div style="min-width:0">
-                    <div class="hu-idcard__name" id="sideName" th:text="${loginUser?.fullName ?: '用户'}">用户名</div>
-                    <div class="hu-idcard__meta" id="sidePhone" th:text="${loginUser?.phone}">手机号</div>
-                </div>
-            </div>
-            <div class="hu-panel hu-panel--pad hu-side-sticky">
-                <h3 class="hu-side-title">账户导航</h3>
-                <ul class="hu-navtabs">
-                    <li><a href="/user/profile"><i class="fa fa-user"></i>个人资料</a></li>
-                    <li><a href="/user/orders"><i class="fa fa-list-alt"></i>我的订单</a></li>
-                    <li><a href="/user/coupons"><i class="fa fa-ticket"></i>我的优惠券</a></li>
-                    <li><a href="/user/addresses" class="is-active"><i class="fa fa-map-marker"></i>收货地址</a></li>
-                    <li><a href="/user/settings"><i class="fa fa-cog"></i>账号设置</a></li>
-                    <li><a href="/cart"><i class="fa fa-shopping-bag"></i>购物车</a></li>
-                    <li><a href="/auth/logout" style="color:var(--hu-clay)"><i class="fa fa-sign-out" style="color:var(--hu-clay)"></i>退出登录</a></li>
-                </ul>
-            </div>
-        </aside>
+        <aside th:replace="~{common/account-nav :: accountNav('addresses')}"></aside>
 
         <!-- 右侧内容 -->
         <div>
@@ -111,10 +76,20 @@
                     </div>
                     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
                         <span class="hu-pill hu-pill--muted" id="addrCount">加载中</span>
+                        <button type="button" class="hu-btn hu-btn--plain hu-btn--sm" id="btnBatchToggle" style="display:none"><i class="fa fa-check-square-o"></i>批量管理</button>
                         <button type="button" class="hu-btn hu-btn--solid hu-btn--sm" id="btnNewAddr"><i class="fa fa-plus"></i>新增地址</button>
                     </div>
                 </div>
                 <div class="hu-panel__body">
+                    <!-- D08 批量操作条：进入批量管理后浮现，支持全选与批量删除 -->
+                    <div id="batchBar" class="hu-batchbar" style="display:none">
+                        <label class="hu-check"><input type="checkbox" id="batchAll"> 全选</label>
+                        <span class="hu-muted" style="font-size:13px" id="batchSelInfo">已选 0 个</span>
+                        <div style="margin-left:auto;display:flex;gap:8px">
+                            <button type="button" class="hu-btn hu-btn--plain hu-btn--sm" id="btnBatchCancel">退出</button>
+                            <button type="button" class="hu-btn hu-btn--sm" id="btnBatchDelete" disabled style="background:var(--hu-clay);color:#fff;box-shadow:none"><i class="fa fa-trash-o"></i>删除所选</button>
+                        </div>
+                    </div>
                     <!-- 加载骨架 -->
                     <div id="addrSkeleton" class="hu-addr-list">
                         <div class="hu-addr" style="box-shadow:none">
@@ -168,6 +143,16 @@
         </div>
         <div class="hu-panel__body">
             <form id="addrForm" novalidate>
+                <!-- D10 智能识别：粘贴快递单式的一段文本，一键拆出姓名/电话/省市区/详址后回填，仍可手工核对修改 -->
+                <div class="hu-field hu-span-all hu-parse">
+                    <label for="parseText"><i class="fa fa-magic"></i> 智能识别<span class="hu-parse__hint">粘贴「姓名 手机号 省市区详细地址」整段文本，自动拆分</span></label>
+                    <textarea id="parseText" class="hu-textarea" rows="2" placeholder="例：张三 13800138000 广东省深圳市南山区科技园南路1号3栋501"></textarea>
+                    <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <button type="button" class="hu-btn hu-btn--ghost hu-btn--sm" id="btnParse"><i class="fa fa-magic"></i>识别并填充</button>
+                        <span class="hu-parse__result" id="parseResult"></span>
+                    </div>
+                </div>
+
                 <div class="hu-form-grid">
                     <div class="hu-field">
                         <label for="receiverName">收货人<span class="hu-field__req">*</span></label>
@@ -251,6 +236,10 @@
     var addresses = [];
     var editingId = null;
     var pendingDelete = null;
+    var pendingBatch = null;
+    var MAX_ADDR = 20;
+    var batchMode = false;
+    var selected = {};
 
     /** 用户输入一律转义后再拼接 HTML */
     function esc(value) {
@@ -280,25 +269,39 @@
         $('#addrCount').text('加载中');
     }
 
+    function tagIcon(a) {
+        if (a.isDefault === true) return 'fa-home';
+        return {'公司': 'fa-briefcase', '学校': 'fa-graduation-cap'}[a.tag] || 'fa-map-marker';
+    }
+
     function renderList() {
         addresses = addresses || [];
         $('#addrHero').text(addresses.length);
-        $('#addrCount').text(addresses.length ? '共 ' + addresses.length + ' 个地址' : '暂无地址');
+        // D09：带上限展示，逼近上限时给出剩余名额提示
+        var remain = MAX_ADDR - addresses.length;
+        $('#addrCount').text(addresses.length
+            ? '共 ' + addresses.length + ' 个 / 上限 ' + MAX_ADDR + (remain <= 0 ? '（已达上限）' : '，还可添加 ' + remain))
+            : '暂无地址');
         $('#addrSkeleton').hide();
 
         if (!addresses.length) {
+            batchMode = false;
+            $('#batchBar').hide();
+            $('#btnBatchToggle').hide();
             $('#addrList').hide().empty();
             $('#addrEmpty').show();
             return;
         }
         $('#addrEmpty').hide();
+        $('#btnBatchToggle').show();
 
         var html = '';
         addresses.forEach(function (a) {
             var isDefault = a.isDefault === true;
-            var icon = isDefault ? 'fa-home' : (a.tag === '公司' ? 'fa-briefcase' : 'fa-map-marker');
+            var checked = selected[a.id] ? ' checked' : '';
             html += '<div class="hu-addr' + (isDefault ? ' is-default' : '') + '" data-id="' + esc(a.id) + '">' +
-                '<div class="hu-addr__icon"><i class="fa ' + icon + '"></i></div>' +
+                (batchMode ? '<label class="hu-addr__check"><input type="checkbox" data-check="' + esc(a.id) + '"' + checked + '></label>' : '') +
+                '<div class="hu-addr__icon"><i class="fa ' + tagIcon(a) + '"></i></div>' +
                 '<div class="hu-addr__main">' +
                 '<div class="hu-addr__top">' +
                 '<span class="hu-addr__name">' + esc(a.receiverName) + '</span>' +
@@ -316,13 +319,15 @@
                 '</div></div>';
         });
         $('#addrList').html(html).show();
+        syncBatchBar();
     }
 
     function loadAddresses() {
         renderSkeleton();
         huApi({
             url: ADDRESS_API,
-            ok: function (data) {
+            ok: function (data, res) {
+                if (res && res.max) MAX_ADDR = res.max;
                 addresses = data || [];
                 renderList();
             },
@@ -363,6 +368,9 @@
         $('#detail').val(address ? address.detail : '');
         $('#tag').val(address ? (address.tag || '') : '');
         $('#isDefault').prop('checked', address ? address.isDefault === true : !addresses.length);
+        // 每次打开都清空识别框，避免上一次的粘贴残留
+        $('#parseText').val('');
+        $('#parseResult').text('');
         syncTagChips();
         openMask($('#addrMask'));
         setTimeout(function () { $('#receiverName').trigger('focus'); }, 120);
@@ -375,6 +383,7 @@
 
     function openConfirm(address) {
         pendingDelete = address;
+        $('#confirmTitle').text('删除地址');
         $('#confirmText').text('确认删除「' + (address.receiverName || '') + '　' + (address.fullAddress || address.detail || '') + '」？删除后不可恢复。');
         openMask($('#confirmMask'));
     }
@@ -423,17 +432,85 @@
         };
     }
 
+    /* ---------- D08 批量管理 ---------- */
+    function selectedIds() {
+        return Object.keys(selected).filter(function (k) { return selected[k]; });
+    }
+
+    function syncBatchBar() {
+        var n = selectedIds().length;
+        $('#batchSelInfo').text('已选 ' + n + ' 个');
+        $('#btnBatchDelete').prop('disabled', n === 0);
+        var all = addresses.length > 0 && n === addresses.length;
+        $('#batchAll').prop('checked', all);
+    }
+
+    function enterBatch() {
+        batchMode = true;
+        selected = {};
+        $('#batchBar').show();
+        $('#btnBatchToggle').html('<i class="fa fa-times"></i>退出批量');
+        renderList();
+    }
+
+    function exitBatch() {
+        batchMode = false;
+        selected = {};
+        $('#batchBar').hide();
+        $('#btnBatchToggle').html('<i class="fa fa-check-square-o"></i>批量管理');
+        renderList();
+    }
+
+    function openBatchConfirm() {
+        var ids = selectedIds();
+        if (!ids.length) return;
+        pendingBatch = ids;
+        $('#confirmTitle').text('批量删除地址');
+        $('#confirmText').text('确认删除选中的 ' + ids.length + ' 个收货地址？删除后不可恢复。');
+        openMask($('#confirmMask'));
+    }
+
+    /* ---------- D10 智能识别 ---------- */
+    function runParse() {
+        var text = $.trim($('#parseText').val());
+        if (!text) {
+            $('#parseResult').text('请先粘贴要识别的文本');
+            return;
+        }
+        var $btn = $('#btnParse').prop('disabled', true);
+        $('#parseResult').text('识别中…');
+        huApi({
+            url: ADDRESS_API + '/parse',
+            type: 'POST',
+            data: {raw: text},
+            ok: function (data) {
+                $btn.prop('disabled', false);
+                if (!data) { $('#parseResult').text('未能识别，请手动填写'); return; }
+                // 只回填识别出的字段，不覆盖用户已手填的值（留空的才填）
+                [['receiverName', data.receiverName], ['receiverPhone', data.receiverPhone],
+                    ['province', data.province], ['city', data.city], ['district', data.district],
+                    ['detail', data.detail]].forEach(function (pair) {
+                    var $el = $('#' + pair[0]);
+                    if (pair[1] && !$el.val()) $el.val(pair[1]);
+                });
+                clearErrors();
+                var n = data.filledCount != null ? data.filledCount : 0;
+                $('#parseResult').html('<i class="fa fa-check" style="color:var(--hu-accent)"></i> 识别到 ' + n + ' 项，请核对后保存');
+            },
+            fail: function () { $btn.prop('disabled', false); $('#parseResult').text('识别失败，请手动填写'); }
+        });
+    }
+
     $(document).ready(function () {
-        if (ME_NAME) $('#avatar').html($('<span>').text(ME_NAME.charAt(0)));
         loadAddresses();
 
         $('#btnNewAddr, #btnEmptyAdd').on('click', function () { openAddrModal(null); });
         $('#addrClose, #addrCancel').on('click', closeAddrModal);
-        $('#confirmClose, #confirmCancel').on('click', closeConfirm);
+        $('#confirmClose, #confirmCancel').on('click', function () { closeConfirm(); pendingBatch = null; });
 
         /* 遮罩点击与 ESC 关闭 */
         $('#addrMask').on('mousedown', function (e) { if (e.target === this) closeAddrModal(); });
-        $('#confirmMask').on('mousedown', function (e) { if (e.target === this) closeConfirm(); });
+        $('#confirmMask').on('mousedown', function (e) { if (e.target === this) { closeConfirm(); pendingBatch = null; } });
         $(document).on('keydown', function (e) {
             if (e.key === 'Escape' || e.keyCode === 27) {
                 if ($('#confirmMask').hasClass('is-open')) closeConfirm();
@@ -446,6 +523,25 @@
             var v = String($(this).data('tag'));
             $('#tag').val($.trim($('#tag').val()) === v ? '' : v).trigger('input');
         });
+
+        /* D08 批量管理 */
+        $('#btnBatchToggle').on('click', function () { batchMode ? exitBatch() : enterBatch(); });
+        $('#btnBatchCancel').on('click', exitBatch);
+        $('#btnBatchDelete').on('click', openBatchConfirm);
+        $('#batchAll').on('change', function () {
+            var on = $(this).is(':checked');
+            selected = {};
+            if (on) addresses.forEach(function (a) { selected[a.id] = true; });
+            renderList();
+        });
+        $('#addrList').on('change', '[data-check]', function () {
+            var id = String($(this).data('check'));
+            selected[id] = $(this).is(':checked');
+            syncBatchBar();
+        });
+
+        /* D10 智能识别 */
+        $('#btnParse').on('click', runParse);
 
         $('#addrForm').submit(function (e) {
             e.preventDefault();
@@ -486,13 +582,29 @@
         $('#addrList').on('click', '[data-del]', function () {
             var id = String($(this).data('del'));
             var found = addresses.filter(function (a) { return String(a.id) === id; })[0];
-            if (found) openConfirm(found);
+            if (found) { pendingBatch = null; openConfirm(found); }
         });
 
+        /* 单个与批量共用确认弹层：pendingBatch 非空即批量分支 */
         $('#confirmOk').on('click', function () {
+            var $btn = $(this).prop('disabled', true);
+            if (pendingBatch && pendingBatch.length) {
+                huApi({
+                    url: ADDRESS_API + '/batch-delete',
+                    type: 'POST',
+                    data: {ids: pendingBatch},
+                    ok: function (n, res) {
+                        closeConfirm();
+                        pendingBatch = null;
+                        window.huToast(res.msg || '已删除所选地址', 'ok');
+                        exitBatch();
+                    },
+                    always: function () { $btn.prop('disabled', false); }
+                });
+                return;
+            }
             if (!pendingDelete) return;
             var id = String(pendingDelete.id);
-            var $btn = $(this).prop('disabled', true);
             huApi({
                 url: ADDRESS_API + '/' + id,
                 type: 'DELETE',

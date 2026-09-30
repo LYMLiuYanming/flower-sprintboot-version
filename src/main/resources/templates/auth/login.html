@@ -32,6 +32,11 @@
                 <i class="fa fa-exclamation-circle"></i>&nbsp;<span th:text="${errorMsg}">用户名或密码错误</span>
             </div>
 
+            <!-- D19：记住我 Cookie 过期 / 续登失败的可读提示，与登录失败区分开，避免用户对着空白页困惑 -->
+            <div th:if="${noticeMsg != null and noticeMsg != ''}" class="hu-auth__notice" style="margin-top:24px">
+                <i class="fa fa-info-circle"></i>&nbsp;<span th:text="${noticeMsg}">登录状态已过期，请重新登录</span>
+            </div>
+
             <form th:action="@{/auth/login}" method="post" style="margin-top:32px">
                 <div class="hu-field">
                     <label for="username">用户名</label>

@@ -6,9 +6,19 @@
 <th:block th:fragment="resources">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
     <link th:href="@{/img/favicon.svg}" rel="icon" type="image/svg+xml">
     <link th:href="@{/img/favicon.svg}" rel="apple-touch-icon">
     <meta name="theme-color" content="#0f7b63">
+    <!-- K18 主题引导：默认浅色，只有用户显式切过深色才改属性，避免首屏闪一下 -->
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem('hu.theme');
+                if (t && t !== 'light') document.documentElement.setAttribute('data-hu-theme', t);
+            } catch (e) { /* 隐私模式下保持浅色 */ }
+        })();
+    </script>
     <meta name="description"
           th:content="${metaDescription} ?: '花语轩 HUAYUXUAN · 当日手作鲜花花礼，同城当日送达，为每一个重要时刻增添仪式感。'">
     <meta property="og:type" content="website">
@@ -17,6 +27,36 @@
     <link th:href="@{/css/fonts.css}" rel="stylesheet">
     <link th:href="@{/fontawesome/4.7.0/css/font-awesome.min.css}" rel="stylesheet">
     <link th:href="@{/css/theme.css}" rel="stylesheet">
+    <!-- 分组扩展样式：每个功能批次的 CSS 只进自己的文件，避免多批改动互相覆盖。
+         这里逐条写死而不是 th:each 遍历字面量列表——Thymeleaf 的 th:each 只接受 ${} 表达式，
+         写裸列表会让所有引用本片段的前台页面 500 -->
+    <link href="/css/f-a.css" rel="stylesheet">
+    <link href="/css/f-b.css" rel="stylesheet">
+    <link href="/css/f-c.css" rel="stylesheet">
+    <link href="/css/f-d.css" rel="stylesheet">
+    <link href="/css/f-e.css" rel="stylesheet">
+    <link href="/css/f-f.css" rel="stylesheet">
+    <link href="/css/f-g.css" rel="stylesheet">
+    <link href="/css/f-h.css" rel="stylesheet">
+    <link href="/css/f-i.css" rel="stylesheet">
+    <link href="/css/f-j.css" rel="stylesheet">
+    <link href="/css/f-k.css" rel="stylesheet">
+    <link href="/css/f-l.css" rel="stylesheet">
+    <!-- 同一批次并行续接时另开文件，避免两个批次追加同一份 CSS 互相覆盖 -->
+    <link href="/css/f-i2.css" rel="stylesheet">
+    <!-- 第二轮（M–X 组）扩展样式，同样一组一个文件 -->
+    <link href="/css/f-m.css" rel="stylesheet">
+    <link href="/css/f-n.css" rel="stylesheet">
+    <link href="/css/f-o.css" rel="stylesheet">
+    <link href="/css/f-p.css" rel="stylesheet">
+    <link href="/css/f-q.css" rel="stylesheet">
+    <link href="/css/f-r.css" rel="stylesheet">
+    <link href="/css/f-s.css" rel="stylesheet">
+    <link href="/css/f-t.css" rel="stylesheet">
+    <link href="/css/f-u.css" rel="stylesheet">
+    <link href="/css/f-v.css" rel="stylesheet">
+    <link href="/css/f-w.css" rel="stylesheet">
+    <link href="/css/f-x.css" rel="stylesheet">
     <script th:src="@{/jquery-3.7.1.min.js}"></script>
     <script th:src="@{/js/site.js}" defer></script>
 </th:block>

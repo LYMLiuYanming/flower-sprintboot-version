@@ -6,6 +6,8 @@
     <title>商品编辑 - 花语轩</title>
     <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/css/f-g.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
     <style>
         body { background: var(--ad-paper, #f6f5f1); padding: 18px 22px 78px; }
         .layui-form-label { width: 92px; }
@@ -17,6 +19,24 @@
         .preview { display: inline-block; width: 92px; height: 92px; border: 1px solid #e8e3d9;
             background-size: cover; background-position: center; vertical-align: middle; margin-left: 8px; }
         .tip { color: #8a8578; font-size: 12px; margin-left: 122px; margin-top: 4px; }
+        .tip code { background: #f1efe9; padding: 1px 5px; border-radius: 3px; }
+        /* A23 图集拖拽排序 */
+        .imgtray { display: flex; flex-wrap: wrap; gap: 10px; min-height: 104px; padding: 10px;
+            border: 1px dashed #d9d3c6; border-radius: 6px; background: #fbfaf7; }
+        .imgtray.is-empty::after { content: '暂无图集：在下方文本框填入图片地址后自动出现';
+            color: #a8a294; font-size: 12px; align-self: center; padding-left: 6px; }
+        .imgcard { position: relative; width: 92px; }
+        .imgcard img { width: 92px; height: 92px; object-fit: cover; border: 1px solid #e8e3d9;
+            border-radius: 4px; background: #fff; cursor: grab; display: block; }
+        .imgcard.is-dragging { opacity: .4; }
+        .imgcard.is-over img { border-color: #6f7d5c; box-shadow: 0 0 0 2px rgba(111,125,92,.25); }
+        .imgcard .ord { position: absolute; top: -6px; left: -6px; width: 20px; height: 20px; border-radius: 50%;
+            background: #6f7d5c; color: #fff; font-size: 11px; line-height: 20px; text-align: center; }
+        .imgcard .ops { display: flex; gap: 4px; margin-top: 4px; }
+        .imgcard .ops a { flex: 1; text-align: center; font-size: 11px; padding: 2px 0; border-radius: 3px;
+            background: #f1efe9; color: #454f39; cursor: pointer; text-decoration: none; }
+        .imgcard .ops a:hover { background: #e5e1d5; }
+        .imgcard .ops a.del { color: #b3897a; }
     </style>
 </head>
 <body>
@@ -31,7 +51,10 @@
     <div class="layui-form-item">
         <label class="layui-form-label">商品编码</label>
         <div class="layui-input-block">
-            <input type="text" name="code" maxlength="50" class="layui-input" placeholder="留空则由系统归档，如 ROSE-R11">
+            <input type="text" name="code" id="codeInput" maxlength="50" class="layui-input"
+                   placeholder="留空则由系统自动生成，如 P250928007">
+            <div class="tip">只允许字母、数字与 <code>. _ -</code>，保存时自动转大写并查重；
+                <span id="codeHint">留空将自动编码…</span></div>
         </div>
     </div>
     <div class="layui-form-item">
@@ -75,8 +98,12 @@
     <div class="layui-form-item">
         <label class="layui-form-label">主图</label>
         <div class="layui-input-block">
-            <input type="text" name="mainImage" id="mainImage" maxlength="500" class="layui-input"
-                   placeholder="/img/products/rose-red.svg 或 https 开头的图片地址">
+            <!-- G10：协议白名单 + 真实加载探测，地址写错或图挂了在保存前就当场亮出来 -->
+            <div class="fg-imgrow">
+                <input type="text" name="mainImage" id="mainImage" maxlength="500" class="layui-input"
+                       placeholder="/img/products/rose-red.svg 或 https 开头的图片地址">
+                <span class="fg-imgcheck fg-imgcheck--idle" id="mainImgState">未填</span>
+            </div>
             <span class="preview" id="previewMain"></span>
             <div class="tip">仅支持站内相对路径与 http(s) 外链，禁止 javascript: / data: 协议</div>
         </div>
@@ -84,7 +111,12 @@
     <div class="layui-form-item layui-form-text">
         <label class="layui-form-label">图集</label>
         <div class="layui-input-block">
-            <textarea name="images" maxlength="4000" class="layui-textarea" rows="2" placeholder="多个地址以英文逗号分隔"></textarea>
+            <!-- A23：顺序即详情页相册顺序，拖拽排好后把次序写回下面的逗号串再提交 -->
+            <div class="imgtray" id="imgTray" aria-label="图集排序，拖动缩略图调整顺序"></div>
+            <div class="tip">拖动缩略图调整展示顺序；<b>第一张</b>是详情页相册首图，点「设为主图」可把它同时写进主图。</div>
+            <textarea name="images" id="imagesRaw" maxlength="4000" class="layui-textarea" rows="2"
+                      placeholder="多个地址以英文逗号分隔" style="margin-top:8px"></textarea>
+            <div class="tip">也可以直接改上面这串地址，失焦后缩略图会跟着变。</div>
         </div>
     </div>
 
@@ -122,6 +154,47 @@
         </div>
     </div>
 
+    <div class="sec-title">内容文案（列表页与详情页都会展示）</div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">副标题</label>
+        <div class="layui-input-block">
+            <input type="text" name="subtitle" maxlength="120" class="layui-input"
+                   placeholder="一句话卖点，如：11 枝云南红玫瑰 · 当日手打雾面包装">
+        </div>
+    </div>
+    <div class="layui-form-item layui-form-text">
+        <label class="layui-form-label">花语</label>
+        <div class="layui-input-block">
+            <textarea name="flowerLanguage" maxlength="200" class="layui-textarea" rows="2"
+                      placeholder="这束花想说的话，会显示在详情页标题下方"></textarea>
+        </div>
+    </div>
+    <div class="layui-form-item layui-form-text">
+        <label class="layui-form-label">养护贴士</label>
+        <div class="layui-input-block">
+            <textarea name="careTip" maxlength="500" class="layui-textarea" rows="2"
+                      placeholder="剪根、换水、花期等本品特有的养护要点"></textarea>
+            <div class="tip">留空时详情页会展示通用养护建议，不会空着一块。</div>
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">适用场景</label>
+        <div class="layui-input-block">
+            <input type="text" name="suitableFor" maxlength="200" class="layui-input"
+                   placeholder="逗号分隔，如：告白,生日,探病,商务">
+            <div class="tip">列表页「适用场景」筛选项就从这里来，中英文逗号都可。</div>
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">主产地</label>
+        <div class="layui-input-block">
+            <select name="originId" id="originSelect" lay-search>
+                <option value="">暂不标注</option>
+            </select>
+            <div class="tip">用于详情页溯源条与产地地图；只列启用中的直采基地。</div>
+        </div>
+    </div>
+
     <div class="sec-title">状态</div>
     <div class="layui-form-item">
         <div class="layui-inline">
@@ -139,13 +212,24 @@
     </div>
 
     <div class="dialog-foot">
-        <button type="button" class="layui-btn layui-btn-primary" id="btnCancel">取消</button>
-        <button type="submit" class="layui-btn" lay-submit lay-filter="save" id="btnSave">保存</button>
+        <div class="fg-editbar">
+            <span class="fg-editbar__hint" id="dirtyHint">尚未修改</span>
+            <span>
+                <button type="button" class="layui-btn layui-btn-primary" id="btnPreview">
+                    <i class="fas fa-eye"></i> 预览未保存效果
+                </button>
+                <button type="button" class="layui-btn layui-btn-primary" id="btnCancel">取消</button>
+                <button type="submit" class="layui-btn" lay-submit lay-filter="save" id="btnSave">保存</button>
+            </span>
+        </div>
     </div>
 </form>
 
 <script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
 <script th:src="@{/jquery-3.7.1.min.js}"></script>
+<script th:src="@{/js/site.js}"></script>
+<script th:src="@{/js/admin-common.js}"></script>
+<script th:src="@{/js/hu-admin-ui.js}"></script>
 <script th:inline="none">
     layui.use(['form', 'layer'], function () {
         var form = layui.form;
@@ -173,10 +257,201 @@
         function renderPreview() {
             $('#previewMain').css('background-image', safePreviewUrl($('#mainImage').val())
                 ? 'url(' + safePreviewUrl($('#mainImage').val()) + ')' : 'none');
+            markDirty();
+        }
+
+        /* ---------- G10 图片地址：协议先过一遍，再真去加载一次 ---------- */
+        var BLOCKED = /^(javascript|data|vbscript|file|blob)\s*:/i;
+
+        function setState(text, kind) {
+            jQuery('#mainImgState').attr('class', 'fg-imgcheck fg-imgcheck--' + kind).text(text);
+        }
+
+        /** 与后端 SafeUrl 同一套规则：站内相对路径或 http(s)，带 @ / 反斜杠的伪外链一并拒掉 */
+        function urlProblem(url) {
+            if (!url) return null;
+            if (BLOCKED.test(url)) return '禁止使用该协议';
+            if (url.charAt(0) === '/' && url.charAt(1) !== '/') return null;
+            if (/^https?:\/\/[^\s"'<>]+$/i.test(url)) {
+                return (url.indexOf('@') > 0 || url.indexOf('\\') >= 0) ? '外链地址写法不安全' : null;
+            }
+            if (url.charAt(0) === '?' || url.charAt(0) === '#') return null;
+            return '需为站内路径或 http(s) 链接';
+        }
+
+        /** 加载探测：地址合法但 404 / 跨域被拒时同样要提示，否则前台会挂一块空白 */
+        function probeImage(url, done) {
+            if (!url) { done('empty'); return; }
+            var bad = urlProblem(url);
+            if (bad) { done('bad', bad); return; }
+            var img = new Image();
+            var timer = setTimeout(function () { done('slow'); }, 6000);
+            img.onload = function () { clearTimeout(timer); done('ok'); };
+            img.onerror = function () { clearTimeout(timer); done('bad', '图片打不开，检查路径或外链是否允许直接访问'); };
+            img.src = url;
+        }
+
+        function validateMainImage() {
+            var url = jQuery.trim($('#mainImage').val() || '');
+            if (!url) { setState('未填', 'idle'); return; }
+            setState('检测中…', 'idle');
+            probeImage(url, function (state, detail) {
+                if (state === 'ok') setState('地址可用', 'ok');
+                else if (state === 'slow') setState('加载较慢，未确认', 'idle');
+                else { setState(detail || '地址不可用', 'bad'); }
+            });
         }
 
         $('#mainImage').on('input', renderPreview);
+        $('#mainImage').on('blur change', validateMainImage);
         $('#btnCancel').on('click', function () { closeSelf(false); });
+
+        /* ---------- A23 图集：拖拽顺序 = 前台展示顺序 ---------- */
+        var tray = document.getElementById('imgTray');
+        var raw = document.getElementById('imagesRaw');
+        var dragged = null;
+
+        function imageList() {
+            return (raw.value || '').split(/[,,]/).map(function (s) { return s.trim(); }).filter(Boolean);
+        }
+
+        function writeBack(list) {
+            raw.value = list.join(',');
+            renderTray();
+        }
+
+        function safeSrc(url) {
+            if (url.charAt(0) === '/') return url;
+            return /^https?:\/\//i.test(url) ? url : '';
+        }
+
+        function renderTray() {
+            var list = imageList();
+            tray.classList.toggle('is-empty', list.length === 0);
+            tray.innerHTML = list.map(function (url, i) {
+                var src = safeSrc(url);
+                return '<div class="imgcard" draggable="true" data-index="' + i + '">' +
+                    '<span class="ord">' + (i + 1) + '</span>' +
+                    (src ? '<img src="' + src + '" alt="" draggable="false">' : '<img alt="地址不合法" style="background:#faf6f2">') +
+                    '<div class="ops">' +
+                    '<a data-act="main" title="设为主图">主图</a>' +
+                    '<a data-act="left" title="前移">‹</a>' +
+                    '<a data-act="right" title="后移">›</a>' +
+                    '<a class="del" data-act="del" title="从图集移除">删</a>' +
+                    '</div></div>';
+            }).join('');
+            /* G10：图集里打不开的图直接在缩略图上标出来，不用等前台发现 */
+            Array.prototype.forEach.call(tray.querySelectorAll('.imgcard'), function (card, i) {
+                var img = card.querySelector('img');
+                if (!img || !safeSrc(list[i])) {
+                    if (img) markBroken(card, '地址不合法');
+                    return;
+                }
+                img.addEventListener('error', function () { markBroken(card, '图片打不开'); });
+                img.addEventListener('load', function () { clearBroken(card); });
+                if (img.complete && img.naturalWidth === 0) markBroken(card, '图片打不开');
+            });
+        }
+
+        function markBroken(card, text) {
+            card.classList.add('is-broken');
+            if (!card.querySelector('.brk')) {
+                var tip = document.createElement('span');
+                tip.className = 'brk';
+                tip.textContent = text;
+                card.appendChild(tip);
+            }
+        }
+
+        function clearBroken(card) {
+            card.classList.remove('is-broken');
+            var tip = card.querySelector('.brk');
+            if (tip) tip.parentNode.removeChild(tip);
+        }
+
+        function move(from, to) {
+            var list = imageList();
+            if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return;
+            var picked = list.splice(from, 1)[0];
+            list.splice(to, 0, picked);
+            writeBack(list);
+        }
+
+        tray.addEventListener('dragstart', function (e) {
+            var card = e.target.closest('.imgcard');
+            if (!card) return;
+            dragged = Number(card.dataset.index);
+            card.classList.add('is-dragging');
+        });
+        tray.addEventListener('dragover', function (e) {
+            var card = e.target.closest('.imgcard');
+            if (!card) return;
+            e.preventDefault();
+            card.classList.add('is-over');
+        });
+        tray.addEventListener('dragleave', function (e) {
+            var card = e.target.closest('.imgcard');
+            if (card) card.classList.remove('is-over');
+        });
+        tray.addEventListener('drop', function (e) {
+            var card = e.target.closest('.imgcard');
+            if (!card || dragged === null) return;
+            e.preventDefault();
+            card.classList.remove('is-over');
+            move(dragged, Number(card.dataset.index));
+            dragged = null;
+        });
+        tray.addEventListener('dragend', function () {
+            tray.querySelectorAll('.imgcard').forEach(function (c) { c.classList.remove('is-dragging', 'is-over'); });
+        });
+        tray.addEventListener('click', function (e) {
+            var act = e.target.dataset && e.target.dataset.act;
+            if (!act) return;
+            var index = Number(e.target.closest('.imgcard').dataset.index);
+            var list = imageList();
+            if (act === 'main') {
+                $('#mainImage').val(list[index]);
+                renderPreview();
+                layer.msg('已设为主图（详情页相册首图）', {icon: 1});
+            } else if (act === 'left') {
+                move(index, index - 1);
+            } else if (act === 'right') {
+                move(index, index + 1);
+            } else if (act === 'del') {
+                list.splice(index, 1);
+                writeBack(list);
+            }
+        });
+        raw.addEventListener('blur', renderTray);
+
+        /* A15：主产地下拉，只列启用中的直采基地 */
+        $.get('/api/admin/products/origins', function (res) {
+            if (res.code !== 200) return;
+            var options = (res.data || []).map(function (o) {
+                var label = o.name + (o.flowers ? ' · ' + o.flowers : '');
+                return '<option value="' + o.id + '">' + $('<i>').text(label).html() + '</option>';
+            }).join('');
+            $('#originSelect').html('<option value="">暂不标注</option>' + options);
+            form.render('select');
+            if (loaded && loaded.originId) applyOrigin(loaded.originId);
+        });
+
+        function applyOrigin(originId) {
+            if (!originId) return;
+            $('#originSelect').val(originId);
+            form.render('select');
+        }
+
+        /* A22：新建时把系统将要分配的编码先亮出来，运营就不会再手填一个重号的 */
+        if (!id) {
+            $.get('/api/admin/products/next-code', function (res) {
+                if (res.code === 200 && res.data) {
+                    $('#codeHint').text('留空将自动编码为 ' + res.data);
+                }
+            });
+        } else {
+            $('#codeHint').text('留空即保留原编码不变');
+        }
 
         // 分类下拉：后台写接口路径，避免与公开只读接口混用
         $.get('/api/admin/categories', {page: 1, limit: 100}, function (res) {
@@ -215,17 +490,115 @@
                     material: loaded.material || '',
                     packaging: loaded.packaging || '',
                     tags: loaded.tags || '',
+                    subtitle: loaded.subtitle || '',
+                    flowerLanguage: loaded.flowerLanguage || '',
+                    careTip: loaded.careTip || '',
+                    suitableFor: loaded.suitableFor || '',
                     isActive: !!loaded.isActive,
                     isFeatured: !!loaded.isFeatured,
                     isNew: !!loaded.isNew
                 });
                 applyCategory(loaded.category && loaded.category.id);
+                applyOrigin(loaded.originId);
                 renderPreview();
+                renderTray();
             });
+        } else {
+            renderTray();
         }
+
+        /* ---------- G31：改动提醒 + 预览未保存效果 ---------- */
+        function markDirty() {
+            var changed = !loaded;
+            if (loaded) {
+                changed = ['name', 'code', 'description', 'price', 'originalPrice', 'stock', 'mainImage',
+                    'images', 'unit', 'weight', 'material', 'packaging', 'tags', 'subtitle',
+                    'flowerLanguage', 'careTip', 'suitableFor'].some(function (key) {
+                    var now = jQuery.trim(jQuery('[name="' + key + '"]').val() || '');
+                    var base = loaded[key] == null ? '' : String(loaded[key]);
+                    return now !== jQuery.trim(base);
+                });
+            }
+            jQuery('#dirtyHint').text(changed
+                ? '有未保存的修改——预览看到的是当前填写效果，不是库里已有的'
+                : '当前内容与库里一致');
+        }
+
+        jQuery('#productForm').on('input change', markDirty);
+
+        /**
+         * G09：预览用当前表单值现拼，不读库也不写库。
+         * 卡片样式与列表页一致，运营改完文案先看见效果再保存，而不是保存后切回前台刷新
+         */
+        jQuery('#btnPreview').on('click', function () {
+            var f = form.val('productForm');
+            var pics = imageList();
+            var main = safePreviewUrl(jQuery.trim(f.mainImage || '')) || (pics.length ? safeSrc(pics[0]) : '');
+            var price = Number(f.price || 0);
+            var origin = Number(f.originalPrice || 0);
+            var tags = jQuery.trim(f.tags || '').split(/[,，]/).filter(Boolean).slice(0, 6);
+            var content = '<div class="fg-preview">'
+                + '<div class="fg-preview__badge"><i class="fas fa-flask"></i>未保存效果预览 · 关闭后不影响已保存内容</div>'
+                + '<div class="fg-pvcard">'
+                + '<div class="fg-pvcard__img" style="' + (main ? "background-image:url('" + main + "')" : '') + '">'
+                + (main ? '' : '无主图') + '</div>'
+                + '<div class="fg-pvcard__body">'
+                + '<div class="fg-pvcard__name">' + huAdmin.esc(f.name || '（未填商品名称）') + '</div>'
+                + '<div class="fg-pvcard__sub">' + huAdmin.esc(f.subtitle || '未填副标题') + '</div>'
+                + '<div class="fg-pvcard__price">¥' + huAdmin.money(price)
+                + (origin > price ? ' <del>¥' + huAdmin.money(origin) + '</del>' : '') + '</div>'
+                + '<div class="fg-pvcard__meta">'
+                + '<span>库存 ' + (parseInt(f.stock, 10) || 0) + ' ' + huAdmin.esc(f.unit || '束') + '</span>'
+                + (f.weight ? '<span>规格 ' + huAdmin.esc(f.weight) + '</span>' : '')
+                + (f.material ? '<span>花材 ' + huAdmin.esc(f.material) + '</span>' : '')
+                + '<span>' + (switchVal('isActive', true) ? '上架' : '下架')
+                + ' · 图集 ' + pics.length + ' 张</span></div>'
+                + (tags.length ? '<div class="fg-pvcard__tags">' + tags.map(function (t) {
+                    return '<span>' + huAdmin.esc(t.trim()) + '</span>';
+                }).join('') + '</div>' : '')
+                + '</div></div>'
+                + '<div class="fg-pvtext"><h4>花语</h4><p' + (f.flowerLanguage ? '' : ' class="fg-pvempty"') + '>'
+                + huAdmin.esc(f.flowerLanguage || '未填写，详情页会展示通用花语') + '</p></div>'
+                + '<div class="fg-pvtext"><h4>养护贴士</h4><p' + (f.careTip ? '' : ' class="fg-pvempty"') + '>'
+                + huAdmin.esc(f.careTip || '未填写，详情页会展示通用养护建议') + '</p></div>'
+                + '<div class="fg-pvtext"><h4>商品描述</h4><p' + (f.description ? '' : ' class="fg-pvempty"') + '>'
+                + huAdmin.esc(f.description || '未填写') + '</p></div>'
+                + '</div>';
+            layer.open({type: 1, title: '预览', area: ['720px', '86%'], content: content});
+        });
+
+        /* 服务端中文校验语料 → 表单字段：错误落在字段上，而不是只飘一个 toast */
+        var SAVE_RULES = [
+            {field: 'name', test: /商品名称|名称/},
+            {field: 'code', test: /编码|重号|占用/},
+            {field: 'categoryId', test: /分类/},
+            {field: 'price', test: /售价|价格/},
+            {field: 'originalPrice', test: /划线价/},
+            {field: 'stock', test: /库存/},
+            {field: 'mainImage', test: /主图/},
+            {field: 'images', test: /图集/},
+            {field: 'subtitle', test: /副标题/},
+            {field: 'flowerLanguage', test: /花语/},
+            {field: 'careTip', test: /养护/},
+            {field: 'suitableFor', test: /场景/},
+            {field: 'originId', test: /产地/},
+            {field: 'description', test: /描述/},
+            {field: 'tags', test: /标签/},
+            {field: 'material', test: /花材/},
+            {field: 'packaging', test: /包装/},
+            {field: 'unit', test: /单位/},
+            {field: 'weight', test: /规格|枝数/}
+        ];
 
         form.on('submit(save)', function (data) {
             var f = data.field;
+            /* 主图协议不合法时先挡在本地：服务端同样会拒，但这里能把错误指到字段上 */
+            var bad = urlProblem(jQuery.trim(f.mainImage || ''));
+            if (bad) {
+                huAdminUI.markField('#productForm', 'mainImage', bad);
+                setState(bad, 'bad');
+                return false;
+            }
             var payload = {
                 name: $.trim(f.name || ''),
                 code: $.trim(f.code || ''),
@@ -235,30 +608,33 @@
                 categoryId: f.categoryId || null,
                 stock: parseInt(f.stock, 10) || 0,
                 mainImage: $.trim(f.mainImage || ''),
-                images: $.trim(f.images || ''),
+                // 图集取拖拽排序后写回的串，顺序即详情页展示顺序
+                images: imageList().join(','),
                 unit: $.trim(f.unit || ''),
                 weight: $.trim(f.weight || ''),
                 material: $.trim(f.material || ''),
                 packaging: $.trim(f.packaging || ''),
                 tags: $.trim(f.tags || ''),
+                subtitle: $.trim(f.subtitle || ''),
+                flowerLanguage: $.trim(f.flowerLanguage || ''),
+                careTip: $.trim(f.careTip || ''),
+                suitableFor: $.trim(f.suitableFor || ''),
+                originId: f.originId || null,
                 isActive: switchVal('isActive', true),
                 isFeatured: switchVal('isFeatured', true),
                 isNew: switchVal('isNew', true)
             };
-            $.ajax({
+            huAdmin.request({
                 url: id ? '/api/admin/products/' + id : '/api/admin/products',
                 type: id ? 'PUT' : 'POST',
-                contentType: 'application/json;charset=UTF-8',
-                data: JSON.stringify(payload),
-                success: function (res) {
-                    if (res.code === 200) {
-                        parent.layer.msg(res.msg || '保存成功', {icon: 1});
-                        closeSelf(true);
-                    } else {
-                        layer.msg(res.msg || '保存失败', {icon: 2});
-                    }
+                data: payload, silent: true,
+                ok: function (res) {
+                    parent.layer.msg(res.msg || '保存成功', {icon: 1});
+                    closeSelf(true);
                 },
-                error: function () { layer.msg('网络异常，请稍后重试', {icon: 2}); }
+                fail: function (res) {
+                    huAdminUI.applyServerErrors('#productForm', res, SAVE_RULES);
+                }
             });
             return false;
         });

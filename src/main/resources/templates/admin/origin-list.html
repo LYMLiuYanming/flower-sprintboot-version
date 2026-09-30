@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地图节点维护 - 花语轩管理后台</title>
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
+    <style>
+        body { background: #f1f1f1; }
+        .og-kind { padding: 2px 8px; border-radius: 3px; font-size: 12px; }
+        .og-kind--origin { background: #e8f4f0; color: #0a5a49; }
+        .og-kind--hub { background: #eaf1fa; color: #2f5d8a; }
+        .og-kind--store { background: #f1ecfb; color: #6a4bb8; }
+        .og-off { color: #b7b3ac; }
+        .og-coord { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: #595959; }
+        .og-pick { height: 260px; border: 1px solid #e6e6e6; border-radius: 4px; margin: 4px 0 10px; }
+        .og-pick-tip { color: #8c8c8c; font-size: 12px; margin: 0 0 8px; }
+        .og-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+        .og-related { max-height: 150px; overflow: auto; font-size: 12px; color: #595959; }
+        .og-thumb { min-height: 54px; border: 1px dashed #d9d9d9; border-radius: 4px; padding: 6px 8px;
+            background: #fafafa; font-size: 12px; color: #8c8c8c; }
+        .og-thumb img { max-height: 84px; max-width: 220px; border-radius: 3px; display: block; }
+        .og-bad { color: #ff4d4f; }
+        .og-cellimg { float: left; width: 30px; height: 30px; object-fit: cover; border-radius: 3px;
+            margin: -2px 8px -2px 0; }
+    </style>
+</head>
+<body>
+<div class="layui-layout layui-layout-admin">
+    <div class="layui-header header" style="background: #211f1a;">
+        <div class="logo"><i class="fas fa-leaf"></i> 花语轩管理后台</div>
+        <div class="user-info">
+            <span><i class="fas fa-user-circle"></i> 管理员</span>
+            <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+        </div>
+    </div>
+
+    <div class="layui-side layui-bg-black" style="top: 60px;width: 200px;">
+        <div class="layui-side-scroll">
+            <ul class="layui-nav layui-nav-tree" lay-filter="nav">
+                <li class="layui-nav-item"><a href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a></li>
+                <li class="layui-nav-item"><a href="javascript:;"><i class="fas fa-th"></i> 商品管理</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/product-list"><i class="fas fa-box"></i> 商品列表</a></dd>
+                        <dd><a href="/admin/category-list"><i class="fas fa-tags"></i> 分类管理</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item"><a href="javascript:;"><i class="fas fa-shopping-cart"></i> 订单管理</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/order-list"><i class="fas fa-list-alt"></i> 订单列表</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item"><a href="javascript:;"><i class="fas fa-users"></i> 用户管理</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/user-list"><i class="fas fa-user"></i> 用户列表</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item layui-nav-itemed">
+                    <a href="javascript:;"><i class="fas fa-map-marked-alt"></i> 地图与花田</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/origin-list"><i class="fas fa-map-pin"></i> 地图节点</a></dd>
+                        <dd><a href="/flower-map" target="_blank"><i class="fas fa-external-link-alt"></i> 前台地图</a></dd>
+                        <dd><a href="/stores" target="_blank"><i class="fas fa-store"></i> 自提门店</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item">
+                    <a href="javascript:;"><i class="fas fa-cog"></i> 系统设置</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/banner-list"><i class="fas fa-image"></i> 轮播图管理</a></dd>
+                        <dd><a href="/admin/notice-list"><i class="fas fa-bullhorn"></i> 公告管理</a></dd>
+                        <dd><a href="/admin/coupon-list"><i class="fas fa-ticket-alt"></i> 优惠券</a></dd>
+                        <dd><a href="/admin/audit-list"><i class="fas fa-history"></i> 操作日志</a></dd>
+                    </dl>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="layui-body" style="left: 200px;">
+        <div class="content-body" style="padding: 20px;">
+            <div class="layui-card">
+                <div class="layui-card-header">
+                    <i class="fas fa-map-pin"></i> 地图节点维护
+                    <span style="color:#8c8c8c;font-size:12px;margin-left:10px;">产地 / 分拨中心 / 自提门店，坐标为高德 GCJ-02</span>
+                    <button class="layui-btn layui-btn-xs layui-btn-normal" style="float:right;" onclick="huOriginAdd()">
+                        <i class="fas fa-plus"></i> 新增节点
+                    </button>
+                </div>
+                <div class="layui-card-body">
+                    <form class="layui-form layui-form-pane" style="margin-bottom:12px;">
+                        <div class="layui-inline">
+                            <label class="layui-form-label" style="width:70px;">类型</label>
+                            <div class="layui-input-inline" style="width:130px;">
+                                <select id="filterKind" lay-filter="filterKind">
+                                    <option value="">全部</option>
+                                    <option value="origin">直采产地</option>
+                                    <option value="hub">分拨中心</option>
+                                    <option value="store">自提门店</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="layui-inline">
+                            <label class="layui-form-label" style="width:70px;">关键词</label>
+                            <div class="layui-input-inline" style="width:180px;">
+                                <input type="text" id="filterKeyword" class="layui-input" placeholder="名称 / 城市 / 品种">
+                            </div>
+                        </div>
+                        <button class="layui-btn layui-btn-sm" id="btnSearch" type="button"><i class="fas fa-search"></i> 查询</button>
+                        <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReset" type="button">重置</button>
+                        <a class="layui-btn layui-btn-sm layui-btn-normal" style="float:right;"
+                           href="/admin/audit-list"><i class="fas fa-history"></i> 改动留痕</a>
+                    </form>
+                    <table class="layui-hide" id="originTable" lay-filter="originTable"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="layui-footer">© 2024 花语轩鲜花销售系统 - 版权所有</div>
+</div>
+
+<script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+<script th:src="@{/jquery-3.7.1.min.js}"></script>
+<script th:src="@{/js/admin-common.js}"></script>
+<script th:replace="~{common/amap :: loader}"></script>
+<script type="text/html" id="originOperate">
+    <a class="layui-btn layui-btn-xs" lay-event="edit"><i class="fas fa-edit"></i> 编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-primary" lay-event="products"><i class="fas fa-boxes"></i> 关联商品</a>
+    {{# if(d.active) { }}
+    <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="off"><i class="fas fa-ban"></i> 停用</a>
+    {{# } else { }}
+    <a class="layui-btn layui-btn-warm layui-btn-xs" lay-event="on"><i class="fas fa-check"></i> 启用</a>
+    {{# } }}
+</script>
+
+<script th:inline="none">
+    layui.use(['table', 'layer', 'form'], function () {
+        var table = layui.table;
+        var layer = layui.layer;
+        var esc = huAdmin.esc;
+        var KIND_TEXT = {origin: '直采产地', hub: '分拨中心', store: '自提门店'};
+
+        table.render({
+            elem: '#originTable',
+            url: '/api/admin/origins',
+            page: false,
+            cols: [[
+                {field: 'name', title: '节点', minWidth: 210, templet: function (d) {
+                    // 列表里带一张缩略图，运营一眼能看出哪些节点还没配图（I01）
+                    return (d.imageUrl ? '<img class="og-cellimg" src="' + esc(d.imageUrl)
+                            + '" alt="" onerror="this.style.display=\'none\'">' : '')
+                        + '<span class="' + (d.active ? '' : 'og-off') + '">' + esc(d.name) + '</span>';
+                }},
+                {field: 'kind', title: '类型', width: 100, templet: function (d) {
+                    return '<span class="og-kind og-kind--' + d.kind + '">' + (KIND_TEXT[d.kind] || d.kind) + '</span>';
+                }},
+                {field: 'city', title: '城市', width: 130, templet: function (d) {
+                    return esc(d.province || '') + ' ' + esc(d.city || '');
+                }},
+                {field: 'adcode', title: 'adcode', width: 90},
+                {title: '坐标', width: 170, templet: function (d) {
+                    return '<span class="og-coord">' + Number(d.lng).toFixed(4) + ', ' + Number(d.lat).toFixed(4) + '</span>';
+                }},
+                {field: 'flowers', title: '主营 / 到店', minWidth: 170, templet: function (d) {
+                    if (d.kind === 'store') {
+                        return esc(d.openHours || '') + (d.pickupReadyMinutes ? ' · 备花 ' + d.pickupReadyMinutes + ' 分钟' : '');
+                    }
+                    return esc(d.flowers || d.feature || '');
+                }},
+                {title: '引用', width: 110, templet: function (d) {
+                    return (d.productCount || 0) + ' 款商品';
+                }},
+                {field: 'units', title: '近半年发货', width: 110, templet: function (d) {
+                    return (d.units || 0) + ' 枝';
+                }},
+                {title: '状态', width: 80, templet: function (d) {
+                    return d.active ? '<span style="color:#52c41a;">启用</span>' : '<span style="color:#8c8c8c;">停用</span>';
+                }},
+                {title: '操作', width: 280, toolbar: '#originOperate', fixed: 'right'}
+            ]]
+        });
+
+        function reload() {
+            table.reload('originTable', {where: {
+                kind: jQuery('#filterKind').val() || '',
+                keyword: jQuery('#filterKeyword').val() || ''
+            }});
+        }
+
+        jQuery('#btnSearch').on('click', reload);
+        jQuery('#btnReset').on('click', function () {
+            jQuery('#filterKind').val('').get(0) && layui.form.render('select');
+            jQuery('#filterKeyword').val('');
+            reload();
+        });
+
+        table.on('tool(originTable)', function (obj) {
+            if (obj.event === 'edit') {
+                openForm(obj.data);
+            } else if (obj.event === 'products') {
+                showProducts(obj.data);
+            } else if (obj.event === 'off' || obj.event === 'on') {
+                var active = obj.event === 'on';
+                huAdmin.request({
+                    url: '/api/admin/origins/' + obj.data.id + '/active?active=' + active,
+                    type: 'POST',
+                    ok: function () { reload(); }
+                });
+            }
+        });
+
+        /** 删除走「下架」：被商品引用的节点服务端会拒绝物理删除并回原因 */
+        function retire(row) {
+            huAdmin.request({
+                url: '/api/admin/origins/' + row.id,
+                type: 'DELETE',
+                ok: function (res) {
+                    layer.msg(res.data || res.msg || '已处理');
+                    reload();
+                }
+            });
+        }
+
+        function showProducts(row) {
+            huAdmin.request({
+                url: '/api/admin/origins/' + row.id + '/products',
+                silent: true,
+                ok: function (res) {
+                    var list = res.data || [];
+                    layer.open({
+                        type: 1, title: row.name + ' 关联商品（I02）', area: ['520px', '420px'],
+                        content: '<div class="og-related" style="padding:14px 18px;">' + (list.length
+                            ? list.map(function (p) {
+                                return '<div>· <a href="/product/' + esc(p.id) + '" target="_blank">' + esc(p.name)
+                                    + '</a> ¥' + esc(p.price) + (p.active ? '' : '（已下架）') + '</div>';
+                            }).join('')
+                            : '<span style="color:#8c8c8c">暂无商品挂在该节点上</span>')
+                            + (list.length ? '<div style="margin-top:12px"><button class="layui-btn layui-btn-xs layui-btn-danger" id="ogRetire">'
+                                + '<i class="fas fa-trash"></i> 下架该节点</button></div>' : '') + '</div>',
+                        success: function () {
+                            jQuery('#ogRetire').on('click', function () {
+                                layer.closeAll('page');
+                                retire(row);
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        /* ---------- 新增 / 编辑（含坐标拾取） ---------- */
+
+        var picker = null;
+        var pickerMap = null;
+
+        function field(label, control) {
+            return '<div class="layui-form-item"><label class="layui-form-label">' + label + '</label>' +
+                '<div class="layui-input-block">' + control + '</div></div>';
+        }
+
+        function openForm(row) {
+            var isEdit = !!(row && row.id);
+            var v = row || {kind: 'origin', active: true, sortOrder: 0, pickupReadyMinutes: 120};
+            layer.open({
+                type: 1,
+                title: isEdit ? '编辑节点 · ' + esc(v.name) : '新增地图节点',
+                area: ['720px', '680px'],
+                content: '<form class="layui-form" style="padding:18px 22px 0">' +
+                    '<div class="og-grid">' +
+                    field('名称', '<input type="text" id="ofName" class="layui-input" maxlength="60" value="' + esc(v.name || '') + '">') +
+                    field('类型', '<select id="ofKind" ' + (isEdit ? 'disabled' : '') + '>'
+                        + ['origin', 'hub', 'store'].map(function (k) {
+                            return '<option value="' + k + '"' + (v.kind === k ? ' selected' : '') + '>' + KIND_TEXT[k] + '</option>';
+                        }).join('') + '</select>') +
+                    field('省', '<input type="text" id="ofProvince" class="layui-input" maxlength="40" value="' + esc(v.province || '') + '">') +
+                    field('市', '<input type="text" id="ofCity" class="layui-input" maxlength="40" value="' + esc(v.city || '') + '">') +
+                    field('adcode', '<input type="text" id="ofAdcode" class="layui-input" maxlength="12" value="' + esc(v.adcode || '') + '" placeholder="如 530114">') +
+                    field('排序', '<input type="number" id="ofSort" class="layui-input" value="' + esc(v.sortOrder == null ? 0 : v.sortOrder) + '">') +
+                    field('经度', '<input type="text" id="ofLng" class="layui-input" value="' + esc(v.lng == null ? '' : v.lng) + '" placeholder="102.7968">') +
+                    field('纬度', '<input type="text" id="ofLat" class="layui-input" value="' + esc(v.lat == null ? '' : v.lat) + '" placeholder="24.8985">') +
+                    field('海拔(米)', '<input type="number" id="ofAltitude" class="layui-input" value="' + esc(v.altitude == null ? '' : v.altitude) + '">') +
+                    field('状态', '<select id="ofActive"><option value="true"' + (v.active !== false ? ' selected' : '') + '>启用</option>'
+                        + '<option value="false"' + (v.active === false ? ' selected' : '') + '>停用</option></select>') +
+                    (v.kind === 'store' ? field('营业时间', '<input type="text" id="ofHours" class="layui-input" maxlength="60" value="' + esc(v.openHours || '') + '" placeholder="09:00-21:00">') : '') +
+                    (v.kind === 'store' ? field('备花分钟', '<input type="number" id="ofReady" class="layui-input" value="' + esc(v.pickupReadyMinutes == null ? 120 : v.pickupReadyMinutes) + '">') : '') +
+                    (v.kind === 'store' ? field('门店电话', '<input type="text" id="ofPhone" class="layui-input" maxlength="20" value="' + esc(v.phone || '') + '">') : '') +
+                    '</div>' +
+                    field('详细地址', '<input type="text" id="ofAddress" class="layui-input" maxlength="160" value="' + esc(v.address || '') + '">') +
+                    field('主营品种', '<input type="text" id="ofFlowers" class="layui-input" maxlength="255" value="' + esc(v.flowers || '') + '">') +
+                    field('一句话特色', '<input type="text" id="ofFeature" class="layui-input" maxlength="120" value="' + esc(v.feature || '') + '">') +
+                    field('采收季节', '<input type="text" id="ofSeason" class="layui-input" maxlength="60" value="' + esc(v.season || '') + '">') +
+                    field('节点配图', '<input type="text" id="ofImage" class="layui-input" maxlength="255" value="'
+                        + esc(v.imageUrl || '') + '" placeholder="/img/photos/hero-rose.jpg">') +
+                    '<div class="layui-form-item"><label class="layui-form-label">配图预览</label><div class="layui-input-block">' +
+                    '<div class="og-thumb" id="ofThumb"></div>' +
+                    '<p class="og-pick-tip">只接受站内路径（以 / 开头），留空则前台卡片不占位。</p>' +
+                    '</div></div>' +
+                    field('基地故事', '<textarea id="ofStory" class="layui-textarea" maxlength="500">' + esc(v.story || '') + '</textarea>') +
+                    '<div class="layui-form-item"><label class="layui-form-label">坐标拾取</label><div class="layui-input-block">' +
+                    '<div style="display:flex;gap:8px;margin-bottom:8px">' +
+                    '<input type="text" id="ofPickAddress" class="layui-input" placeholder="粘贴地址或城市名，点「按地址取点」">' +
+                    '<button type="button" class="layui-btn layui-btn-sm" id="ofPickBtn"><i class="fas fa-crosshairs"></i> 按地址取点</button>' +
+                    '</div>' +
+                    '<div id="ofPicker" class="og-pick"></div>' +
+                    '<p class="og-pick-tip" id="ofPickTip">在图上点击可直接填经纬度；也可以只填地址由服务端取点。取点结果标「门牌」最准，标「城市质心」约有几公里偏差。</p>' +
+                    '</div></div>' +
+                    '<div class="layui-form-item"><div class="layui-input-block">' +
+                    '<button type="button" class="layui-btn" id="ofSubmit">保存</button>' +
+                    (isEdit ? '<button type="button" class="layui-btn layui-btn-danger" id="ofRetire"><i class="fas fa-trash"></i> 下架该节点</button>' : '') +
+                    '</div></div></form>',
+                success: function () {
+                    layui.form.render(null, null);
+                    initPicker();
+                    renderThumb();
+                    jQuery('#ofImage').on('input propertychange', renderThumb);
+                    jQuery('#ofPickBtn').on('click', function () {
+                        var text = jQuery.trim(jQuery('#ofPickAddress').val());
+                        if (!text) { huAdmin.toast('先填写要拾取的地址', 'err'); return; }
+                        huAdmin.request({
+                            url: '/api/admin/origins/pick', data: {address: text}, silent: true,
+                            ok: function (res) {
+                                var d = res.data || {};
+                                if (!d.located) { huAdmin.toast(d.note || '没能定位到该地址', 'err'); return; }
+                                jQuery('#ofLng').val(d.lng);
+                                jQuery('#ofLat').val(d.lat);
+                                if (d.city && !jQuery.trim(jQuery('#ofCity').val())) jQuery('#ofCity').val(d.city);
+                                if (d.province && !jQuery.trim(jQuery('#ofProvince').val())) jQuery('#ofProvince').val(d.province);
+                                if (d.adcode && !jQuery.trim(jQuery('#ofAdcode').val())) jQuery('#ofAdcode').val(d.adcode);
+                                jQuery('#ofPickTip').text('取点成功：' + d.lng + ', ' + d.lat + '（' + (d.resolution === 'geocode' ? '门牌坐标' : '城市质心兜底') + '）');
+                                if (pickerMap) { pickerMap.setZoomAndCenter(11, [d.lng, d.lat]); placeMarker(d.lng, d.lat); }
+                            },
+                            fail: function (res) { huAdmin.toast((res && res.msg) || '取点失败', 'err'); }
+                        });
+                    });
+                    jQuery('#ofSubmit').on('click', function () { submit(isEdit ? v.id : null); });
+                    if (isEdit) {
+                        jQuery('#ofRetire').on('click', function () {
+                            layer.closeAll('page');
+                            retire(v);
+                        });
+                    }
+                },
+                end: function () {
+                    pickerMap = null;
+                    picker = null;
+                }
+            });
+        }
+
+        function placeMarker(lng, lat) {
+            if (picker) {
+                picker.setPosition([lng, lat]);
+                return;
+            }
+            picker = new AMap.Marker({position: [lng, lat], anchor: 'center', map: pickerMap});
+        }
+
+        /** 弹层里的迷你地图：点击回填经纬度，与「按地址取点」互不干扰 */
+        function initPicker() {
+            window.huAmap.ready(function (AMap) {
+                window.AMap = AMap;
+                pickerMap = new AMap.Map('ofPicker', {
+                    zoom: 4.2, center: [105.5, 33.5], viewMode: '2D', resizeEnable: true
+                });
+                var lng = jQuery.trim(jQuery('#ofLng').val());
+                var lat = jQuery.trim(jQuery('#ofLat').val());
+                if (lng && lat) {
+                    pickerMap.setZoomAndCenter(9, [Number(lng), Number(lat)]);
+                    placeMarker(Number(lng), Number(lat));
+                }
+                pickerMap.on('click', function (e) {
+                    var p = e.lnglat;
+                    jQuery('#ofLng').val(p.getLng().toFixed(6));
+                    jQuery('#ofLat').val(p.getLat().toFixed(6));
+                    placeMarker(p.getLng(), p.getLat());
+                    jQuery('#ofPickTip').text('已取坐标：' + p.getLng().toFixed(6) + ', ' + p.getLat().toFixed(6) + '（GCJ-02）');
+                });
+            }, function (message) {
+                jQuery('#ofPicker').html('<div style="padding:18px;color:#8c8c8c;font-size:12px">'
+                    + esc(message) + '<br>仍可直接填写经纬度，或用「按地址取点」。</div>');
+            });
+        }
+
+        /**
+         * 配图预览：前端只做「像不像站内路径」的即时提示，
+         * 真正的拒绝在服务层（saveOrigin 会抛业务异常），两边口径一致
+         */
+        function renderThumb() {
+            var url = jQuery.trim(jQuery('#ofImage').val());
+            var $box = jQuery('#ofThumb');
+            if (!url) {
+                $box.html('<span class="og-off">未设置配图</span>');
+                return;
+            }
+            if (url.charAt(0) !== '/' || url.indexOf('//') === 0 || url.indexOf(':') >= 0) {
+                $box.html('<span class="og-bad">只支持站内路径，例如 /img/photos/hero-rose.jpg</span>');
+                return;
+            }
+            $box.html('<img src="' + esc(url) + '" alt="配图预览">');
+            $box.find('img').on('error', function () {
+                $box.html('<span class="og-bad">图片读不出来，请确认文件已放在 static 下</span>');
+            });
+        }
+
+        function num(id) {
+            var raw = jQuery.trim(jQuery(id).val());
+            return raw === '' ? null : Number(raw);
+        }
+
+        function submit(id) {
+            var lng = num('#ofLng');
+            var lat = num('#ofLat');
+            if ((lng === null) !== (lat === null)) {
+                huAdmin.toast('经纬度要一起填，或用「按地址取点」自动带入', 'err');
+                return;
+            }
+            var payload = {
+                name: jQuery.trim(jQuery('#ofName').val()),
+                kind: jQuery('#ofKind').val(),
+                province: jQuery.trim(jQuery('#ofProvince').val()) || null,
+                city: jQuery.trim(jQuery('#ofCity').val()) || null,
+                adcode: jQuery.trim(jQuery('#ofAdcode').val()) || null,
+                lng: lng, lat: lat,
+                altitude: num('#ofAltitude'),
+                flowers: jQuery.trim(jQuery('#ofFlowers').val()) || null,
+                feature: jQuery.trim(jQuery('#ofFeature').val()) || null,
+                story: jQuery.trim(jQuery('#ofStory').val()) || null,
+                season: jQuery.trim(jQuery('#ofSeason').val()) || null,
+                imageUrl: jQuery.trim(jQuery('#ofImage').val()) || null,
+                address: jQuery.trim(jQuery('#ofAddress').val()) || null,
+                phone: (jQuery('#ofPhone').val() || '').trim() || null,
+                openHours: (jQuery('#ofHours').val() || '').trim() || null,
+                pickupReadyMinutes: num('#ofReady'),
+                sortOrder: num('#ofSort'),
+                active: jQuery('#ofActive').val() === 'true'
+            };
+            if (!payload.name) { huAdmin.toast('请填写节点名称', 'err'); return; }
+            huAdmin.request({
+                url: id ? '/api/admin/origins/' + id : '/api/admin/origins',
+                type: id ? 'PUT' : 'POST',
+                data: payload,
+                ok: function () {
+                    layer.closeAll('page');
+                    reload();
+                }
+            });
+        }
+
+        window.huOriginAdd = function () { openForm(null); };
+    });
+</script>
+</body>
+</html>

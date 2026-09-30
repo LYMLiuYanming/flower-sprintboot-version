@@ -89,6 +89,24 @@ public class Product {
     @Column(name = "tags", length = 200)
     private String tags;
 
+    @Column(name = "subtitle", length = 120)
+    private String subtitle;
+
+    /** 养护贴士：详情页「怎么养」段落，服务端白名单纯文本 */
+    @Column(name = "care_tip", length = 500)
+    private String careTip;
+
+    @Column(name = "flower_language", length = 200)
+    private String flowerLanguage;
+
+    /** 适用场景，逗号分隔（告白/生日/探病…），列表页按此筛选 */
+    @Column(name = "suitable_for", length = 200)
+    private String suitableFor;
+
+    /** 主产地（flower_origin.id），一物一地；为空表示尚未标注，产地地图按未标注处理 */
+    @Column(name = "origin_id", columnDefinition = "uuid")
+    private UUID originId;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

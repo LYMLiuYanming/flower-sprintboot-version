@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识库管理 - 花语轩管理后台</title>
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
+    <style>
+        body {background: #f1f1f1;}
+        .kb-state {padding: 3px 8px;border-radius: 3px;font-size: 12px;white-space: nowrap;}
+        .kb-live {background: #f6ffed;color: #52c41a;}
+        .kb-scheduled {background: #e6f7ff;color: #1890ff;}
+        .kb-offline {background: #fff7e6;color: #d46b08;}
+        .kb-draft {background: #f5f5f5;color: #8c8c8c;}
+        .kb-cover {width: 78px;height: 46px;object-fit: cover;border-radius: 4px;border: 1px solid #eee;display: block;cursor: zoom-in;}
+        .kb-materials span {display: inline-block;background: #f3f1ea;border-radius: 3px;padding: 1px 6px;margin: 1px 3px 1px 0;font-size: 12px;color: #5b5a54;}
+    </style>
+</head>
+<body>
+<div class="layui-layout layui-layout-admin">
+    <div class="layui-header header" style="background: #211f1a;">
+        <div class="logo"><i class="fas fa-leaf"></i> 花语轩管理后台</div>
+        <div class="user-info">
+            <span><i class="fas fa-user-circle"></i> 管理员</span>
+            <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+        </div>
+    </div>
+
+    <div class="layui-side layui-bg-black" style="top: 60px;width: 200px;">
+        <div class="layui-side-scroll">
+            <ul class="layui-nav layui-nav-tree" lay-filter="nav">
+                <li class="layui-nav-item"><a href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a></li>
+                <li class="layui-nav-item">
+                    <a href="javascript:;"><i class="fas fa-th"></i> 商品管理</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/product-list"><i class="fas fa-box"></i> 商品列表</a></dd>
+                        <dd><a href="/admin/category-list"><i class="fas fa-tags"></i> 分类管理</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item">
+                    <a href="javascript:;"><i class="fas fa-shopping-cart"></i> 订单管理</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/order-list"><i class="fas fa-list-alt"></i> 订单列表</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item">
+                    <a href="javascript:;"><i class="fas fa-users"></i> 用户管理</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/user-list"><i class="fas fa-user"></i> 用户列表</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item layui-nav-itemed">
+                    <a href="javascript:;"><i class="fas fa-cog"></i> 系统设置</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/banner-list"><i class="fas fa-image"></i> 轮播图管理</a></dd>
+                        <dd><a href="/admin/notice-list"><i class="fas fa-bullhorn"></i> 公告管理</a></dd>
+                        <dd class="layui-this"><a href="/admin/article-list"><i class="fas fa-book"></i> 知识库</a></dd>
+                        <dd><a href="/admin/review-list"><i class="fas fa-star-half-alt"></i> 评价审核</a></dd>
+                        <dd><a href="/admin/coupon-list"><i class="fas fa-ticket-alt"></i> 优惠券</a></dd>
+                        <dd><a href="/admin/audit-list"><i class="fas fa-history"></i> 操作日志</a></dd>
+                    </dl>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="layui-body" style="left: 200px;">
+        <div class="content-body" style="padding: 20px;">
+            <div class="layui-card">
+                <div class="layui-card-header">
+                    <i class="fas fa-book"></i> 花语 / 养护知识库
+                    <span style="float:right;color:#8a8578;font-size:12px" id="kbMeta">已发布 —</span>
+                    <button class="layui-btn layui-btn-xs layui-btn-normal" style="float:right;margin-right:12px"
+                            onclick="huArticleAdd()">
+                        <i class="fas fa-plus"></i> 写文章
+                    </button>
+                </div>
+                <div class="layui-card-body">
+                    <div class="layui-form" style="margin-bottom:12px">
+                        <div class="layui-inline">
+                            <input type="text" id="kbKeyword" class="layui-input" placeholder="标题或花材关键词" style="width:220px">
+                        </div>
+                        <div class="layui-inline">
+                            <select id="kbCategory" style="width:160px">
+                                <option value="">全部分类</option>
+                                <option value="care">养护指南</option>
+                                <option value="language">花语故事</option>
+                                <option value="guide">送礼手册</option>
+                                <option value="story">产地与花艺</option>
+                                <option value="festival">节日特辑</option>
+                            </select>
+                        </div>
+                        <div class="layui-inline">
+                            <select id="kbStatus" style="width:150px">
+                                <option value="">全部状态</option>
+                                <option value="published">已发布</option>
+                                <option value="draft">草稿</option>
+                                <option value="offline">已下线</option>
+                            </select>
+                        </div>
+                        <button class="layui-btn layui-btn-sm" id="kbSearch"><i class="fas fa-search"></i> 查询</button>
+                        <button class="layui-btn layui-btn-sm layui-btn-primary" id="kbReset">重置</button>
+                    </div>
+                    <table class="layui-hide" id="articleTable" lay-filter="articleTable"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="layui-footer">© 2024 花语轩鲜花销售系统 - 版权所有</div>
+</div>
+
+<script type="text/html" id="stateTpl">
+    {{# var map = {live:['kb-live','已发布 · 前台可见'], scheduled:['kb-scheduled','定时待发'],
+       offline:['kb-offline','已下线'], draft:['kb-draft','草稿']};
+       var hit = map[d.state] || ['kb-draft', d.status]; }}
+    <span class="kb-state {{hit[0]}}">{{hit[1]}}</span>
+</script>
+
+<script type="text/html" id="operateTpl">
+    <a class="layui-btn layui-btn-xs" lay-event="edit"><i class="fas fa-edit"></i> 编辑</a>
+    {{# if(d.state === 'live') { }}
+    <a class="layui-btn layui-btn-warm layui-btn-xs" lay-event="offline"><i class="fas fa-eye-slash"></i> 下线</a>
+    {{# } else { }}
+    <a class="layui-btn layui-btn-xs" lay-event="publish"><i class="fas fa-eye"></i> 发布</a>
+    {{# } }}
+    <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del"><i class="fas fa-trash"></i> 删除</a>
+</script>
+
+<script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+<script th:src="@{/jquery-3.7.1.min.js}"></script>
+<script th:src="@{/js/admin-common.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'layer', 'form'], function () {
+        var table = layui.table;
+        var layer = layui.layer;
+        var esc = huAdmin.esc;
+        var state = huAdmin.listState('article-list');
+
+        table.render({
+            elem: '#articleTable',
+            url: '/api/admin/articles',
+            where: {status: '', category: ''},
+            cols: [[
+                {field: 'coverImage', title: '封面', width: 96, templet: function (d) {
+                    var src = huAdmin.safeUrl(d.coverImage);
+                    return src ? '<img src="' + src + '" class="kb-cover" data-zoom="1">' : '<span class="layui-text">无</span>';
+                }},
+                {field: 'title', title: '标题', minWidth: 240, templet: function (d) {
+                    var top = d.isTop ? '<span style="color:#a9906a;font-weight:700" title="置顶"><i class="fas fa-thumbtack"></i></span> ' : '';
+                    return top + esc(d.title) + '<div style="color:#8a8578;font-size:12px;margin-top:4px">'
+                        + esc(d.summary || '') + '</div>';
+                }},
+                {field: 'categoryLabel', title: '分类', width: 106},
+                {field: 'materials', title: '关联花材', width: 190, templet: function (d) {
+                    return '<div class="kb-materials">' + ((d.materials || []).slice(0, 4).map(function (m) {
+                        return '<span>' + esc(m) + '</span>';
+                    }).join('') || '-') + '</div>';
+                }},
+                {field: 'state', title: '状态', width: 128, templet: '#stateTpl'},
+                {field: 'viewCount', title: '阅读', width: 76, sort: true},
+                {field: 'relatedProductIds', title: '关联商品', width: 92, templet: function (d) {
+                    var n = (d.relatedProductIds || []).length;
+                    return n ? '挂 ' + n + ' 款' : '<span class="layui-text">未挂</span>';
+                }},
+                {field: 'updatedAt', title: '最后更新', width: 158, templet: function (d) {
+                    return d.updatedAt ? new Date(d.updatedAt).toLocaleString() : '-';
+                }},
+                {title: '操作', width: 230, toolbar: '#operateTpl', fixed: 'right'}
+            ]],
+            page: state.pageConfig(),
+            limit: state.limit(10),
+            limits: [10, 20, 30, 50],
+            done: state.done('/api/admin/articles', function (res) {
+                $('#kbMeta').text('已发布 ' + (res.publishedCount == null ? '-' : res.publishedCount) + ' 篇');
+            })
+        });
+
+        function query() {
+            return {
+                keyword: $.trim($('#kbKeyword').val()),
+                category: $('#kbCategory').val(),
+                status: $('#kbStatus').val()
+            };
+        }
+
+        function reload() {
+            table.reload('articleTable', {where: query(), page: {curr: 1}});
+        }
+
+        $('#kbSearch').on('click', reload);
+        $('#kbReset').on('click', function () {
+            $('#kbKeyword').val('');
+            $('#kbCategory').val('');
+            $('#kbStatus').val('');
+            state.reset();
+            reload();
+        });
+
+        function changeStatus(row, status) {
+            huAdmin.request({
+                url: '/api/admin/articles/' + row.id + '/status?status=' + status,
+                type: 'POST',
+                ok: reload
+            });
+        }
+
+        table.on('tool(articleTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'edit') {
+                layer.open({type: 2, title: '编辑文章', area: ['92%', '92%'],
+                    content: '/admin/article-edit?id=' + row.id});
+            } else if (obj.event === 'publish') {
+                changeStatus(row, 'published');
+            } else if (obj.event === 'offline') {
+                changeStatus(row, 'offline');
+            } else if (obj.event === 'del') {
+                huAdmin.confirmDelete('确定要删除《' + row.title + '》吗？删除后前台立即不可见。',
+                    '/api/admin/articles/' + row.id, reload);
+            } else if (obj.event === 'preview') {
+                window.open('/article/' + row.id, '_blank');
+            }
+        });
+
+        $('#articleTable').closest('.layui-table-view').on('click', '[data-zoom]', function () {
+            var src = $(this).attr('src');
+            if (!huAdmin.safeUrl(src)) return;
+            layer.open({type: 1, title: false, closeBtn: 1, area: ['auto', 'auto'], shadeClose: true,
+                content: '<img src="' + src + '" style="max-width:640px;max-height:80vh;display:block">'});
+        });
+
+        window.huArticleAdd = function () {
+            layer.open({type: 2, title: '写文章', area: ['92%', '92%'], content: '/admin/article-edit'});
+        };
+    });
+</script>
+</body>
+</html>

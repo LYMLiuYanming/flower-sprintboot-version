@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title th:text="${article.title} + ' · 花语知识库'">文章标题 · 花语知识库</title>
+    <meta name="description" th:content="${article.summary}">
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<article class="hu-article">
+    <div class="hu-container">
+        <div class="hu-crumb" style="padding:18px 0">
+            <a href="/index">首页</a> / <a href="/knowledge">花语知识库</a>
+            <span th:if="${article.category != null}"> /
+                <a th:href="@{/knowledge(category=${article.category})}">
+                    <th:block th:switch="${article.category}">
+                        <th:block th:case="'care'">养护指南</th:block>
+                        <th:block th:case="'language'">花语故事</th:block>
+                        <th:block th:case="'guide'">送礼手册</th:block>
+                        <th:block th:case="'story'">产地与花艺</th:block>
+                        <th:block th:case="*">节日特辑</th:block>
+                    </th:block>
+                </a>
+            </span>
+        </div>
+
+        <header class="hu-article__head">
+            <span class="hu-eyebrow" th:text="${article.authorName} + ' · HUAYUXUAN'">花艺组</span>
+            <h1 class="hu-display hu-display--lg" th:text="${article.title}">文章标题</h1>
+            <p class="hu-article__summary" th:if="${article.summary != null}" th:text="${article.summary}">摘要</p>
+            <div class="hu-article__meta">
+                <span><i class="fa fa-calendar-o"></i>
+                    <th:block th:text="${#strings.replace(#strings.substring((article.publishAt != null ? article.publishAt : article.createdAt).toString(), 0, 10), 'T', ' ')}">2026-01-01</th:block>
+                </span>
+                <span><i class="fa fa-eye"></i> 阅读 <span th:text="${viewCount}">0</span> 次</span>
+                <span th:if="${article.materials != null and !#strings.isEmpty(article.materials)}">
+                    <i class="fa fa-leaf"></i> <span th:text="${#strings.replace(article.materials, ',', ' / ')}">花材</span>
+                </span>
+            </div>
+        </header>
+
+        <div class="hu-article__cover" th:if="${article.coverImage != null and !#strings.isEmpty(article.coverImage)}">
+            <img th:src="${article.coverImage}" th:alt="${article.title}" fetchpriority="high">
+        </div>
+
+        <!-- 正文由后台富文本录入，入库前已按 HtmlSanitizer 白名单清洗，只保留排版标签 -->
+        <div class="hu-prose hu-article__body" th:utext="${article.content}">正文</div>
+
+        <div class="hu-article__tags" th:if="${article.tags != null and !#strings.isEmpty(article.tags)}">
+            <span class="hu-rp__pill" th:each="t : ${#strings.arraySplit(article.tags, ',')}" th:text="${t}">标签</span>
+        </div>
+
+        <!-- 文章挂的商品：读完就能下单，不让读者自己去找同款 -->
+        <section class="hu-section" th:if="${relatedProducts != null and !#lists.isEmpty(relatedProducts)}"
+                 style="padding-top:8px">
+            <div class="hu-section-head">
+                <div>
+                    <div class="hu-eyebrow">IN THIS ARTICLE</div>
+                    <h2 class="hu-display hu-display--md">文中提到的花礼</h2>
+                </div>
+                <a class="hu-link" href="/products">查看全部 →</a>
+            </div>
+            <div class="hu-product-grid">
+                <div class="hu-product" th:each="item : ${relatedProducts}">
+                    <a th:href="@{/product/{id}(id=${item.id})}" class="hu-product__media">
+                        <img th:src="${item.mainImage != null ? item.mainImage : '/img/product-placeholder.svg'}"
+                             th:alt="${item.name}" loading="lazy">
+                    </a>
+                    <div class="hu-product__body">
+                        <div class="hu-product__cat" th:text="${item.category != null ? item.category.name : '鲜花'}">鲜花</div>
+                        <a th:href="@{/product/{id}(id=${item.id})}" class="hu-product__name" th:text="${item.name}">商品名称</a>
+                        <div class="hu-product__sold" th:text="'花材 ' + ${item.material != null ? item.material : '当日搭配'}">花材</div>
+                        <div class="hu-product__foot">
+                            <div class="hu-price"><small>¥</small>
+                                <span th:text="${#strings.replace(#numbers.formatDecimal(item.price,1,2), '.00', '')}">0.00</span>
+                            </div>
+                            <a class="hu-btn hu-btn--solid hu-btn--sm" th:href="@{/product/{id}(id=${item.id})">看看这款</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</article>
+
+<!-- 相关文章：同分类或共享花材，读完一篇还有下一篇 -->
+<section class="hu-section" style="background:var(--hu-surface)"
+         th:if="${relatedArticles != null and !#lists.isEmpty(relatedArticles)}">
+    <div class="hu-container">
+        <div class="hu-section-head">
+            <div>
+                <div class="hu-eyebrow">KEEP READING</div>
+                <h2 class="hu-display hu-display--md">接着看这些</h2>
+            </div>
+            <a class="hu-link" href="/knowledge">全部知识库 →</a>
+        </div>
+        <div class="hu-kb__grid">
+            <a class="hu-kbcard" th:each="a : ${relatedArticles}" th:href="@{/article/{id}(id=${a.id})}">
+                <span class="hu-kbcard__media">
+                    <img th:if="${a.coverImage != null and !#strings.isEmpty(a.coverImage)}" th:src="${a.coverImage}"
+                         th:alt="${a.title}" loading="lazy">
+                    <span class="hu-kbcard__cat" th:text="${a.categoryLabel}">养护指南</span>
+                </span>
+                <span class="hu-kbcard__body">
+                    <span class="hu-kbcard__title" th:text="${a.title}">标题</span>
+                    <span class="hu-kbcard__sum" th:text="${a.summary}">摘要</span>
+                    <span class="hu-kbcard__foot">
+                        <span class="hu-kbcard__meta">阅读 <span th:text="${a.viewCount}">0</span> 次</span>
+                    </span>
+                </span>
+            </a>
+        </div>
+    </div>
+</section>
+
+<div th:replace="~{common/footer :: footer}"></div>
+</body>
+</html>

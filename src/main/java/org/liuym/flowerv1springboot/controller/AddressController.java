@@ -2,6 +2,7 @@ package org.liuym.flowerv1springboot.controller;
 
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
+import org.liuym.flowerv1springboot.common.AddressParser;
 import org.liuym.flowerv1springboot.common.CurrentUser;
 import org.liuym.flowerv1springboot.common.Result;
 import org.liuym.flowerv1springboot.dto.UserDtos;
@@ -29,13 +30,22 @@ public class AddressController {
 
     @GetMapping
     public Result<List<AddressView>> list(HttpSession session) {
-        return Result.ok(addressService.list(userId(session)));
+        // count 字段带出上限，前端据此提示「还能加 N 条」（D09）
+        return Result.ok(addressService.list(userId(session))).with("max", AddressService.MAX_PER_USER);
     }
 
     @GetMapping("/default")
     public Result<AddressView> defaultAddress(HttpSession session) {
         Address address = addressService.defaultAddress(userId(session));
         return Result.ok(address == null ? null : AddressView.from(address));
+    }
+
+    /**
+     * 智能识别（D10）：粘贴一段文本返回拆好的字段，纯解析不落库，用户在弹窗内核对后再保存
+     */
+    @PostMapping("/parse")
+    public Result<AddressParser.Parsed> parse(@Valid @RequestBody UserDtos.AddressParseRequest request) {
+        return Result.ok(addressService.parse(request.raw()));
     }
 
     @PostMapping
@@ -59,6 +69,16 @@ public class AddressController {
     public Result<Void> delete(@PathVariable UUID id, HttpSession session) {
         addressService.delete(userId(session), id);
         return Result.ok("地址已删除", null);
+    }
+
+    /**
+     * 批量删除（D08）：越权/不存在的 id 由服务端按归属过滤，只删本人的
+     */
+    @PostMapping("/batch-delete")
+    public Result<Integer> deleteBatch(@Valid @RequestBody UserDtos.AddressBatchDeleteRequest request,
+                                       HttpSession session) {
+        int removed = addressService.deleteBatch(userId(session), request.ids());
+        return Result.ok("已删除 " + removed + " 个地址", removed);
     }
 
     private UUID userId(HttpSession session) {

@@ -8,19 +8,22 @@ import org.liuym.flowerv1springboot.model.User;
 import org.liuym.flowerv1springboot.security.CaptchaService;
 import org.liuym.flowerv1springboot.security.LoginAttemptService;
 import org.liuym.flowerv1springboot.security.RememberMeService;
+import org.liuym.flowerv1springboot.service.SessionService;
 import org.liuym.flowerv1springboot.service.UserService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 登录/注册页面与退出。安全要点：
  * 1）连续登录失败按 IP+用户名 锁定；
  * 2）登录成功更换 sessionId，阻断会话固定攻击；
  * 3）注册需图形验证码；
- * 4）勾选「记住我」下发签名 Cookie，会话过期后由 RememberMeFilter 静默续登。
+ * 4）勾选「记住我」下发签名 Cookie，会话过期后由 RememberMeFilter 静默续登；
+ * 5）每次登录登记一条设备会话（D18），供「登录设备」列表与「退出其他设备」使用。
  * 改密校验旧密码等 JSON 接口见 {@link AuthApiController}（需 @RestController 才能被全局异常处理收敛）。
  */
 @Controller
@@ -31,15 +34,18 @@ public class AuthController {
     private final LoginAttemptService loginAttemptService;
     private final CaptchaService captchaService;
     private final RememberMeService rememberMeService;
+    private final SessionService sessionService;
 
     public AuthController(UserService userService,
                           LoginAttemptService loginAttemptService,
                           CaptchaService captchaService,
-                          RememberMeService rememberMeService) {
+                          RememberMeService rememberMeService,
+                          SessionService sessionService) {
         this.userService = userService;
         this.loginAttemptService = loginAttemptService;
         this.captchaService = captchaService;
         this.rememberMeService = rememberMeService;
+        this.sessionService = sessionService;
     }
 
     @GetMapping("/login")
@@ -53,6 +59,12 @@ public class AuthController {
             session.setAttribute(CurrentUser.REDIRECT_KEY, target);
         }
         model.addAttribute("errorMsg", "");
+        // D19：记住我 Cookie 已过期或失效时，续登会静默失败，这里给出可读提示而非停留在无提示的登录页
+        Object notice = session.getAttribute(CurrentUser.REMEMBER_NOTICE_KEY);
+        if (notice != null) {
+            session.removeAttribute(CurrentUser.REMEMBER_NOTICE_KEY);
+            model.addAttribute("noticeMsg", notice.toString());
+        }
         return "auth/login";
     }
 
@@ -80,19 +92,26 @@ public class AuthController {
         }
         User user = userOpt.get();
         if (!User.STATUS_ACTIVE.equals(user.getStatus())) {
-            model.addAttribute("errorMsg", "账号已被禁用或锁定，请联系管理员");
+            // deleted 与 inactive/locked 一并挡在门外；注销冷静期内 status 仍为 active，可登录撤销
+            model.addAttribute("errorMsg", "账号已被禁用、锁定或已注销，请联系管理员");
             return "auth/login";
         }
 
+        boolean rememberMe = remember != null;
         // 会话固定攻击防护：认证通过后仅更换会话标识，属性随会话迁移
         String target = (String) session.getAttribute(CurrentUser.REDIRECT_KEY);
         request.changeSessionId();
+        session = request.getSession();
         session.removeAttribute(CurrentUser.REDIRECT_KEY);
-        HttpSession fresh = request.getSession();
-        fresh.setAttribute(CurrentUser.SESSION_KEY, user);
+        session.removeAttribute(CurrentUser.REMEMBER_NOTICE_KEY);
+        session.setAttribute(CurrentUser.SESSION_KEY, user);
         loginAttemptService.reset(ip, username);
         userService.touchLastLogin(user.getId());
-        if (remember != null) {
+        // D18：登记登录设备，token 写回会话作为「当前设备」标识
+        UUID deviceToken = sessionService.recordLogin(user.getId(), session.getId(), ip,
+                request.getHeader("User-Agent"), rememberMe);
+        session.setAttribute(CurrentUser.DEVICE_TOKEN_KEY, deviceToken);
+        if (rememberMe) {
             rememberMeService.issue(response, user);
         }
 
@@ -103,6 +122,11 @@ public class AuthController {
     public String logout(HttpServletRequest request, HttpServletResponse response) {
         HttpSession session = request.getSession(false);
         if (session != null) {
+            // 主动退出：撤销当前设备台账记录后销毁会话
+            Object token = session.getAttribute(CurrentUser.DEVICE_TOKEN_KEY);
+            if (token instanceof UUID uuid) {
+                sessionService.revoke(uuid);
+            }
             session.invalidate();
         }
         rememberMeService.clear(request, response);

@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.liuym.flowerv1springboot.common.AuditSupport;
 import org.liuym.flowerv1springboot.common.CurrentUser;
 import org.liuym.flowerv1springboot.model.AdminAuditLog;
 import org.liuym.flowerv1springboot.model.User;
@@ -49,6 +50,14 @@ public class AdminAuditFilter extends OncePerRequestFilter {
         MODULES.put("coupons", "优惠券");
         MODULES.put("stats", "统计看板");
         MODULES.put("audit-logs", "操作日志");
+        // L02 补齐：这些模块的后台写接口早就存在，之前只因为不在字典里，
+        // 审计列表的「模块」列显示成英文原词，运营按模块筛选时根本筛不到
+        MODULES.put("articles", "文章");
+        MODULES.put("reviews", "评价");
+        MODULES.put("origins", "花材产地");
+        MODULES.put("promotions", "促销位");
+        MODULES.put("search", "搜索");
+        MODULES.put("report", "报表");
 
         ACTIONS.put("status", "启停");
         ACTIONS.put("ship", "发货");
@@ -59,6 +68,26 @@ public class AdminAuditFilter extends OncePerRequestFilter {
         ACTIONS.put("reset-password", "重置密码");
         ACTIONS.put("refresh", "刷新缓存");
         ACTIONS.put("issue", "定向发券");
+        // L02 补齐：批量类与审核类动作名，缺一个就会退化成笼统的「变更」
+        ACTIONS.put("active", "启停");
+        ACTIONS.put("toggle", "切换状态");
+        ACTIONS.put("batch-ship", "批量发货");
+        ACTIONS.put("batch-price", "批量改价");
+        ACTIONS.put("batch-price-preview", "批量改价预览");
+        ACTIONS.put("batch-stock", "批量调库存");
+        ACTIONS.put("batch-remove", "批量移除");
+        ACTIONS.put("moderation", "审核");
+        ACTIONS.put("recalc", "重算");
+        ACTIONS.put("reply", "回复");
+        ACTIONS.put("invalid", "作废");
+        ACTIONS.put("clear", "清空");
+        ACTIONS.put("bind", "绑定");
+        ACTIONS.put("copy", "复制");
+        ACTIONS.put("remark", "改备注");
+        ACTIONS.put("freight", "改运费");
+        ACTIONS.put("default", "设为默认");
+        ACTIONS.put("trace", "记轨迹");
+        ACTIONS.put("append", "追加内容");
     }
 
     private static final Pattern SECRET_FIELD = Pattern.compile(
@@ -159,11 +188,26 @@ public class AdminAuditFilter extends OncePerRequestFilter {
         StringBuilder detail = new StringBuilder();
         if (isJson(request.getContentType())) {
             String body = new String(request.getContentAsByteArray(), StandardCharsets.UTF_8);
-            detail.append(SECRET_FIELD.matcher(body).replaceAll("$1\"******\""));
+            // 口令字段先掩码，再整体过一遍手机号打码：写侧就脏了的话，读侧的脱敏只是将错就错
+            detail.append(AuditSupport.note(SECRET_FIELD.matcher(body).replaceAll("$1\"******\"")));
         } else if (request.getContentType() != null) {
-            detail.append("[非 JSON 请求体 ").append(request.getContentType()).append(']');
+            // L02：表单与 multipart 请求以前只落一句「非 JSON 请求体」，等于没记。
+            // 参数摘要由 AuditSupport 统一脱敏（口令类字段掩码、手机号打码），文件只记字节数不记内容。
+            String params = AuditSupport.formSummary(safeParams(request), null);
+            detail.append(params.isEmpty()
+                    ? "[非 JSON 请求体 " + request.getContentType() + " " + request.getContentLengthLong() + "B]"
+                    : params + " [非 JSON 请求体 " + request.getContentType() + "]");
         }
         return detail.length() == 0 ? null : truncate(detail.toString(), DETAIL_LIMIT);
+    }
+
+    /** 参数解析要防「请求已被客户端中断」——留痕是旁路能力，绝不该因此让请求 500 */
+    private Map<String, String[]> safeParams(ContentCachingRequestWrapper request) {
+        try {
+            return request.getParameterMap();
+        } catch (RuntimeException e) {
+            return Map.of();
+        }
     }
 
     private boolean isJson(String contentType) {

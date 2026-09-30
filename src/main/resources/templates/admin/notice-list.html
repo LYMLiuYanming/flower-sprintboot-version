@@ -9,243 +9,345 @@
     <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
     <style>
         body {background: #f1f1f1;}
-        .notice-status {padding: 3px 8px;border-radius: 3px;font-size: 12px;}
+        .notice-status {padding: 3px 8px;border-radius: 3px;font-size: 12px;white-space: nowrap;}
         .status-active {background: #f6ffed;color: #52c41a;}
         .status-inactive {background: #f5f5f5;color: #8c8c8c;}
+        .notice-state {padding: 3px 8px;border-radius: 3px;font-size: 12px;white-space: nowrap;}
+        .state-live {background: #f6ffed;color: #52c41a;}
+        .state-scheduled {background: #e6f7ff;color: #1890ff;}
+        .state-expired {background: #fff7e6;color: #d46b08;}
+        .state-disabled {background: #f5f5f5;color: #8c8c8c;}
+        .notice-window {color: #595959;font-size: 12px;line-height: 1.6;}
+        .notice-read b {color: #1c4b8a;}
     </style>
 </head>
 <body>
-    <div class="layui-layout layui-layout-admin">
-        <div class="layui-header header" style="background: #211f1a;">
-            <div class="logo"><i class="fas fa-leaf"></i> 花语轩管理后台</div>
-            <div class="user-info">
-                <span><i class="fas fa-user-circle"></i> 管理员</span>
-                <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
-            </div>
+<div class="layui-layout layui-layout-admin">
+    <div class="layui-header header" style="background: #211f1a;">
+        <div class="logo"><i class="fas fa-leaf"></i> 花语轩管理后台</div>
+        <div class="user-info">
+            <span><i class="fas fa-user-circle"></i> 管理员</span>
+            <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
         </div>
+    </div>
 
-        <div class="layui-side layui-bg-black" style="top: 60px;width: 200px;">
-            <div class="layui-side-scroll">
-                <ul class="layui-nav layui-nav-tree" lay-filter="nav">
-                    <li class="layui-nav-item">
-                        <a href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a>
-                    </li>
-                    <li class="layui-nav-item">
-                        <a href="javascript:;"><i class="fas fa-th"></i> 商品管理</a>
-                        <dl class="layui-nav-child">
-                            <dd><a href="/admin/product-list"><i class="fas fa-box"></i> 商品列表</a></dd>
-                            <dd><a href="/admin/category-list"><i class="fas fa-tags"></i> 分类管理</a></dd>
-                        </dl>
-                    </li>
-                    <li class="layui-nav-item">
-                        <a href="javascript:;"><i class="fas fa-shopping-cart"></i> 订单管理</a>
-                        <dl class="layui-nav-child">
-                            <dd><a href="/admin/order-list"><i class="fas fa-list-alt"></i> 订单列表</a></dd>
-                        </dl>
-                    </li>
-                    <li class="layui-nav-item">
-                        <a href="javascript:;"><i class="fas fa-users"></i> 用户管理</a>
-                        <dl class="layui-nav-child">
-                            <dd><a href="/admin/user-list"><i class="fas fa-user"></i> 用户列表</a></dd>
-                        </dl>
-                    </li>
-                    <li class="layui-nav-item layui-nav-itemed">
-                        <a href="javascript:;"><i class="fas fa-cog"></i> 系统设置</a>
-                        <dl class="layui-nav-child">
-                            <dd><a href="/admin/banner-list"><i class="fas fa-image"></i> 轮播图管理</a></dd>
-                            <dd><a href="/admin/notice-list"><i class="fas fa-bullhorn"></i> 公告管理</a></dd>
-                            <dd><a href="/admin/coupon-list"><i class="fas fa-ticket-alt"></i> 优惠券</a></dd>
-                            <dd><a href="/admin/audit-list"><i class="fas fa-history"></i> 操作日志</a></dd>
-                        </dl>
-                    </li>
-                </ul>
-            </div>
+    <div class="layui-side layui-bg-black" style="top: 60px;width: 200px;">
+        <div class="layui-side-scroll">
+            <ul class="layui-nav layui-nav-tree" lay-filter="nav">
+                <li class="layui-nav-item">
+                    <a href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a>
+                </li>
+                <li class="layui-nav-item">
+                    <a href="javascript:;"><i class="fas fa-th"></i> 商品管理</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/product-list"><i class="fas fa-box"></i> 商品列表</a></dd>
+                        <dd><a href="/admin/category-list"><i class="fas fa-tags"></i> 分类管理</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item">
+                    <a href="javascript:;"><i class="fas fa-shopping-cart"></i> 订单管理</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/order-list"><i class="fas fa-list-alt"></i> 订单列表</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item">
+                    <a href="javascript:;"><i class="fas fa-users"></i> 用户管理</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/user-list"><i class="fas fa-user"></i> 用户列表</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item layui-nav-itemed">
+                    <a href="javascript:;"><i class="fas fa-cog"></i> 系统设置</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/banner-list"><i class="fas fa-image"></i> 轮播图管理</a></dd>
+                        <dd><a href="/admin/notice-list"><i class="fas fa-bullhorn"></i> 公告管理</a></dd>
+                        <dd><a href="/admin/article-list"><i class="fas fa-book"></i> 知识库</a></dd>
+                        <dd><a href="/admin/review-list"><i class="fas fa-star-half-alt"></i> 评价审核</a></dd>
+                        <dd><a href="/admin/coupon-list"><i class="fas fa-ticket-alt"></i> 优惠券</a></dd>
+                        <dd><a href="/admin/audit-list"><i class="fas fa-history"></i> 操作日志</a></dd>
+                    </dl>
+                </li>
+            </ul>
         </div>
+    </div>
 
-        <div class="layui-body" style="left: 200px;">
-            <div class="content-body" style="padding: 20px;">
-                <div class="layui-card">
-                    <div class="layui-card-header">
-                        <i class="fas fa-bullhorn"></i> 公告管理
-                        <button class="layui-btn layui-btn-xs layui-btn-normal" style="float: right;" onclick="huNoticeAdd()">
-                            <i class="fas fa-plus"></i> 添加公告
-                        </button>
+    <div class="layui-body" style="left: 200px;">
+        <div class="content-body" style="padding: 20px;">
+            <div class="layui-card">
+                <div class="layui-card-header">
+                    <i class="fas fa-bullhorn"></i> 公告管理
+                    <span style="float:right;color:#8a8578;font-size:12px" id="noticeMeta">前台可见 —</span>
+                    <button class="layui-btn layui-btn-xs layui-btn-normal" style="float:right;margin-right:12px"
+                            onclick="huNoticeAdd()">
+                        <i class="fas fa-plus"></i> 添加公告
+                    </button>
+                </div>
+                <div class="layui-card-body">
+                    <div class="layui-form" style="margin-bottom:12px">
+                        <div class="layui-inline">
+                            <input type="text" id="ntKeyword" class="layui-input" placeholder="按标题搜索" style="width:220px">
+                        </div>
+                        <div class="layui-inline">
+                            <select id="ntStatus" style="width:150px">
+                                <option value="">全部状态</option>
+                                <option value="active">已启用</option>
+                                <option value="inactive">已停用</option>
+                            </select>
+                        </div>
+                        <button class="layui-btn layui-btn-sm" id="ntSearch"><i class="fas fa-search"></i> 查询</button>
+                        <button class="layui-btn layui-btn-sm layui-btn-primary" id="ntReset">重置</button>
                     </div>
-                    <div class="layui-card-body">
-                        <table class="layui-hide" id="noticeTable" lay-filter="noticeTable"></table>
-                    </div>
+                    <table class="layui-hide" id="noticeTable" lay-filter="noticeTable"></table>
                 </div>
             </div>
         </div>
-
-        <div class="layui-footer">© 2024 花语轩鲜花销售系统 - 版权所有</div>
     </div>
 
-    <script type="text/html" id="titleTpl">
-        {{# if(d.isTop){ }}
-        <span style="color: #a9906a;"><i class="fas fa-thumbtack"></i> {{d.title}}</span>
-        {{# } else { }}
-        {{d.title}}
-        {{# } }}
-    </script>
+    <div class="layui-footer">© 2024 花语轩鲜花销售系统 - 版权所有</div>
+</div>
 
-    <script type="text/html" id="statusTpl">
-        {{# var statusClass = 'status-' + d.status; }}
-        <span class="notice-status {{statusClass}}">{{ d.status === 'active' ? '启用' : '禁用' }}</span>
-    </script>
+<script type="text/html" id="titleTpl">
+    {{# if(d.isTop){ }}
+    <span style="color: #a9906a;"><i class="fas fa-thumbtack"></i> {{d.title}}</span>
+    {{# } else { }}
+    {{d.title}}
+    {{# } }}
+</script>
 
-    <script type="text/html" id="operateTpl">
-        <a class="layui-btn layui-btn-xs" lay-event="edit"><i class="fas fa-edit"></i> 编辑</a>
-        {{# if(d.status === 'active') { }}
-        <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="disable"><i class="fas fa-ban"></i> 禁用</a>
-        {{# } else { }}
-        <a class="layui-btn layui-btn-warm layui-btn-xs" lay-event="enable"><i class="fas fa-check"></i> 启用</a>
-        {{# } }}
-        <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del"><i class="fas fa-trash"></i> 删除</a>
-    </script>
+<script type="text/html" id="statusTpl">
+    <span class="notice-status status-{{d.status}}">{{ d.status === 'active' ? '启用' : '停用' }}</span>
+</script>
 
-    <script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
-    <script th:src="@{/jquery-3.7.1.min.js}"></script>
-    <script th:src="@{/js/admin-common.js}"></script>
-    <script th:src="@{/js/richtext.js}"></script>
-    <script th:inline="none">
-        layui.use(['table', 'layer', 'form'], function () {
-            var table = layui.table;
-            var layer = layui.layer;
-            var esc = huAdmin.esc;
+<script type="text/html" id="stateTpl">
+    {{# var map = {live:['state-live','前台可见'], scheduled:['state-scheduled','待上线'],
+       expired:['state-expired','已到期'], disabled:['state-disabled','已停用']};
+       var hit = map[d.state] || ['state-disabled', d.status]; }}
+    <span class="notice-state {{hit[0]}}">{{hit[1]}}</span>
+</script>
 
-            var TYPES = [['general', '通用'], ['activity', '活动'], ['system', '系统']];
+<script type="text/html" id="operateTpl">
+    <a class="layui-btn layui-btn-xs" lay-event="edit"><i class="fas fa-edit"></i> 编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-primary" lay-event="stat"><i class="fas fa-chart-bar"></i> 已读</a>
+    {{# if(d.status === 'active') { }}
+    <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="disable"><i class="fas fa-ban"></i> 停用</a>
+    {{# } else { }}
+    <a class="layui-btn layui-btn-warm layui-btn-xs" lay-event="enable"><i class="fas fa-check"></i> 启用</a>
+    {{# } }}
+    <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del"><i class="fas fa-trash"></i> 删除</a>
+</script>
 
-            table.render({
-                elem: '#noticeTable',
-                url: '/api/admin/notices',
-                cols: [[
-                    {field: 'title', title: '标题', width: 300, templet: '#titleTpl'},
-                    {field: 'noticeType', title: '类型', width: 100, templet: function (d) {
-                        var hit = TYPES.filter(function (t) { return t[0] === d.noticeType; })[0];
-                        return hit ? hit[1] : esc(d.noticeType || '-');
-                    }},
-                    {field: 'content', title: '内容摘要', width: 280, templet: function (d) {
-                        return esc(huRichText.summary(d.content, 40)) || '<span class="layui-text">-</span>';
-                    }},
-                    {field: 'viewCount', title: '浏览量', width: 80},
-                    {field: 'isTop', title: '置顶', width: 80, templet: function (d) {
-                        return d.isTop ? '<span style="color:#a9906a;">是</span>' : '否';
-                    }},
-                    {field: 'status', title: '状态', width: 80, templet: '#statusTpl'},
-                    {field: 'createdAt', title: '创建时间', width: 170, templet: function (d) {
-                        return d.createdAt ? new Date(d.createdAt).toLocaleString() : '-';
-                    }},
-                    {title: '操作', width: 290, toolbar: '#operateTpl', fixed: 'right'}
-                ]],
-                page: true,
-                limit: 10,
-                limits: [10, 20, 30, 50]
-            });
+<script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+<script th:src="@{/jquery-3.7.1.min.js}"></script>
+<script th:src="@{/js/admin-common.js}"></script>
+<script th:src="@{/js/richtext.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'layer', 'form', 'laydate'], function () {
+        var table = layui.table;
+        var layer = layui.layer;
+        var laydate = layui.laydate;
+        var esc = huAdmin.esc;
+        var state = huAdmin.listState('notice-list');
 
-            function reload() {
-                table.reload('noticeTable');
-            }
+        var TYPES = [['general', '通用'], ['activity', '活动'], ['system', '系统']];
 
-            function toggleStatus(row, status) {
-                layer.confirm(status === 'active' ? '确定要启用该公告吗？' : '确定要禁用该公告吗？', function (index) {
-                    huAdmin.request({
-                        url: '/api/admin/notices/' + row.id + '/status?status=' + status,
-                        type: 'POST',
-                        ok: function () {
-                            layer.close(index);
-                            reload();
-                        }
-                    });
-                });
-            }
+        table.render({
+            elem: '#noticeTable',
+            url: '/api/admin/notices',
+            where: {status: ''},
+            cols: [[
+                {field: 'title', title: '标题', width: 300, templet: '#titleTpl'},
+                {field: 'noticeType', title: '类型', width: 90, templet: function (d) {
+                    var hit = TYPES.filter(function (t) { return t[0] === d.noticeType; })[0];
+                    return hit ? hit[1] : esc(d.noticeType || '-');
+                }},
+                {field: 'summary', title: '内容摘要', width: 220, templet: function (d) {
+                    return esc(d.summary || huRichText.summary(d.content, 40)) || '<span class="layui-text">-</span>';
+                }},
+                {field: 'state', title: '前台状态', width: 100, templet: '#stateTpl'},
+                {field: 'publishAt', title: '投放时间窗', width: 188, templet: function (d) {
+                    if (!d.publishAt && !d.offlineAt) return '<span class="notice-window">长期投放</span>';
+                    return '<span class="notice-window">' + (fmt(d.publishAt) || '立即') + ' ~ '
+                        + (fmt(d.offlineAt) || '不限') + '</span>';
+                }},
+                {field: 'viewCount', title: '浏览', width: 76},
+                {field: 'readUserCount', title: '已读', width: 108, templet: function (d) {
+                    return '<span class="notice-read"><b>' + Number(d.readUserCount || 0) + '</b> 人 / '
+                        + Number(d.readTimes || 0) + ' 次</span>';
+                }},
+                {field: 'isTop', title: '置顶', width: 70, templet: function (d) {
+                    return d.isTop ? '<span style="color:#a9906a;">是</span>' : '否';
+                }},
+                {field: 'status', title: '开关', width: 76, templet: '#statusTpl'},
+                {field: 'createdAt', title: '创建时间', width: 160, templet: function (d) {
+                    return d.createdAt ? new Date(d.createdAt).toLocaleString() : '-';
+                }},
+                {title: '操作', width: 300, toolbar: '#operateTpl', fixed: 'right'}
+            ]],
+            page: state.pageConfig(),
+            limit: state.limit(10),
+            limits: [10, 20, 30, 50],
+            done: state.done('/api/admin/notices', function (res) {
+                $('#noticeMeta').text('前台可见 ' + (res.displayableCount == null ? '-' : res.displayableCount) + ' 条');
+            })
+        });
 
-            table.on('tool(noticeTable)', function (obj) {
-                if (obj.event === 'edit') {
-                    openForm(obj.data);
-                } else if (obj.event === 'disable') {
-                    toggleStatus(obj.data, 'inactive');
-                } else if (obj.event === 'enable') {
-                    toggleStatus(obj.data, 'active');
-                } else if (obj.event === 'del') {
-                    huAdmin.confirmDelete('确定要删除「' + obj.data.title + '」吗？',
-                        '/api/admin/notices/' + obj.data.id, reload);
-                }
-            });
+        function fmt(v) { return v ? String(v).replace('T', ' ').slice(0, 16) : ''; }
 
-            /**
-             * 新增/编辑共用表单：notice 为 null 表示新增；
-             * 值统一 esc 输出，提交按 id 取值，避免 lay-filter 多次弹窗后重复绑定
-             */
-            function openForm(notice) {
-                var isEdit = !!notice;
-                var v = notice || {title: '', content: '', noticeType: 'general', isTop: false, status: 'active'};
-                layer.open({
-                    type: 1,
-                    title: isEdit ? '编辑公告' : '添加公告',
-                    area: ['640px', '640px'],
-                    content: '<form class="layui-form" style="padding:20px 24px 0">' +
-                        field('标题', '<input type="text" id="nfTitle" value="' + esc(v.title) + '" class="layui-input" placeholder="请输入公告标题">') +
-                        field('类型', '<select id="nfType">' + TYPES.map(function (t) {
-                            return '<option value="' + t[0] + '"' + (v.noticeType === t[0] ? ' selected' : '') + '>' + t[1] + '</option>';
-                        }).join('') + '</select>') +
-                        field('置顶', '<input type="checkbox" id="nfTop" lay-skin="switch" lay-text="是|否"' + (v.isTop ? ' checked' : '') + '>') +
-                        field('状态', '<select id="nfStatus">' +
-                            '<option value="active"' + (v.status !== 'inactive' ? ' selected' : '') + '>启用</option>' +
-                            '<option value="inactive"' + (v.status === 'inactive' ? ' selected' : '') + '>禁用</option>' +
-                            '</select>') +
-                        field('内容', '<div id="nfContent"></div>') +
-                        '<div class="layui-form-item"><div class="layui-input-block">' +
-                        '<button type="button" class="layui-btn" id="nfSubmit">提交</button></div></div>' +
-                        '</form>',
-                    success: function () {
-                        layui.form.render(null, null);
-                        var editor = huRichText.create({
-                            container: document.getElementById('nfContent'),
-                            html: v.content || '',
-                            height: 190,
-                            maxChars: 6000,
-                            placeholder: '请输入公告内容，可用工具栏排版'
-                        });
-                        $('#nfSubmit').on('click', function () {
-                            var payload = {
-                                title: $.trim($('#nfTitle').val()),
-                                content: editor.html(),
-                                noticeType: $('#nfType').val(),
-                                isTop: $('#nfTop').prop('checked'),
-                                status: $('#nfStatus').val()
-                            };
-                            if (!payload.title || !payload.content) {
-                                huAdmin.toast('标题与内容必填', 'err');
-                                return;
-                            }
-                            if (editor.text().length > 6000) {
-                                huAdmin.toast('公告内容不超过 6000 字', 'err');
-                                return;
-                            }
-                            huAdmin.request({
-                                url: isEdit ? '/api/admin/notices/' + notice.id : '/api/admin/notices',
-                                type: isEdit ? 'PUT' : 'POST',
-                                data: payload,
-                                ok: function () {
-                                    layer.closeAll('page');
-                                    reload();
-                                }
-                            });
-                        });
+        function reload() {
+            table.reload('noticeTable', {where: {
+                keyword: $.trim($('#ntKeyword').val()),
+                status: $('#ntStatus').val()
+            }});
+        }
+
+        $('#ntSearch').on('click', reload);
+        $('#ntReset').on('click', function () {
+            $('#ntKeyword').val('');
+            $('#ntStatus').val('');
+            state.reset();
+            reload();
+        });
+
+        function toggleStatus(row, status) {
+            layer.confirm(status === 'active' ? '确定要启用该公告吗？' : '确定要停用该公告吗？', function (index) {
+                huAdmin.request({
+                    url: '/api/admin/notices/' + row.id + '/status?status=' + status,
+                    type: 'POST',
+                    ok: function () {
+                        layer.close(index);
+                        reload();
                     }
                 });
-            }
+            });
+        }
 
-            function field(label, control) {
-                return '<div class="layui-form-item"><label class="layui-form-label">' + label + '</label>' +
-                    '<div class="layui-input-block">' + control + '</div></div>';
-            }
+        /** F12 已读明细：人数是登录用户去重，次数含重复阅读；浏览数另算（含匿名） */
+        function openStat(row) {
+            huAdmin.request({
+                url: '/api/admin/notices/' + row.id + '/stats',
+                type: 'GET', silent: true,
+                ok: function (res) {
+                    var d = res.data || {};
+                    layer.open({
+                        type: 1, title: '阅读情况 · ' + esc(row.title), area: ['430px', '250px'],
+                        content: '<div style="padding:22px 26px;line-height:2.1;font-size:13.5px">' +
+                            '<div>页面浏览：<b>' + Number(d.viewCount || 0) + '</b> 次（含未登录访客）</div>' +
+                            '<div>已读人数：<b>' + Number(d.readUserCount || 0) + '</b> 人（登录用户去重）</div>' +
+                            '<div>已读次数：<b>' + Number(d.readTimes || 0) + '</b> 次（同一人重复阅读累加）</div>' +
+                            '<div style="color:#8a8578;font-size:12px;margin-top:6px">已读在登录用户打开公告详情时上报，定时未到上线时间的公告不会计入。</div>' +
+                            '</div>'
+                    });
+                },
+                fail: function (res) { huAdmin.toast(res.msg || '读取失败', 'err'); }
+            });
+        }
 
-            window.huNoticeAdd = function () {
-                openForm(null);
-            };
+        table.on('tool(noticeTable)', function (obj) {
+            if (obj.event === 'edit') {
+                openForm(obj.data);
+            } else if (obj.event === 'stat') {
+                openStat(obj.data);
+            } else if (obj.event === 'disable') {
+                toggleStatus(obj.data, 'inactive');
+            } else if (obj.event === 'enable') {
+                toggleStatus(obj.data, 'active');
+            } else if (obj.event === 'del') {
+                huAdmin.confirmDelete('确定要删除「' + obj.data.title + '」吗？',
+                    '/api/admin/notices/' + obj.data.id, reload);
+            }
         });
-    </script>
+
+        /**
+         * 新增/编辑共用表单：notice 为 null 表示新增；
+         * 值统一 esc 输出，提交按 id 取值，避免 lay-filter 多次弹窗后重复绑定。
+         * F11 的定时上下线就是这两个时间：留空 = 立即上线 / 长期有效。
+         */
+        function openForm(notice) {
+            var isEdit = !!notice;
+            var v = notice || {title: '', content: '', noticeType: 'general', isTop: false, status: 'active'};
+            layer.open({
+                type: 1,
+                title: isEdit ? '编辑公告' : '添加公告',
+                area: ['660px', '720px'],
+                content: '<form class="layui-form" style="padding:20px 24px 0">' +
+                    field('标题', '<input type="text" id="nfTitle" value="' + esc(v.title) + '" class="layui-input" placeholder="请输入公告标题">') +
+                    field('类型', '<select id="nfType">' + TYPES.map(function (t) {
+                        return '<option value="' + t[0] + '"' + (v.noticeType === t[0] ? ' selected' : '') + '>' + t[1] + '</option>';
+                    }).join('') + '</select>') +
+                    field('置顶', '<input type="checkbox" id="nfTop" lay-skin="switch" lay-text="是|否"' + (v.isTop ? ' checked' : '') + '>') +
+                    field('状态', '<select id="nfStatus">' +
+                        '<option value="active"' + (v.status !== 'inactive' ? ' selected' : '') + '>启用</option>' +
+                        '<option value="inactive"' + (v.status === 'inactive' ? ' selected' : '') + '>停用</option>' +
+                        '</select>') +
+                    field('上线时间', '<input type="text" id="nfPublishAt" value="' + fmt(v.publishAt) + '" class="layui-input" placeholder="留空=保存即上线" readonly>') +
+                    field('下线时间', '<input type="text" id="nfOfflineAt" value="' + fmt(v.offlineAt) + '" class="layui-input" placeholder="留空=长期有效" readonly>') +
+                    field('封面图', '<input type="text" id="nfCover" value="' + esc(v.coverImage || '') + '" class="layui-input" placeholder="可选，站内路径如 /img/photos/hero-rose.jpg">') +
+                    field('内容', '<div id="nfContent"></div>') +
+                    '<div class="layui-form-item"><div class="layui-input-block">' +
+                    '<button type="button" class="layui-btn" id="nfSubmit">提交</button>' +
+                    '<span style="color:#8a8578;font-size:12px;margin-left:12px">公告缓存 1 分钟，到点自动上下线</span>' +
+                    '</div></div>' +
+                    '</form>',
+                success: function () {
+                    layui.form.render(null, null);
+                    laydate.render({elem: '#nfPublishAt', type: 'datetime', trigger: 'click'});
+                    laydate.render({elem: '#nfOfflineAt', type: 'datetime', trigger: 'click'});
+                    var editor = huRichText.create({
+                        container: document.getElementById('nfContent'),
+                        html: v.content || '',
+                        height: 190,
+                        maxChars: 6000,
+                        placeholder: '请输入公告内容，可用工具栏排版'
+                    });
+                    $('#nfSubmit').on('click', function () {
+                        var publishAt = $.trim($('#nfPublishAt').val());
+                        var offlineAt = $.trim($('#nfOfflineAt').val());
+                        if (publishAt && offlineAt && offlineAt <= publishAt) {
+                            huAdmin.toast('下线时间必须晚于上线时间', 'err');
+                            return;
+                        }
+                        var payload = {
+                            title: $.trim($('#nfTitle').val()),
+                            content: editor.html(),
+                            noticeType: $('#nfType').val(),
+                            isTop: $('#nfTop').prop('checked'),
+                            status: $('#nfStatus').val(),
+                            // 后端按 ISO-8601 解析 LocalDateTime
+                            publishAt: publishAt ? publishAt.replace(' ', 'T') : null,
+                            offlineAt: offlineAt ? offlineAt.replace(' ', 'T') : null,
+                            coverImage: $.trim($('#nfCover').val()) || null
+                        };
+                        if (!payload.title || !payload.content) {
+                            huAdmin.toast('标题与内容必填', 'err');
+                            return;
+                        }
+                        if (editor.text().length > 6000) {
+                            huAdmin.toast('公告内容不超过 6000 字', 'err');
+                            return;
+                        }
+                        huAdmin.request({
+                            url: isEdit ? '/api/admin/notices/' + notice.id : '/api/admin/notices',
+                            type: isEdit ? 'PUT' : 'POST',
+                            data: payload,
+                            ok: function () {
+                                layer.closeAll('page');
+                                reload();
+                            }
+                        });
+                    });
+                }
+            });
+        }
+
+        function field(label, control) {
+            return '<div class="layui-form-item"><label class="layui-form-label">' + label + '</label>' +
+                '<div class="layui-input-block">' + control + '</div></div>';
+        }
+
+        window.huNoticeAdd = function () {
+            openForm(null);
+        };
+    });
+</script>
 </body>
 </html>

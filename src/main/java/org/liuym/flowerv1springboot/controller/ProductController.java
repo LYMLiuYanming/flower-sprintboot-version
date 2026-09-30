@@ -21,7 +21,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.IntFunction;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -34,15 +36,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class ProductController {
 
     private static final Logger log = LoggerFactory.getLogger(ProductController.class);
-
-    /** 上架列表默认序：最新优先 */
-    private static final Sort BY_RECOMMENDED = Sort.by(Sort.Direction.DESC, "createdAt");
-
-    /** 分类 / 检索默认序：销量优先 */
-    private static final Sort BY_SALES = Sort.by(Sort.Direction.DESC, "salesCount");
-
-    private static final Sort BY_RATING = Sort.by(Sort.Direction.DESC, "rating")
-            .and(Sort.by(Sort.Direction.DESC, "reviewCount"));
 
     @Autowired
     private ProductService productService;
@@ -61,31 +54,31 @@ public class ProductController {
         return Result.ok(ProductView.from(productService.findAll()));
     }
 
+    /** 上架列表：与 /browse 同规则做越界收敛，页面不会再翻到空白页 */
     @GetMapping("/active")
     public Result<List<ProductView>> getActiveProducts(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "12") int limit,
             @RequestParam(required = false) String sort) {
-        Page<Product> result = productService.findByActivePage(
-                Pages.of(page, limit, sortOf(sort, BY_RECOMMENDED)));
-        return Result.page(ProductView.from(result.getContent()), result.getTotalElements());
+        Sort order = ProductService.sortOf(sort, ProductService.BY_RECOMMENDED);
+        return paged(page, limit, current -> productService.findByActivePage(Pages.of(current, limit, order)));
     }
 
     @GetMapping("/featured")
     public Result<List<ProductView>> getFeaturedProducts(@RequestParam(defaultValue = "8") int limit) {
-        return Result.ok(ProductView.from(productService.findFeaturedProducts(Math.min(Math.max(limit, 1), 50))));
+        return Result.ok(ProductView.from(productService.findFeaturedProducts(ProductService.sizeOf(limit, 8))));
     }
 
     @GetMapping("/new")
     public Result<List<ProductView>> getNewProducts(@RequestParam(defaultValue = "8") int limit) {
-        return Result.ok(ProductView.from(productService.findNewProducts(Math.min(Math.max(limit, 1), 50))));
+        return Result.ok(ProductView.from(productService.findNewProducts(ProductService.sizeOf(limit, 8))));
     }
 
     @GetMapping("/bestsellers")
     public Result<List<ProductView>> getBestSellers(
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(defaultValue = "8") int limit) {
-        return Result.ok(ProductView.from(productService.findBestSellers(categoryId, Math.min(Math.max(limit, 1), 50))));
+        return Result.ok(ProductView.from(productService.findBestSellers(categoryId, ProductService.sizeOf(limit, 8))));
     }
 
     @GetMapping("/category/{categoryId}")
@@ -94,9 +87,9 @@ public class ProductController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "12") int limit,
             @RequestParam(required = false) String sort) {
-        Page<Product> result = productService.findByCategoryId(categoryId,
-                Pages.of(page, limit, sortOf(sort, BY_SALES)));
-        return Result.page(ProductView.from(result.getContent()), result.getTotalElements());
+        Sort order = ProductService.sortOf(sort, ProductService.BY_SALES);
+        return paged(page, limit,
+                current -> productService.findByCategoryId(categoryId, Pages.of(current, limit, order)));
     }
 
     /**
@@ -110,9 +103,143 @@ public class ProductController {
             @RequestParam(defaultValue = "12") int limit,
             @RequestParam(required = false) String sort) {
         String kw = (keyword != null && !keyword.isBlank()) ? keyword : name;
-        Page<Product> result = productService.searchActive(kw, Pages.of(page, limit, sortOf(sort, BY_SALES)));
+        Sort order = ProductService.sortOf(sort, ProductService.BY_SALES);
         recordSearchWord(kw);
-        return Result.page(ProductView.from(result.getContent()), result.getTotalElements());
+        return paged(page, limit,
+                current -> productService.searchActive(kw, Pages.of(current, limit, order)));
+    }
+
+    /**
+     * 统一检索入口：列表页所有筛选控件都走这里，避免「价格区间」「只看有货」各开一个端点各写一套语义。
+     * 价格区间允许只填一端；page 越界时收敛到末页并把真实页码回传，前端分页条不会停在空白页。
+     * 命中为 0 时附同类目热销兜底（A10），并回传真实价格分布（A11）供滑块收窄条件
+     */
+    @GetMapping("/browse")
+    public Result<List<ProductView>> browse(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String categoryIds,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) Boolean inStockOnly,
+            @RequestParam(required = false) Boolean featured,
+            @RequestParam(required = false) Boolean newOnly,
+            @RequestParam(required = false) String tag,
+            @RequestParam(required = false) String scene,
+            @RequestParam(required = false) UUID originId,
+            @RequestParam(required = false) String fields,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "12") int limit,
+            @RequestParam(required = false) String sort) {
+        ProductService.Query query = new ProductService.Query(
+                keyword, parseIds(categoryIds), floor(minPrice), ceiling(maxPrice),
+                inStockOnly, featured, newOnly, tag, scene, originId, ProductService.fieldsOf(fields));
+        int size = ProductService.limitOf(limit);
+        Sort order = ProductService.sortOf(sort, ProductService.BY_SALES);
+        ProductService.Browsed browsed = productService.browseConverged(query, page, size, order);
+        Page<Product> result = browsed.page();
+
+        Result<List<ProductView>> response = Result.page(ProductView.from(result.getContent()), result.getTotalElements())
+                .with("page", browsed.effectivePage())
+                .with("pageSize", size)
+                .with("totalPages", result.getTotalPages())
+                .with("priceRange", priceRangeOf(query))
+                .with("fields", query.fields())
+                .with("sort", sort == null || sort.isBlank() ? "sales" : sort);
+        if (result.isEmpty()) {
+            List<ProductView> fallback = ProductView.from(productService.browseFallback(query, size));
+            if (!fallback.isEmpty()) {
+                response.with("fallback", fallback).with("fallbackReason", fallbackReason(query));
+            }
+        }
+        return response;
+    }
+
+    /** 价格分布给前端是 {min,max}，无命中时为 null，页面据此决定滑块是否可用 */
+    private Map<String, Object> priceRangeOf(ProductService.Query query) {
+        BigDecimal[] stats = productService.priceStats(query);
+        if (stats == null) {
+            return null;
+        }
+        Map<String, Object> range = new java.util.LinkedHashMap<>();
+        range.put("min", stats[0]);
+        range.put("max", stats[1]);
+        return range;
+    }
+
+    /** 兜底原因说人话：用户要知道「没找到」的是关键词还是筛选条件 */
+    private static String fallbackReason(ProductService.Query query) {
+        if (query.hasKeyword()) {
+            return "没有匹配「" + query.keyword().trim() + "」的花礼，先看你筛的分类里卖得最好的";
+        }
+        return "当前筛选条件组合下没有可售花礼，先推荐同类目热卖";
+    }
+
+    /**
+     * A07 通用收敛：page 越界就按末页重取一次，回传真实页码与总页数，口径与 /browse 一致——
+     * 筛完条件只剩一页时，停在空白页是 bug 不是「没数据」
+     */
+    private Result<List<ProductView>> paged(int page, int limit, IntFunction<Page<Product>> loader) {
+        int effective = Math.max(page, 1);
+        Page<Product> result = loader.apply(effective);
+        if (result.isEmpty() && result.getTotalPages() > 0 && effective > result.getTotalPages()) {
+            effective = result.getTotalPages();
+            result = loader.apply(effective);
+        }
+        return Result.page(ProductView.from(result.getContent()), result.getTotalElements())
+                .with("page", effective)
+                .with("pageSize", Pages.sizeOf(limit))
+                .with("totalPages", result.getTotalPages());
+    }
+
+    /** 同分类价格带相似款（±40% 不足时放宽到 ±80%，按价差排序） */
+    @GetMapping("/{id}/similar")
+    public Result<List<ProductView>> similar(@PathVariable UUID id,
+                                             @RequestParam(defaultValue = "4") int limit) {
+        return Result.ok(ProductView.from(productService.similar(id, ProductService.sizeOf(limit, 4))));
+    }
+
+    /** 共购推荐：买过本商品的人还买了什么 */
+    @GetMapping("/{id}/co-purchased")
+    public Result<List<ProductView>> coPurchased(@PathVariable UUID id,
+                                                 @RequestParam(defaultValue = "4") int limit) {
+        return Result.ok(ProductView.from(productService.coPurchased(id, ProductService.sizeOf(limit, 4))));
+    }
+
+    /** 近 N 天真实成交排行（首页畅销位） */
+    @GetMapping("/bestsellers-recent")
+    public Result<List<ProductView>> bestSellersRecent(
+            @RequestParam(defaultValue = "30") int days,
+            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(defaultValue = "8") int limit) {
+        return Result.ok(ProductView.from(
+                productService.bestSellersRecent(Math.min(Math.max(days, 1), 365), categoryId,
+                        ProductService.sizeOf(limit, 8))));
+    }
+
+    /** 逗号分隔的 id 串 → 列表；非法片段直接丢弃，不让一个坏参数拖垮整次检索 */
+    private static List<UUID> parseIds(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+        List<UUID> ids = new java.util.ArrayList<>();
+        for (String part : raw.split(",")) {
+            try {
+                if (!part.isBlank()) {
+                    ids.add(UUID.fromString(part.trim()));
+                }
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        return ids;
+    }
+
+    /** 只填一端的价格区间：负数按 0 处理，避免把「-10」当成有效下限传进 SQL */
+    private static BigDecimal floor(BigDecimal value) {
+        return value == null ? null : value.max(BigDecimal.ZERO);
+    }
+
+    private static BigDecimal ceiling(BigDecimal value) {
+        return value == null ? null : value.max(BigDecimal.ZERO);
     }
 
     /**
@@ -142,9 +269,10 @@ public class ProductController {
             @RequestParam BigDecimal maxPrice,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "12") int limit) {
-        Page<Product> result = productService.findByPriceRange(minPrice, maxPrice,
-                Pages.of(page, limit, Sort.Direction.ASC, "price"));
-        return Result.page(ProductView.from(result.getContent()), result.getTotalElements());
+        BigDecimal low = floor(minPrice);
+        BigDecimal high = ceiling(maxPrice);
+        return paged(page, limit, current -> productService.findByPriceRange(low, high,
+                Pages.of(current, limit, Sort.Direction.ASC, "price")));
     }
 
     /**
@@ -171,22 +299,5 @@ public class ProductController {
     @GetMapping("/count")
     public Result<Long> getProductCount() {
         return Result.ok(productService.countActive());
-    }
-
-    /**
-     * 前台排序白名单：只认这几种语义，非法值回落到端点默认序，避免任意字段进入 ORDER BY
-     */
-    private static Sort sortOf(String key, Sort fallback) {
-        if (key == null || key.isBlank() || "default".equals(key)) {
-            return fallback;
-        }
-        return switch (key) {
-            case "new" -> BY_RECOMMENDED;
-            case "sales" -> BY_SALES;
-            case "price-asc" -> Sort.by(Sort.Direction.ASC, "price");
-            case "price-desc" -> Sort.by(Sort.Direction.DESC, "price");
-            case "rating" -> BY_RATING;
-            default -> fallback;
-        };
     }
 }

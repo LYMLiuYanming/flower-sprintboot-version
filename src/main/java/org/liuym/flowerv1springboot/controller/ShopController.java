@@ -59,11 +59,27 @@ public class ShopController {
                 .map(product -> {
                     model.addAttribute("product", product);
                     model.addAttribute("relatedProducts", relatedProducts(product));
+                    model.addAttribute("categoryChainIds", categoryChainIds(product));
                     model.addAttribute("metaTitle", product.getName() + " · 花语轩 HUAYUXUAN");
                     model.addAttribute("metaDescription", product.getDescription());
                     return "shop/product-detail";
                 })
                 .orElse("redirect:/products");
+    }
+
+    /** 分类专享券可能绑在父分类上：把商品自身分类与其父分类一并交给前端做营销位过滤 */
+    private List<UUID> categoryChainIds(Product product) {
+        List<UUID> ids = new ArrayList<>();
+        if (product.getCategory() == null) {
+            return ids;
+        }
+        UUID categoryId = product.getCategory().getId();
+        ids.add(categoryId);
+        categoryService.findById(categoryId)
+                .map(Category::getParentId)
+                .filter(parentId -> parentId != null && !parentId.equals(categoryId))
+                .ifPresent(ids::add);
+        return ids;
     }
 
     /** 搭配灵感：同类畅销优先，不足 4 件时用全站畅销补齐，始终排除当前商品 */
@@ -122,5 +138,19 @@ public class ShopController {
         model.addAttribute("loginUser", loginUser);
         model.addAttribute("orderId", id);
         return "shop/order-detail";
+    }
+
+    /** 鲜花地图：产地溯源 / 销量分布 / 我的订单路线，游客可看前两层 */
+    @GetMapping("/flower-map")
+    public String flowerMapPage(Model model, HttpSession session) {
+        model.addAttribute("loginUser", session.getAttribute("loginUser"));
+        return "shop/flower-map";
+    }
+
+    /** 我的花田：天气联动的养花养成，需登录 */
+    @GetMapping("/garden")
+    public String gardenPage(Model model, HttpSession session) {
+        model.addAttribute("loginUser", session.getAttribute("loginUser"));
+        return "shop/garden";
     }
 }

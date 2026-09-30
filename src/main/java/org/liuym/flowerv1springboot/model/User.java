@@ -8,6 +8,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import jakarta.persistence.*;
+import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -19,7 +20,11 @@ import java.util.UUID;
 @Entity
 @Table(name = "user", schema = "public") // 映射数据库表（schema=public 对应 PostgreSQL 模式）?
 @EntityListeners(AuditingEntityListener.class) // 启用创建时间/更新时间自动填充
-public class User {
+public class User implements Serializable {
+
+    // F6 会话外置化的前提：登录态以本对象存在 HttpSession 里，Spring Session 落 Redis 时要序列化它。
+    // User 只有 UUID/String/LocalDate/Boolean 等标量字段、没有任何关联实体，序列化不会把懒加载代理拖进会话。
+    private static final long serialVersionUID = 1L;
 
     /**
      * 主键 ID（UUID 类型，自动生成）
@@ -113,10 +118,20 @@ public class User {
     @Column(name = "must_change_password", nullable = false)
     private Boolean mustChangePassword = false;
 
+    /**
+     * 注销申请时间（D16）：非空即处于冷静期，软删除。到期由定时任务匿名化，绝不物理删行。
+     * 申请撤销时置回 null。
+     */
+    @Column(name = "deletion_requested_at")
+    private LocalDateTime deletionRequestedAt;
+
     public static final String TYPE_ADMIN = "admin";
     public static final String TYPE_CUSTOMER = "customer";
     public static final String STATUS_ACTIVE = "active";
     public static final String STATUS_INACTIVE = "inactive";
+    public static final String STATUS_LOCKED = "locked";
+    /** 冷静期满完成注销后的终态：数据已匿名化，账号不可再登录 */
+    public static final String STATUS_DELETED = "deleted";
     public static final String MEMBER_VIP = "vip";
     public static final String MEMBER_ORDINARY = "ordinary";
 

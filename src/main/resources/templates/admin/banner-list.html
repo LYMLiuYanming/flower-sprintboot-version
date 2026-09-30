@@ -12,6 +12,11 @@
         .banner-status {padding: 3px 8px;border-radius: 3px;font-size: 12px;}
         .status-active {background: #f6ffed;color: #52c41a;}
         .status-inactive {background: #f5f5f5;color: #8c8c8c;}
+        .banner-state {padding: 3px 8px;border-radius: 3px;font-size: 12px;white-space: nowrap;}
+        .state-live {background: #f6ffed;color: #52c41a;}
+        .state-scheduled {background: #e6f7ff;color: #1890ff;}
+        .state-expired {background: #fff7e6;color: #d46b08;}
+        .state-disabled {background: #f5f5f5;color: #8c8c8c;}
         .banner-handle {cursor: move;color: #b7b3ac;font-size: 15px;font-weight: 700;letter-spacing: -1px;}
         .banner-handle:hover {color: #1c4b8a;}
         .banner-drag-over {background: #eaf1fa !important;box-shadow: inset 0 2px 0 #1c4b8a;}
@@ -20,330 +25,507 @@
         .banner-sort-bar.is-on {display: block;}
         .banner-sort-bar span {margin-right: 12px;color: #8c8c8c;font-size: 12px;}
         .banner-time {color: #595959;font-size: 12px;line-height: 1.6;}
+        /* F14 缩略图：按首页 hero 的 21:9 比例裁切，运营在列表里看到的就是前台的取景框 */
+        .banner-thumb {width: 108px;height: 46px;object-fit: cover;border-radius: 4px;border: 1px solid #eee;
+            display: block;cursor: zoom-in;background: #f6f5f1;}
+        .banner-link {font-size: 12px;color: #595959;line-height: 1.6;word-break: break-all;}
+        .banner-link em {display: inline-block;background: #eef2f7;color: #1c4b8a;border-radius: 3px;
+            padding: 0 6px;margin-right: 4px;font-style: normal;}
+        .banner-preview {position: relative;border-radius: 8px;overflow: hidden;background: #0c111a;}
+        .banner-preview img {width: 100%;display: block;aspect-ratio: 21/9;object-fit: cover;}
+        .banner-preview__veil {position: absolute;inset: 0;background: linear-gradient(90deg, rgba(12,17,26,.72) 0%, rgba(12,17,26,.18) 58%, rgba(12,17,26,0) 100%);}
+        .banner-preview__cap {position: absolute;left: 24px;bottom: 22px;color: #fff;max-width: 62%;}
+        .banner-preview__cap h3 {margin: 0 0 6px;font-size: 22px;letter-spacing: -.01em;}
+        .banner-preview__cap p {margin: 0;font-size: 13px;opacity: .86;line-height: 1.7;}
+        .banner-order {display: inline-block;min-width: 20px;text-align: center;color: #a9906a;font-weight: 700;}
     </style>
 </head>
 <body>
-    <div class="layui-layout layui-layout-admin">
-        <div class="layui-header header" style="background: #211f1a;">
-            <div class="logo"><i class="fas fa-leaf"></i> 花语轩管理后台</div>
-            <div class="user-info">
-                <span><i class="fas fa-user-circle"></i> 管理员</span>
-                <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
-            </div>
+<div class="layui-layout layui-layout-admin">
+    <div class="layui-header header" style="background: #211f1a;">
+        <div class="logo"><i class="fas fa-leaf"></i> 花语轩管理后台</div>
+        <div class="user-info">
+            <span><i class="fas fa-user-circle"></i> 管理员</span>
+            <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
         </div>
+    </div>
 
-        <div class="layui-side layui-bg-black" style="top: 60px;width: 200px;">
-            <div class="layui-side-scroll">
-                <ul class="layui-nav layui-nav-tree" lay-filter="nav">
-                    <li class="layui-nav-item">
-                        <a href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a>
-                    </li>
-                    <li class="layui-nav-item">
-                        <a href="javascript:;"><i class="fas fa-th"></i> 商品管理</a>
-                        <dl class="layui-nav-child">
-                            <dd><a href="/admin/product-list"><i class="fas fa-box"></i> 商品列表</a></dd>
-                            <dd><a href="/admin/category-list"><i class="fas fa-tags"></i> 分类管理</a></dd>
-                        </dl>
-                    </li>
-                    <li class="layui-nav-item">
-                        <a href="javascript:;"><i class="fas fa-shopping-cart"></i> 订单管理</a>
-                        <dl class="layui-nav-child">
-                            <dd><a href="/admin/order-list"><i class="fas fa-list-alt"></i> 订单列表</a></dd>
-                        </dl>
-                    </li>
-                    <li class="layui-nav-item">
-                        <a href="javascript:;"><i class="fas fa-users"></i> 用户管理</a>
-                        <dl class="layui-nav-child">
-                            <dd><a href="/admin/user-list"><i class="fas fa-user"></i> 用户列表</a></dd>
-                        </dl>
-                    </li>
-                    <li class="layui-nav-item layui-nav-itemed">
-                        <a href="javascript:;"><i class="fas fa-cog"></i> 系统设置</a>
-                        <dl class="layui-nav-child">
-                            <dd><a href="/admin/banner-list"><i class="fas fa-image"></i> 轮播图管理</a></dd>
-                            <dd><a href="/admin/notice-list"><i class="fas fa-bullhorn"></i> 公告管理</a></dd>
-                            <dd><a href="/admin/coupon-list"><i class="fas fa-ticket-alt"></i> 优惠券</a></dd>
-                            <dd><a href="/admin/audit-list"><i class="fas fa-history"></i> 操作日志</a></dd>
-                        </dl>
-                    </li>
-                </ul>
-            </div>
+    <div class="layui-side layui-bg-black" style="top: 60px;width: 200px;">
+        <div class="layui-side-scroll">
+            <ul class="layui-nav layui-nav-tree" lay-filter="nav">
+                <li class="layui-nav-item">
+                    <a href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a>
+                </li>
+                <li class="layui-nav-item">
+                    <a href="javascript:;"><i class="fas fa-th"></i> 商品管理</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/product-list"><i class="fas fa-box"></i> 商品列表</a></dd>
+                        <dd><a href="/admin/category-list"><i class="fas fa-tags"></i> 分类管理</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item">
+                    <a href="javascript:;"><i class="fas fa-shopping-cart"></i> 订单管理</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/order-list"><i class="fas fa-list-alt"></i> 订单列表</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item">
+                    <a href="javascript:;"><i class="fas fa-users"></i> 用户管理</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/user-list"><i class="fas fa-user"></i> 用户列表</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item layui-nav-itemed">
+                    <a href="javascript:;"><i class="fas fa-cog"></i> 系统设置</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/banner-list"><i class="fas fa-image"></i> 轮播图管理</a></dd>
+                        <dd><a href="/admin/notice-list"><i class="fas fa-bullhorn"></i> 公告管理</a></dd>
+                        <dd><a href="/admin/article-list"><i class="fas fa-book"></i> 知识库</a></dd>
+                        <dd><a href="/admin/review-list"><i class="fas fa-star-half-alt"></i> 评价审核</a></dd>
+                        <dd><a href="/admin/coupon-list"><i class="fas fa-ticket-alt"></i> 优惠券</a></dd>
+                        <dd><a href="/admin/audit-list"><i class="fas fa-history"></i> 操作日志</a></dd>
+                    </dl>
+                </li>
+            </ul>
         </div>
+    </div>
 
-        <div class="layui-body" style="left: 200px;">
-            <div class="content-body" style="padding: 20px;">
-                <div class="layui-card">
-                    <div class="layui-card-header">
-                        <i class="fas fa-image"></i> 轮播图管理
-                        <span class="banner-hint">拖动行首手柄调整播放顺序</span>
-                        <button class="layui-btn layui-btn-xs layui-btn-normal" style="float: right;" onclick="huBannerAdd()">
-                            <i class="fas fa-plus"></i> 添加轮播图
-                        </button>
+    <div class="layui-body" style="left: 200px;">
+        <div class="content-body" style="padding: 20px;">
+            <div class="layui-card">
+                <div class="layui-card-header">
+                    <i class="fas fa-image"></i> 轮播图管理
+                    <span class="banner-hint" style="margin-left:10px;color:#8a8578;font-size:12px">
+                        拖动行首手柄调整播放顺序</span>
+                    <span id="bannerMeta" style="margin-left:10px;color:#8a8578;font-size:12px">前台播放 —</span>
+                    <button class="layui-btn layui-btn-xs layui-btn-primary" style="float:right" onclick="huBannerPreview()">
+                        <i class="fas fa-desktop"></i> 前台效果
+                    </button>
+                    <button class="layui-btn layui-btn-xs layui-btn-normal" style="float:right;margin-right:10px" onclick="huBannerAdd()">
+                        <i class="fas fa-plus"></i> 添加轮播图
+                    </button>
+                </div>
+                <div class="layui-card-body">
+                    <div id="bannerWrap">
+                        <table class="layui-hide" id="bannerTable" lay-filter="bannerTable"></table>
                     </div>
-                    <div class="layui-card-body">
-                        <div id="bannerWrap">
-                            <table class="layui-hide" id="bannerTable" lay-filter="bannerTable"></table>
-                        </div>
-                        <div class="banner-sort-bar" id="bannerSortBar">
-                            <button class="layui-btn layui-btn-xs" id="bannerSortSave"><i class="fas fa-save"></i> 保存顺序</button>
-                            <button class="layui-btn layui-btn-xs layui-btn-primary" id="bannerSortCancel">放弃修改</button>
-                            <span>已调整展示顺序，保存后前台轮播按新顺序播放</span>
-                        </div>
+                    <div class="banner-sort-bar" id="bannerSortBar">
+                        <button class="layui-btn layui-btn-xs" id="bannerSortSave"><i class="fas fa-save"></i> 保存顺序</button>
+                        <button class="layui-btn layui-btn-xs layui-btn-primary" id="bannerSortCancel">放弃修改</button>
+                        <span>已调整展示顺序，保存后前台轮播按新顺序播放</span>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="layui-footer">© 2024 花语轩鲜花销售系统 - 版权所有</div>
     </div>
 
-    <script type="text/html" id="statusTpl">
-        {{# var statusClass = 'status-' + d.status; }}
-        <span class="banner-status {{statusClass}}">{{ d.status === 'active' ? '启用' : '禁用' }}</span>
-    </script>
+    <div class="layui-footer">© 2024 花语轩鲜花销售系统 - 版权所有</div>
+</div>
 
-    <script type="text/html" id="operateTpl">
-        <a class="layui-btn layui-btn-xs" lay-event="edit"><i class="fas fa-edit"></i> 编辑</a>
-        {{# if(d.status === 'active') { }}
-        <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="disable"><i class="fas fa-ban"></i> 禁用</a>
-        {{# } else { }}
-        <a class="layui-btn layui-btn-warm layui-btn-xs" lay-event="enable"><i class="fas fa-check"></i> 启用</a>
-        {{# } }}
-        <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del"><i class="fas fa-trash"></i> 删除</a>
-    </script>
+<script type="text/html" id="statusTpl">
+    <span class="banner-status status-{{d.status}}">{{ d.status === 'active' ? '启用' : '停用' }}</span>
+</script>
 
-    <script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
-    <script th:src="@{/jquery-3.7.1.min.js}"></script>
-    <script th:src="@{/js/admin-common.js}"></script>
-    <script th:inline="none">
-        layui.use(['table', 'layer', 'form', 'laydate'], function () {
-            var table = layui.table;
-            var layer = layui.layer;
-            var laydate = layui.laydate;
-            var esc = huAdmin.esc;
-            var dirty = false;
-            var dragging = null;
+<script type="text/html" id="stateTpl">
+    <span class="banner-state state-{{d.state}}">{{d.stateLabel}}</span>
+</script>
 
-            table.render({
-                elem: '#bannerTable',
-                url: '/api/admin/banners',
-                /* 不分页：一次拉取全量（后端 limit 上限 100），拖拽顺序即前台播放顺序 */
-                page: false,
-                where: {limit: 100},
-                cols: [[
-                    {title: '', width: 46, templet: function () {
-                        return '<span class="banner-handle" title="按住拖拽调整顺序">&#8801;</span>';
-                    }},
-                    {field: 'imageUrl', title: '图片', width: 130, templet: function (d) {
-                        var src = huAdmin.safeUrl(d.imageUrl);
-                        return src ? '<img src="' + src + '" style="width:110px;height:56px;object-fit:cover;">' : '<span class="layui-text">无</span>';
-                    }},
-                    {field: 'title', title: '标题', width: 140},
-                    {field: 'description', title: '描述', width: 140},
-                    {field: 'linkUrl', title: '链接', width: 150},
-                    {field: 'sortOrder', title: '排序', width: 66},
-                    {field: 'startTime', title: '投放时间', width: 180, templet: function (d) {
-                        if (!d.startTime && !d.endTime) return '<span class="banner-time">长期投放</span>';
-                        return '<span class="banner-time">' + (fmtTime(d.startTime) || '立即') + ' ~ ' + (fmtTime(d.endTime) || '不限') + '</span>';
-                    }},
-                    {field: 'status', title: '状态', width: 76, templet: '#statusTpl'},
-                    {title: "操作", width: 250, toolbar: "#operateTpl"}
-                ]],
-                done: function (res) {
-                    bindRows(res.data || []);
+<script type="text/html" id="operateTpl">
+    <a class="layui-btn layui-btn-xs" lay-event="edit"><i class="fas fa-edit"></i> 编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-primary" lay-event="look"><i class="fas fa-search-plus"></i> 预览</a>
+    {{# if(d.status === 'active') { }}
+    <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="disable"><i class="fas fa-ban"></i> 停用</a>
+    {{# } else { }}
+    <a class="layui-btn layui-btn-warm layui-btn-xs" lay-event="enable"><i class="fas fa-check"></i> 启用</a>
+    {{# } }}
+    <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del"><i class="fas fa-trash"></i> 删除</a>
+</script>
+
+<script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+<script th:src="@{/jquery-3.7.1.min.js}"></script>
+<script th:src="@{/js/admin-common.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'layer', 'form', 'laydate'], function () {
+        var table = layui.table;
+        var layer = layui.layer;
+        var laydate = layui.laydate;
+        var esc = huAdmin.esc;
+        var dirty = false;
+        var dragging = null;
+        var LINK_TYPES = [['none', '不跳转'], ['product', '跳到商品'], ['category', '跳到分类'],
+            ['page', '跳到站内页面'], ['url', '跳到外部链接']];
+        var linkNames = {};
+        LINK_TYPES.forEach(function (t) { linkNames[t[0]] = t[1]; });
+
+        table.render({
+            elem: '#bannerTable',
+            url: '/api/admin/banners',
+            /* 不分页：一次拉取全量（后端 limit 上限 100），拖拽顺序即前台播放顺序 */
+            page: false,
+            where: {limit: 100, status: ''},
+            cols: [[
+                {title: '', width: 46, templet: function () {
+                    return '<span class="banner-handle" title="按住拖拽调整顺序">&#8801;</span>';
+                }},
+                {field: 'imageUrl', title: '缩略图', width: 124, templet: function (d) {
+                    /* 缩略图列按首页 hero 的取景比例显示：没单独填 thumb 就用主图裁 */
+                    var src = huAdmin.safeUrl(d.thumbUrl || d.imageUrl);
+                    return src ? '<img src="' + src + '" class="banner-thumb" data-zoom="1" alt="">'
+                        : '<span class="layui-text">无</span>';
+                }},
+                {field: 'title', title: '标题', width: 140},
+                {field: 'description', title: '描述', width: 150},
+                {field: 'linkUrl', title: '跳转', width: 210, templet: function (d) {
+                    var type = linkNames[d.linkType] || '不跳转';
+                    if (d.linkType === 'none' || !d.linkUrl) return '<span class="banner-link"><em>不跳转</em></span>';
+                    return '<span class="banner-link"><em>' + esc(type) + '</em>' + esc(d.linkUrl) + '</span>';
+                }},
+                {field: 'sortOrder', title: '排序', width: 66},
+                {field: 'startTime', title: '投放时间', width: 176, templet: function (d) {
+                    if (!d.startTime && !d.endTime) return '<span class="banner-time">长期投放</span>';
+                    return '<span class="banner-time">' + (fmtTime(d.startTime) || '立即') + ' ~ '
+                        + (fmtTime(d.endTime) || '不限') + '</span>';
+                }},
+                {field: 'state', title: '前台状态', width: 92, templet: '#stateTpl'},
+                {field: 'status', title: '开关', width: 72, templet: '#statusTpl'},
+                {title: "操作", width: 268, toolbar: "#operateTpl"}
+            ]],
+            done: function (res) {
+                bindRows(res.data || []);
+                $('#bannerMeta').text('前台播放 ' + (res.displayableCount == null ? '-' : res.displayableCount) + ' 张');
+            }
+        });
+
+        function fmtTime(v) {
+            return v ? String(v).replace('T', ' ').slice(0, 16) : '';
+        }
+
+        function view() {
+            return jQuery('#bannerWrap .layui-table-main');
+        }
+
+        /**
+         * Layui 重绘 tbody 后需要重新绑定拖拽；data-banner-id 随 tr 一起移动，保存时按 DOM 顺序取值
+         */
+        function bindRows(rows) {
+            var $tbody = view().find('tbody');
+            $tbody.children('tr').each(function () {
+                var $tr = jQuery(this);
+                var row = rows[Number($tr.attr('data-index'))];
+                if (!row) return;
+                $tr.attr('data-banner-id', row.id).attr('draggable', 'true');
+            });
+            $tbody.children('tr')
+                .off('dragstart.banner')
+                .on('dragstart.banner', function () {
+                    dragging = this;
+                    jQuery(this).addClass('banner-row-dragging');
+                })
+                .off('dragend.banner')
+                .on('dragend.banner', function () {
+                    dragging = null;
+                    $tbody.children('tr').removeClass('banner-drag-over banner-row-dragging');
+                })
+                .off('dragover.banner')
+                .on('dragover.banner', function (e) {
+                    if (!dragging || dragging === this) return;
+                    e.preventDefault();
+                    jQuery(this).toggleClass('banner-drag-over', aboveCenter(e.originalEvent, this) === false);
+                })
+                .off('drop.banner')
+                .on('drop.banner', function (e) {
+                    if (!dragging || dragging === this) return;
+                    e.preventDefault();
+                    var after = aboveCenter(e.originalEvent, this);
+                    this.parentNode.insertBefore(dragging, after ? this.nextSibling : this);
+                    setDirty(true);
+                });
+        }
+
+        /** 鼠标落在目标行下半部分时排到其后 */
+        function aboveCenter(event, tr) {
+            var rect = tr.getBoundingClientRect();
+            return (event.clientY - rect.top) > rect.height / 2;
+        }
+
+        function setDirty(on) {
+            dirty = on;
+            jQuery('#bannerSortBar').toggleClass('is-on', on);
+        }
+
+        function saveOrder() {
+            var ids = [];
+            view().find('tbody tr').each(function () {
+                var id = jQuery(this).attr('data-banner-id');
+                if (id) ids.push(id);
+            });
+            if (ids.length < 2) {
+                huAdmin.toast('至少两条轮播图才可排序', 'err');
+                return;
+            }
+            huAdmin.request({
+                url: '/api/admin/banners/sort',
+                type: 'POST',
+                data: {ids: ids},
+                ok: function () {
+                    setDirty(false);
+                    reload();
                 }
             });
+        }
 
-            function fmtTime(v) {
-                return v ? String(v).replace('T', ' ').slice(0, 16) : '';
-            }
+        function reload() {
+            table.reload('bannerTable');
+        }
 
-            function view() {
-                return jQuery('#bannerWrap .layui-table-main');
-            }
+        jQuery('#bannerSortSave').on('click', saveOrder);
+        jQuery('#bannerSortCancel').on('click', function () {
+            setDirty(false);
+            reload();
+        });
 
-            /**
-             * Layui 重绘 tbody 后需要重新绑定拖拽；data-banner-id 随 tr 一起移动，保存时按 DOM 顺序取值
-             */
-            function bindRows(rows) {
-                var $tbody = view().find('tbody');
-                $tbody.children('tr').each(function () {
-                    var $tr = jQuery(this);
-                    var row = rows[Number($tr.attr('data-index'))];
-                    if (!row) return;
-                    $tr.attr('data-banner-id', row.id).attr('draggable', 'true');
-                });
-                $tbody.children('tr')
-                    .off('dragstart.banner')
-                    .on('dragstart.banner', function () {
-                        dragging = this;
-                        jQuery(this).addClass('banner-row-dragging');
-                    })
-                    .off('dragend.banner')
-                    .on('dragend.banner', function () {
-                        dragging = null;
-                        $tbody.children('tr').removeClass('banner-drag-over banner-row-dragging');
-                    })
-                    .off('dragover.banner')
-                    .on('dragover.banner', function (e) {
-                        if (!dragging || dragging === this) return;
-                        e.preventDefault();
-                        jQuery(this).toggleClass('banner-drag-over', aboveCenter(e.originalEvent, this) === false);
-                    })
-                    .off('drop.banner')
-                    .on('drop.banner', function (e) {
-                        if (!dragging || dragging === this) return;
-                        e.preventDefault();
-                        var after = aboveCenter(e.originalEvent, this);
-                        this.parentNode.insertBefore(dragging, after ? this.nextSibling : this);
-                        setDirty(true);
-                    });
-            }
-
-            /** 鼠标落在目标行下半部分时排到其后 */
-            function aboveCenter(event, tr) {
-                var rect = tr.getBoundingClientRect();
-                return (event.clientY - rect.top) > rect.height / 2;
-            }
-
-            function setDirty(on) {
-                dirty = on;
-                jQuery('#bannerSortBar').toggleClass('is-on', on);
-            }
-
-            function saveOrder() {
-                var ids = [];
-                view().find('tbody tr').each(function () {
-                    var id = jQuery(this).attr('data-banner-id');
-                    if (id) ids.push(id);
-                });
-                if (ids.length < 2) {
-                    huAdmin.toast('至少两条轮播图才可排序', 'err');
-                    return;
-                }
+        function toggleStatus(row, status) {
+            layer.confirm(status === 'active' ? '确定要启用该轮播图吗？' : '确定要停用该轮播图吗？', function (index) {
                 huAdmin.request({
-                    url: '/api/admin/banners/sort',
+                    url: '/api/admin/banners/' + row.id + '/status?status=' + status,
                     type: 'POST',
-                    data: {ids: ids},
                     ok: function () {
-                        setDirty(false);
+                        layer.close(index);
                         reload();
                     }
                 });
-            }
-
-            function reload() {
-                table.reload('bannerTable');
-            }
-
-            jQuery('#bannerSortSave').on('click', saveOrder);
-            jQuery('#bannerSortCancel').on('click', function () {
-                setDirty(false);
-                reload();
             });
+        }
 
-            function toggleStatus(row, status) {
-                layer.confirm(status === 'active' ? '确定要启用该轮播图吗？' : '确定要禁用该轮播图吗？', function (index) {
-                    huAdmin.request({
-                        url: '/api/admin/banners/' + row.id + '/status?status=' + status,
-                        type: 'POST',
-                        ok: function (res) {
-                            layer.close(index);
-                            reload();
-                        }
+        /** F14 单张预览：用前台 hero 的同一套遮罩与文字位置，运营看得见的就是顾客看见的 */
+        function openPreview(row) {
+            layer.open({
+                type: 1, title: '预览 · ' + esc(row.title), area: ['760px', '520px'],
+                content: '<div style="padding:16px">' + previewHtml(row) +
+                    '<div style="margin-top:12px;color:#8a8578;font-size:12px;line-height:1.8">' +
+                    '跳转：' + esc(linkNames[row.linkType] || '不跳转') + '　' + esc(row.linkUrl || '') + '<br>' +
+                    '投放：' + (fmtTime(row.startTime) || '立即') + ' ~ ' + (fmtTime(row.endTime) || '不限') +
+                    '　状态：' + esc(row.stateLabel || '') + '</div></div>'
+            });
+        }
+
+        function previewHtml(item) {
+            var src = huAdmin.safeUrl(item.imageUrl);
+            if (!src) return '<div style="padding:40px;text-align:center;color:#8c8c8c">未配置图片</div>';
+            return '<div class="banner-preview"><img src="' + src + '" alt="">' +
+                '<div class="banner-preview__veil"></div>' +
+                '<div class="banner-preview__cap"><h3>' + esc(item.title) + '</h3>' +
+                '<p>' + esc(item.description || '') + '</p></div></div>';
+        }
+
+        /** 前台效果：直接读 /api/admin/banners/preview，与首页拿到的顺序、条数完全一致 */
+        window.huBannerPreview = function () {
+            huAdmin.request({
+                url: '/api/admin/banners/preview', type: 'GET', silent: true,
+                ok: function (res) {
+                    var list = res.data || [];
+                    if (!list.length) {
+                        layer.msg('当前没有可播放的轮播图：全部被停用或不在投放时间窗内', {icon: 2});
+                        return;
+                    }
+                    layer.open({
+                        type: 1, title: '前台首页将按以下顺序播放（共 ' + list.length + ' 张）',
+                        area: ['760px', '640px'],
+                        content: '<div style="padding:16px 18px">' + list.map(function (item, i) {
+                            return '<div style="margin-bottom:18px"><span class="banner-order">第 '
+                                + (i + 1) + ' 位</span>　<b>' + esc(item.title) + '</b>' +
+                                previewHtml(item) + '</div>';
+                        }).join('') + '</div>'
                     });
-                });
-            }
+                },
+                fail: function (res) { huAdmin.toast(res.msg || '读取失败', 'err'); }
+            });
+        };
 
-            table.on('tool(bannerTable)', function (obj) {
-                if (obj.event === 'edit') {
-                    openForm(obj.data);
-                } else if (obj.event === 'disable') {
-                    toggleStatus(obj.data, 'inactive');
-                } else if (obj.event === 'enable') {
-                    toggleStatus(obj.data, 'active');
-                } else if (obj.event === 'del') {
-                    huAdmin.confirmDelete('确定要删除「' + obj.data.title + '」吗？',
-                        '/api/admin/banners/' + obj.data.id, reload);
+        $('#bannerTable').closest('.layui-table-view').on('click', '[data-zoom]', function () {
+            var src = jQuery(this).attr('src');
+            if (!huAdmin.safeUrl(src)) return;
+            layer.open({type: 1, title: false, closeBtn: 1, area: ['auto', 'auto'], shadeClose: true,
+                content: '<img src="' + src + '" style="max-width:640px;max-height:80vh;display:block">'});
+        });
+
+        table.on('tool(bannerTable)', function (obj) {
+            if (obj.event === 'edit') {
+                openForm(obj.data);
+            } else if (obj.event === 'look') {
+                openPreview(obj.data);
+            } else if (obj.event === 'disable') {
+                toggleStatus(obj.data, 'inactive');
+            } else if (obj.event === 'enable') {
+                toggleStatus(obj.data, 'active');
+            } else if (obj.event === 'del') {
+                huAdmin.confirmDelete('确定要删除「' + obj.data.title + '」吗？',
+                    '/api/admin/banners/' + obj.data.id, reload);
+            }
+        });
+
+        /**
+         * 新增/编辑共用同一份表单：banner 为 null 表示新增。
+         * 字段值一律经 esc 输出，提交时按 id 取值，避免 layui form 过滤器在多次弹窗后重复绑定。
+         */
+        function openForm(banner) {
+            var isEdit = !!banner;
+            var v = banner || {title: '', imageUrl: '', linkUrl: '', description: '', sortOrder: 0,
+                status: 'active', linkType: 'none'};
+            layer.open({
+                type: 1,
+                title: isEdit ? '编辑轮播图' : '添加轮播图',
+                area: ['560px', '700px'],
+                content: '<form class="layui-form" style="padding:20px 24px 0">' +
+                    field('标题', '<input type="text" id="bfTitle" value="' + esc(v.title) + '" class="layui-input" placeholder="请输入标题">') +
+                    field('图片URL', '<input type="text" id="bfImageUrl" value="' + esc(v.imageUrl) + '" class="layui-input" placeholder="站内路径如 /img/photos/hero-rose.jpg">') +
+                    field('缩略图', '<input type="text" id="bfThumbUrl" value="' + esc(v.thumbUrl || '') + '" class="layui-input" placeholder="可选，留空按主图裁切">') +
+                    field('跳转类型', '<select id="bfLinkType">' + LINK_TYPES.map(function (t) {
+                        return '<option value="' + t[0] + '"' + ((v.linkType || 'none') === t[0] ? ' selected' : '') + '>' + t[1] + '</option>';
+                    }).join('') + '</select>') +
+                    field('跳转目标', '<div id="bfTargetBox">' + targetControl(v) + '</div>') +
+                    field('描述', '<textarea id="bfDescription" class="layui-textarea" placeholder="可选">' + esc(v.description) + '</textarea>') +
+                    field('投放开始', '<input type="text" id="bfStartTime" value="' + fmtTime(v.startTime) + '" class="layui-input" placeholder="留空表示立即生效" readonly>') +
+                    field('投放结束', '<input type="text" id="bfEndTime" value="' + fmtTime(v.endTime) + '" class="layui-input" placeholder="留空表示不限" readonly>') +
+                    field('排序', '<input type="text" id="bfSortOrder" value="' + esc(v.sortOrder == null ? 0 : v.sortOrder) + '" class="layui-input">' +
+                        '<button type="button" class="layui-btn layui-btn-xs layui-btn-primary" id="bfTop" style="margin-top:6px">插到第一位</button></div>') +
+                    field('状态', '<select id="bfStatus">' +
+                        '<option value="active"' + (v.status === 'active' ? ' selected' : '') + '>启用</option>' +
+                        '<option value="inactive"' + (v.status === 'inactive' ? ' selected' : '') + '>禁用</option>' +
+                        '</select>') +
+                    '<div class="layui-form-item"><div class="layui-input-block">' +
+                    '<button type="button" class="layui-btn" id="bfSubmit">提交</button></div></div>' +
+                    '</form>',
+                success: function () {
+                    layui.form.render(null, null);
+                    /* laydate 挂在 layer 内容之上，触发方式用 click 才不会被弹层拦截 */
+                    laydate.render({elem: '#bfStartTime', type: 'datetime', trigger: 'click'});
+                    laydate.render({elem: '#bfEndTime', type: 'datetime', trigger: 'click'});
+                    $('#bfLinkType').on('change', function () {
+                        syncTarget($(this).val(), null);
+                    });
+                    syncTarget(v.linkType || 'none', v.linkTarget, v.linkUrl);
+                    $('#bfTop').on('click', function () {
+                        huAdmin.request({
+                            url: '/api/admin/banners/next-sort', type: 'GET', silent: true,
+                            ok: function (res) {
+                                $('#bfSortOrder').val(res.data);
+                                huAdmin.toast('保存后即排到第一位');
+                            }
+                        });
+                    });
+                    $('#bfSubmit').on('click', function () {
+                        var startTime = $.trim($('#bfStartTime').val());
+                        var endTime = $.trim($('#bfEndTime').val());
+                        if (startTime && endTime && endTime < startTime) {
+                            huAdmin.toast('投放结束时间不能早于开始时间', 'err');
+                            return;
+                        }
+                        var linkType = $('#bfLinkType').val();
+                        var payload = {
+                            title: $.trim($('#bfTitle').val()),
+                            imageUrl: $.trim($('#bfImageUrl').val()),
+                            thumbUrl: $.trim($('#bfThumbUrl').val()) || null,
+                            linkType: linkType,
+                            linkTarget: targetValue(linkType),
+                            linkUrl: linkType === 'url' || linkType === 'page' ? $.trim($('#bfLinkAddr').val()) : null,
+                            description: $.trim($('#bfDescription').val()) || null,
+                            sortOrder: Number($('#bfSortOrder').val()) || 0,
+                            status: $('#bfStatus').val(),
+                            /* 后端按 ISO-8601 解析 LocalDateTime */
+                            startTime: startTime ? startTime.replace(' ', 'T') : null,
+                            endTime: endTime ? endTime.replace(' ', 'T') : null
+                        };
+                        if (!payload.title || !payload.imageUrl) {
+                            huAdmin.toast('标题与图片地址必填', 'err');
+                            return;
+                        }
+                        if ((linkType === 'product' || linkType === 'category') && !payload.linkTarget) {
+                            huAdmin.toast(linkType === 'product' ? '请选择要跳转的商品' : '请选择要跳转的分类', 'err');
+                            return;
+                        }
+                        if ((linkType === 'url' || linkType === 'page') && !payload.linkUrl) {
+                            huAdmin.toast(linkType === 'url' ? '请填写 http(s) 外链地址' : '请填写站内页面路径', 'err');
+                            return;
+                        }
+                        huAdmin.request({
+                            url: isEdit ? '/api/admin/banners/' + banner.id : '/api/admin/banners',
+                            type: isEdit ? 'PUT' : 'POST',
+                            data: payload,
+                            ok: function () {
+                                layer.closeAll('page');
+                                reload();
+                            }
+                        });
+                    });
                 }
             });
+        }
 
-            /**
-             * 新增/编辑共用同一份表单：banner 为 null 表示新增。
-             * 字段值一律经 esc 输出，提交时按 id 取值，避免 layui form 过滤器在多次弹窗后重复绑定。
-             */
-            function openForm(banner) {
-                var isEdit = !!banner;
-                var v = banner || {title: '', imageUrl: '', linkUrl: '', description: '', sortOrder: 0, status: 'active'};
-                layer.open({
-                    type: 1,
-                    title: isEdit ? '编辑轮播图' : '添加轮播图',
-                    area: ['520px', '640px'],
-                    content: '<form class="layui-form" style="padding:20px 24px 0">' +
-                        field('标题', '<input type="text" id="bfTitle" value="' + esc(v.title) + '" class="layui-input" placeholder="请输入标题">') +
-                        field('图片URL', '<input type="text" id="bfImageUrl" value="' + esc(v.imageUrl) + '" class="layui-input" placeholder="站内路径如 /img/photos/hero-rose.jpg">') +
-                        field('链接地址', '<input type="text" id="bfLinkUrl" value="' + esc(v.linkUrl) + '" class="layui-input" placeholder="可选">') +
-                        field('描述', '<textarea id="bfDescription" class="layui-textarea" placeholder="可选">' + esc(v.description) + '</textarea>') +
-                        field('投放开始', '<input type="text" id="bfStartTime" value="' + fmtTime(v.startTime) + '" class="layui-input" placeholder="留空表示立即生效" readonly>') +
-                        field('投放结束', '<input type="text" id="bfEndTime" value="' + fmtTime(v.endTime) + '" class="layui-input" placeholder="留空表示不限" readonly>') +
-                        field('排序', '<input type="number" id="bfSortOrder" value="' + esc(v.sortOrder == null ? 0 : v.sortOrder) + '" class="layui-input">') +
-                        field('状态', '<select id="bfStatus">' +
-                            '<option value="active"' + (v.status === 'active' ? ' selected' : '') + '>启用</option>' +
-                            '<option value="inactive"' + (v.status === 'inactive' ? ' selected' : '') + '>禁用</option>' +
-                            '</select>') +
-                        '<div class="layui-form-item"><div class="layui-input-block">' +
-                        '<button type="button" class="layui-btn" id="bfSubmit">提交</button></div></div>' +
-                        '</form>',
-                    success: function () {
-                        layui.form.render(null, null);
-                        /* laydate 挂在 layer 内容之上，触发方式用 click 才不会被弹层拦截 */
-                        laydate.render({elem: '#bfStartTime', type: 'datetime', trigger: 'click'});
-                        laydate.render({elem: '#bfEndTime', type: 'datetime', trigger: 'click'});
-                        $('#bfSubmit').on('click', function () {
-                            var startTime = $.trim($('#bfStartTime').val());
-                            var endTime = $.trim($('#bfEndTime').val());
-                            if (startTime && endTime && endTime < startTime) {
-                                huAdmin.toast('投放结束时间不能早于开始时间', 'err');
-                                return;
-                            }
-                            var payload = {
-                                title: $.trim($('#bfTitle').val()),
-                                imageUrl: $.trim($('#bfImageUrl').val()),
-                                linkUrl: $.trim($('#bfLinkUrl').val()) || null,
-                                description: $.trim($('#bfDescription').val()) || null,
-                                sortOrder: Number($('#bfSortOrder').val()) || 0,
-                                status: $('#bfStatus').val(),
-                                /* 后端按 ISO-8601 解析 LocalDateTime */
-                                startTime: startTime ? startTime.replace(' ', 'T') : null,
-                                endTime: endTime ? endTime.replace(' ', 'T') : null
-                            };
-                            if (!payload.title || !payload.imageUrl) {
-                                huAdmin.toast('标题与图片地址必填', 'err');
-                                return;
-                            }
-                            huAdmin.request({
-                                url: isEdit ? '/api/admin/banners/' + banner.id : '/api/admin/banners',
-                                type: isEdit ? 'PUT' : 'POST',
-                                data: payload,
-                                ok: function () {
-                                    layer.closeAll('page');
-                                    reload();
-                                }
-                            });
-                        });
-                    }
-                });
+        /**
+         * F13：跳转目标控件按类型切换——商品/分类用下拉（值就是 UUID，不让运营手抄），
+         * 外链与站内页面用文本框，由服务端 SafeUrl 统一校验协议。
+         */
+        function targetControl(v) {
+            var type = v.linkType || 'none';
+            if (type === 'none') {
+                return '<div style="color:#8a8578;font-size:12px;padding-top:8px">该轮播图只作品牌展示，不绑跳转</div>';
             }
-
-            function field(label, control) {
-                return '<div class="layui-form-item"><label class="layui-form-label">' + label + '</label>' +
-                    '<div class="layui-input-block">' + control + '</div></div>';
+            if (type === 'product' || type === 'category') {
+                return '<select id="bfTarget"><option value="">加载中…</option></select>';
             }
+            return '<input type="text" id="bfLinkAddr" value="' + esc(v.linkUrl || '') + '" class="layui-input" ' +
+                'placeholder="' + (type === 'url' ? 'https:// 完整外链地址' : '站内路径，如 /products?tag=母亲节') + '">';
+        }
 
-            window.huBannerAdd = function () {
-                openForm(null);
-            };
-        });
-    </script>
+        function targetValue(type) {
+            if (type === 'product' || type === 'category') {
+                return $.trim($('#bfTarget').val()) || null;
+            }
+            return null;
+        }
+
+        /** 换类型就重画目标控件；切类型时旧地址一律丢弃，因为跳转语义已经变了 */
+        function syncTarget(type, selected, linkUrl) {
+            $('#bfTargetBox').html(targetControl({linkType: type, linkUrl: linkUrl || ''}));
+            if (type === 'product' || type === 'category') {
+                loadOptions(type, selected);
+            }
+        }
+
+        /** 商品/分类下拉的数据源：切到对应类型时才拉一次，选项缓存在内存里 */
+        var optionsCache = {};
+        function loadOptions(type, selected) {
+            var url = type === 'product' ? '/api/admin/products?limit=100' : '/api/categories/active';
+            function paint(list) {
+                var $sel = $('#bfTarget');
+                if (!$sel.length) return;
+                $sel.html('<option value="">请选择' + (type === 'product' ? '商品' : '分类') + '</option>' +
+                    list.map(function (o) {
+                        return '<option value="' + o.id + '"' + (String(o.id) === String(selected || '') ? ' selected' : '') + '>'
+                            + esc(o.name) + '</option>';
+                    }).join(''));
+            }
+            if (optionsCache[type]) { paint(optionsCache[type]); return; }
+            huAdmin.request({
+                url: url, type: 'GET', silent: true,
+                ok: function (res) {
+                    var list = (res.data || []).map(function (row) { return {id: row.id, name: row.name}; });
+                    optionsCache[type] = list;
+                    paint(list);
+                }
+            });
+        }
+
+        function field(label, control) {
+            return '<div class="layui-form-item"><label class="layui-form-label">' + label + '</label>' +
+                '<div class="layui-input-block">' + control + '</div></div>';
+        }
+
+        window.huBannerAdd = function () {
+            openForm(null);
+        };
+    });
+</script>
 </body>
 </html>

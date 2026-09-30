@@ -41,11 +41,33 @@
                 <div class="hu-pdp__cat" th:text="${product.category != null ? product.category.name : 'FRESH FLOWER'}">鲜花</div>
                 <h1 class="hu-pdp__title" th:text="${product.name}">商品名称</h1>
 
+                <!-- A14：副标题是列表页与详情页共用的一句话卖点，没有填就不占位 -->
+                <p class="hu-pdp__subtitle" th:if="${product.subtitle != null and !#strings.isEmpty(product.subtitle)}"
+                   th:text="${product.subtitle}">副标题</p>
+
+                <!-- A17：花语直接放在标题下方，顾客挑花时最先想知道的就是「这束说什么」 -->
+                <p class="hu-pdp__flowerlang" th:if="${product.flowerLanguage != null and !#strings.isEmpty(product.flowerLanguage)}">
+                    <i class="fa fa-quote-left"></i><span th:text="${product.flowerLanguage}">花语</span>
+                </p>
+
+                <div class="hu-product__tags hu-pdp__badges" id="pdpBadges">
+                    <span class="hu-tag hu-tag--new" th:if="${product.isNew}">新品</span>
+                    <span class="hu-tag hu-tag--sale" th:if="${product.isFeatured}">热销</span>
+                    <!-- 折扣与库存角标由 /api/products/{id} 回填，口径与列表页完全一致 -->
+                    <span class="hu-tag hu-tag--sale" id="pdpDiscount" hidden></span>
+                    <span class="hu-tag hu-tag--warn" id="pdpLowStock" hidden></span>
+                    <span class="hu-tag hu-tag--off" id="pdpSoldOut" hidden>已售罄</span>
+                </div>
+
                 <div class="hu-product__rate" style="margin-bottom:6px">
                     <th:block th:each="i : ${#numbers.sequence(1, 5)}">
                         <i class="fa" th:classappend="${i > product.rating} ? 'fa-star-o' : 'fa-star'"></i>
                     </th:block>
-                    <span th:text="${product.rating} + ' 分 · ' + ${product.reviewCount} + ' 条评价 · ' + ${product.salesCount} + ' 人已送出'">5.0</span>
+                    <span>
+                        <th:block th:text="${product.rating} + ' 分 · ' + ${product.reviewCount} + ' 条评价 · '">5.0</th:block>
+                        <!-- A20：已售数量与库存告急共用服务端口径，页面不再自己写「人已送出」这种模糊说法 -->
+                        <b th:text="'已售 ' + ${product.salesCount != null ? product.salesCount : 0} + ' 束'">已售 0 束</b>
+                    </span>
                 </div>
 
                 <div class="hu-pdp__price"
@@ -66,11 +88,32 @@
                     <span th:if="${product.stock != null}">
                         库存 <b th:text="${product.stock}" th:style="${product.stock > 0} ? 'color:var(--hu-accent-deep)' : 'color:var(--hu-clay)'">0</b>
                         <span th:if="${product.stock == 0}" style="color:var(--hu-clay)">（暂时缺货）</span>
+                        <span th:if="${product.stock != null and product.stock &gt; 0 and product.stock &lt;= 5}"
+                              style="color:var(--hu-clay)">（库存紧张）</span>
                     </span>
                     <span th:if="${product.weight != null}" th:text="'规格 ' + ${product.weight}">-</span>
                     <span th:if="${product.material != null}" th:text="'花材 ' + ${product.material}">-</span>
                     <span th:if="${product.packaging != null}" th:text="'包装 ' + ${product.packaging}">-</span>
                 </div>
+
+                <!-- A18：适用场景在详情页做成可点回列表的筛选入口 -->
+                <div class="hu-scenes" th:if="${product.suitableFor != null and !#strings.isEmpty(product.suitableFor)}">
+                    <span class="hu-scenes__label">适合场合</span>
+                    <a class="hu-chip hu-chip--tight" th:each="scene : ${#strings.arraySplit(product.suitableFor, ',')}"
+                       th:if="${!#strings.isEmpty(scene)}"
+                       th:href="@{/products(scene=${#strings.trim(scene)})}"
+                       th:text="${#strings.trim(scene)}">生日</a>
+                </div>
+
+                <!-- 产地溯源：读 /api/map/product/{id}/origin，未标注主产地时整条隐藏 -->
+                <a class="hu-origin-strip" id="originStrip" style="display:none" th:href="@{/flower-map}" href="/flower-map">
+                    <span class="hu-origin-strip__icon"><i class="fa fa-map-marker"></i></span>
+                    <span class="hu-origin-strip__main">
+                        <b id="originStripName">—</b>
+                        <small id="originStripMeta"></small>
+                    </span>
+                    <span class="hu-origin-strip__cta">在地图上看 <i class="fa fa-long-arrow-right"></i></span>
+                </a>
 
                 <!-- 领券营销位：本分类可领 + 全场通用，无可领券时整条隐藏 -->
                 <div class="hu-promo" id="pdpPromo" hidden style="margin:18px 0 0">
@@ -79,7 +122,29 @@
                     <a class="hu-promo__more" href="/user/coupons">领券中心 →</a>
                 </div>
 
-                <div class="hu-pdp__actions" style="align-items:center">
+                <!-- A21：下架商品不再是一个裸 404 或白页，而是说清楚状态 + 递上在售的同类选择 -->
+                <div class="hu-offline" th:if="${product.isActive == null or !product.isActive}">
+                    <div class="hu-offline__icon"><i class="fa fa-ban"></i></div>
+                    <div class="hu-offline__main">
+                        <strong>这款花礼已下架</strong>
+                        <p th:text="'它曾售出 ' + ${product.salesCount != null ? product.salesCount : 0} + ' 束。'
+                             + '花材季节与门店档期变化后会重新上架，你可以先看看同系列的在售款，或让客服帮你定制相近搭配。'">
+                            这款花礼已下架。
+                        </p>
+                        <div class="hu-offline__actions">
+                            <a class="hu-btn hu-btn--solid hu-btn--sm"
+                               th:href="@{/products(categoryId=${product.category != null ? product.category.id : null})}">
+                                <i class="fa fa-th-large"></i>&nbsp;看同类在售花礼
+                            </a>
+                            <a class="hu-btn hu-btn--ghost hu-btn--sm" href="/products">浏览全部花礼</a>
+                            <!-- 下架款保留收藏：重新上架时顾客能在收藏夹里找回它 -->
+                            <button type="button" class="hu-icon-btn" id="favBtn"
+                                    th:attr="data-favorite=${product.id}" title="收藏提醒"><i class="fa fa-heart-o"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hu-pdp__actions" style="align-items:center" th:unless="${product.isActive == null or !product.isActive}">
                     <div class="hu-qty">
                         <button type="button" onclick="updateQuantity(-1)">−</button>
                         <input type="number" id="quantity" value="1" min="1" max="99">
@@ -102,6 +167,10 @@
             </div>
         </div>
 
+        <!-- 立体展台（J 组）：common/stage3d 片段自带 hu-media.js + stage3d.js 引用与 2D 实拍图集，
+             页面不再重复挂 importmap / flower3d.js；模型解析失败自动落到实拍，无需页面兜底 -->
+        <th:block th:replace="~{common/stage3d :: stage(${product.images}, '')}"></th:block>
+
         <!-- 详情 / 服务 / 评价 -->
         <div class="hu-panel" style="margin-bottom:24px">
             <div class="hu-tabs" id="pdpTabs">
@@ -116,6 +185,25 @@
                     <p th:text="${product.description != null ? product.description : '当日到店鲜花，由花艺师手工搭配、雾面包装，附赠营养剂一小包。'}">描述</p>
                     <p th:if="${product.material != null}">主花材：<span th:text="${product.material}">花材</span>。</p>
                 </div>
+
+                <!-- A17：花语缺失时给一句得体的兜底，而不是空着让页面缺一块 -->
+                <h3 class="hu-tabs__title">这束花想说的话</h3>
+                <div class="hu-prose">
+                    <p th:if="${product.flowerLanguage != null and !#strings.isEmpty(product.flowerLanguage)}"
+                       th:text="${product.flowerLanguage}">花语</p>
+                    <p th:unless="${product.flowerLanguage != null and !#strings.isEmpty(product.flowerLanguage)}">
+                        这份心意由花艺师当日按花材搭配，具体花语随季节微调；下单备注里写下你想说的话，贺卡会一并打印随花附送。</p>
+                </div>
+
+                <!-- A16：养护贴士决定花能开几天，运营填了就展示，没填用通用养护 -->
+                <h3 class="hu-tabs__title">到手怎么养</h3>
+                <div class="hu-caretip">
+                    <i class="fa fa-leaf"></i>
+                    <p th:if="${product.careTip != null and !#strings.isEmpty(product.careTip)}" th:text="${product.careTip}">养护贴士</p>
+                    <p th:unless="${product.careTip != null and !#strings.isEmpty(product.careTip)}">
+                        收到后斜剪根 2-3 厘米，深水醒花 1 小时；每 2 天换水并去除浸水叶片，避免阳光直射与空调出风口，花期约 5-7 天。</p>
+                </div>
+
                 <h3 class="hu-tabs__title">规格参数</h3>
                 <dl class="hu-specs">
                     <div><dt>所属分类</dt><dd th:text="${product.category != null ? product.category.name : '鲜花'}">鲜花</dd></div>
@@ -124,6 +212,10 @@
                     <div><dt>包装</dt><dd th:text="${product.packaging != null ? product.packaging : '手提礼盒装'}">-</dd></div>
                     <div><dt>计价单位</dt><dd th:text="${product.unit != null ? product.unit : '束'}">束</dd></div>
                     <div><dt>当前库存</dt><dd th:text="${product.stock != null ? product.stock + ' 束可售' : '以门店当日为准'}">-</dd></div>
+                    <div><dt>累计已售</dt><dd th:text="${product.salesCount != null ? product.salesCount + ' 束' : '0 束'}">0 束</dd></div>
+                    <div th:if="${product.suitableFor != null and !#strings.isEmpty(product.suitableFor)}">
+                        <dt>适合场合</dt><dd th:text="${#strings.replace(product.suitableFor, ',', ' · ')}">生日 · 告白</dd>
+                    </div>
                 </dl>
             </div>
 
@@ -135,15 +227,50 @@
             </div>
 
             <div class="hu-tabs__panel" data-panel="review">
-                <div id="reviewSummary"></div>
-                <div id="reviewList"></div>
-                <div id="reviewEmpty" class="hu-empty" style="display:none;padding:38px 0">
-                    <i class="fa fa-comment-o"></i>
-                    <strong>还没有人评价这款花礼</strong>
-                    <span style="font-size:14px">完成订单后可在「我的订单」中写下第一条评价</span>
-                </div>
+                <!-- F01–F09 的评价面板收进公共片段：晒单相关逻辑与展示口径只有一份 -->
+                <div th:replace="~{common/review-panel :: reviewPanel(${product.id}, ${loginUser != null})}"></div>
             </div>
         </div>
+
+        <!-- F16：按本款花材自动推荐知识库文章，与评价面板并列成侧栏 -->
+        <section class="hu-panel hu-knowband" id="knowBand" style="margin-bottom:24px" hidden>
+            <div class="hu-panel-head">
+                <div>
+                    <h2><i class="fa fa-book"></i> 这束花的花语与养护</h2>
+                    <p>按主花材自动匹配，由门店花艺师整理；看完这束花怎么养，再决定要不要送</p>
+                </div>
+                <a class="hu-link" href="/knowledge">全部知识库 →</a>
+            </div>
+            <div class="hu-knowband__body">
+                <div class="hu-knowband__main" id="knowMain"></div>
+                <div class="hu-knowband__side" id="knowSide"></div>
+            </div>
+        </section>
+
+        <!-- A12：同分类价格带相似款（±40%，不足时放宽到 ±80%），价差由服务端算好 -->
+        <section class="hu-section hu-reco" id="similarBlock" style="padding-top:8px" hidden>
+            <div class="hu-section-head">
+                <div>
+                    <div class="hu-eyebrow">SIMILAR IN PRICE</div>
+                    <h2 class="hu-display hu-display--md">同价位相似款</h2>
+                    <p class="hu-sub" id="similarNote">同分类里价格接近的在售花礼，按与本款的价差由近及远排</p>
+                </div>
+                <a class="hu-link" href="/products">查看全部 →</a>
+            </div>
+            <div class="hu-product-grid" id="similarGrid"></div>
+        </section>
+
+        <!-- A13：共购统计——买过本款的人在已完成订单里还买了什么 -->
+        <section class="hu-section hu-reco" id="copurchaseBlock" style="padding-top:8px" hidden>
+            <div class="hu-section-head">
+                <div>
+                    <div class="hu-eyebrow">BOUGHT TOGETHER</div>
+                    <h2 class="hu-display hu-display--md">买过的人还买了</h2>
+                    <p class="hu-sub">来自已完成订单的真实搭配记录，搭配小束或配花一起送更有层次</p>
+                </div>
+            </div>
+            <div class="hu-product-grid" id="copurchaseGrid"></div>
+        </section>
 
         <!-- 热销推荐 -->
         <section class="hu-section" style="padding-top:8px" th:if="${relatedProducts != null and !#lists.isEmpty(relatedProducts)}">
@@ -177,10 +304,96 @@
 
 <script th:inline="javascript">
     var productId = /*[[${product != null ? product.id : ''}]]*/ '';
-    var productCategoryId = /*[[${product != null && product.category != null ? product.category.id : ''}]]*/ '';
+    /* 商品自身分类 + 父分类：分类专享券常绑在系列（父）分类上 */
+    var categoryChainIds = /*[[${categoryChainIds}]]*/ [];
     jQuery(function () {
-        huBindCouponPromo({chipsId: 'pdpPromoChips', categoryId: productCategoryId, limit: 3});
+        huBindCouponPromo({chipsId: 'pdpPromoChips', categoryIds: categoryChainIds, limit: 3});
+        loadOrigin();
+        loadSimilar();
+        loadCoPurchased();
     });
+
+    /* ---------- 推荐位卡片：与列表页同一份 ProductView 字段，展示口径不分叉 ---------- */
+    function esc(s) {
+        return jQuery('<i>').text(s == null ? '' : String(s)).html();
+    }
+
+    function money(v) {
+        return Number(v).toFixed(2).replace(/\.00$/, '');
+    }
+
+    function recoCard(p) {
+        let tags = '';
+        if (p.discountLabel) tags += '<span class="hu-tag hu-tag--sale">' + esc(p.discountLabel) + '</span>';
+        if (p.soldOut === true) tags += '<span class="hu-tag hu-tag--off">已售罄</span>';
+        else if (p.lowStock) tags += '<span class="hu-tag hu-tag--warn">仅剩 ' + Number(p.stock || 0) + ' 束</span>';
+        return '<div class="hu-product">' +
+            '<a href="/product/' + esc(p.id) + '" class="hu-product__media">' +
+            '<img src="' + esc(p.mainImage || '/img/product-placeholder.svg') + '" alt="' + esc(p.name) + '" loading="lazy">' +
+            (tags ? '<div class="hu-product__tags">' + tags + '</div>' : '') + '</a>' +
+            '<div class="hu-product__body">' +
+            '<div class="hu-product__cat">' + esc(p.categoryName || '鲜花') + '</div>' +
+            '<a href="/product/' + esc(p.id) + '" class="hu-product__name">' + esc(p.name) + '</a>' +
+            (p.subtitle ? '<div class="hu-product__sub">' + esc(p.subtitle) + '</div>' : '') +
+            '<div class="hu-product__sold">已售 ' + Number(p.salesCount || 0) + ' 束</div>' +
+            '<div class="hu-product__foot">' +
+            '<div class="hu-price"><small>¥</small>' + money(p.price) +
+            (p.originalPrice && Number(p.originalPrice) > Number(p.price) ? '<del>¥' + money(p.originalPrice) + '</del>' : '') +
+            '</div>' +
+            '<button class="hu-product__add" data-id="' + esc(p.id) + '"' + (p.soldOut === true ? ' disabled' : '') +
+            ' title="加入购物车"><i class="fa fa-shopping-bag"></i></button>' +
+            '</div></div></div>';
+    }
+
+    /** 网格为空就把整块收起：留一个标题加零条结果，比不显示更像坏掉了 */
+    function paintReco(blockId, gridId, list) {
+        if (!list || !list.length) return false;
+        jQuery(gridId).html(list.map(recoCard).join(''));
+        jQuery(blockId).prop('hidden', false);
+        jQuery(gridId).find('.hu-product__add').on('click', function (e) {
+            e.preventDefault();
+            huAddToCart(String(jQuery(this).data('id')));
+        });
+        return true;
+    }
+
+    /** A12：相似款 */
+    function loadSimilar() {
+        if (!productId) return;
+        jQuery.getJSON('/api/products/' + productId + '/similar?limit=4', function (res) {
+            if (res.code !== 200 || !res.data) return;
+            if (paintReco('#similarBlock', '#similarGrid', res.data)) {
+                const band = res.data.map(function (p) { return Number(p.price); });
+                const low = Math.min.apply(null, band), high = Math.max.apply(null, band);
+                jQuery('#similarNote').text('同分类里 ¥' + money(low) + ' – ¥' + money(high) + ' 区间的在售花礼，按与本款价差排序');
+            }
+        }).fail(function () { /* 推荐位失败不影响主流程，整块保持隐藏 */ });
+    }
+
+    /** A13：共购 */
+    function loadCoPurchased() {
+        if (!productId) return;
+        jQuery.getJSON('/api/products/' + productId + '/co-purchased?limit=4', function (res) {
+            if (res.code === 200 && res.data) paintReco('#copurchaseBlock', '#copurchaseGrid', res.data);
+        }).fail(function () {
+        });
+    }
+
+    /** 主产地条：查不到（未标注或地图服务不可用）就整条不出现，不留空壳 */
+    function loadOrigin() {
+        if (!productId) return;
+        jQuery.getJSON('/api/map/product/' + productId + '/origin').done(function (res) {
+            const origin = res && res.data;
+            if (!origin) return;
+            jQuery('#originStrip').attr('href', '/flower-map?focus=' + encodeURIComponent(origin.name)).show();
+            jQuery('#originStripName').text('来自 ' + origin.name);
+            const meta = [];
+            if (origin.altitude) meta.push('海拔约 ' + origin.altitude + ' m');
+            if (origin.flowers) meta.push(origin.flowers);
+            jQuery('#originStripMeta').text(meta.join(' · '));
+        }).fail(function () {
+        });
+    }
 
     function updateQuantity(delta) {
         var input = document.getElementById('quantity');
@@ -215,45 +428,35 @@
         window.location.href = '/order/confirm?productId=' + productId + '&quantity=' + qty();
     }
 
-    /* 评价列表 */
-    function starsOf(n) {
-        var s = '';
-        for (var i = 1; i <= 5; i++) s += '<i class="fa fa-star' + (i <= n ? '' : '-o') + '"></i>';
-        return s;
-    }
-
-    function loadReviews() {
-        $.getJSON('/api/products/' + productId + '/reviews?page=1&limit=10', function (res) {
-            if (res.code !== 200) return;
-            var list = res.data || [];
-            var total = Number(res.count || 0);
-            $('#reviewCount').text(total ? '(' + total + ')' : '(0)');
-            if (!list.length) {
-                $('#reviewList').html('');
-                $('#reviewEmpty').show();
-                return;
-            }
-            var avg = list.reduce(function (a, r) { return a + (r.rating || 5); }, 0) / list.length;
-            $('#reviewSummary').html(
-                '<div class="hu-scorecard">' +
-                '<div><div class="hu-scorecard__num">' + avg.toFixed(1) + '</div>' +
-                '<div class="hu-scorecard__label">' + starsOf(Math.round(avg)) + '</div></div>' +
-                '<div style="font-size:13px;color:var(--hu-muted);line-height:1.8">共 ' + total +
-                ' 条真实评价<br>评价来自已完成订单的顾客</div>' +
-                '<a href="/user/orders" class="hu-btn hu-btn--ghost hu-btn--sm" style="margin-left:auto">去评价</a>' +
-                '</div>');
-            var html = '';
-            list.forEach(function (r) {
-                var name = r.userName || '匿名顾客';
-                html += '<div class="hu-review">' +
-                    '<div class="hu-review__avatar">' + $('<i>').text(name.charAt(0)).html() + '</div>' +
-                    '<div><div class="hu-review__head"><span class="hu-review__name">' + $('<i>').text(name).html() + '</span>' +
-                    starsOf(r.rating) +
-                    '<span class="hu-review__time">' + (r.createdAt || '').replace('T', ' ').slice(0, 10) + '</span></div>' +
-                    '<div class="hu-review__text">' + $('<i>').text(r.content || '').html() + '</div></div></div>';
-            });
-            $('#reviewList').html(html);
-        });
+    /**
+     * F16：详情页侧栏按花材自动推荐知识库文章。
+     * 命中逻辑在服务端（/api/knowledge/recommend），这里只负责画；
+     * 一条都没命中就整块收起，不留一个空标题。
+     */
+    function loadKnowledge() {
+        if (!productId) return;
+        jQuery.getJSON('/api/knowledge/recommend?productId=' + encodeURIComponent(productId) + '&limit=4', function (res) {
+            if (res.code !== 200 || !res.data || !res.data.length) return;
+            var list = res.data;
+            var lead = list[0];
+            jQuery('#knowMain').html(
+                '<a class="hu-knowcard hu-knowcard--lead" href="/article/' + esc(lead.id) + '">' +
+                (lead.coverImage ? '<img src="' + esc(lead.coverImage) + '" alt="" loading="lazy">' : '') +
+                '<span class="hu-knowcard__body">' +
+                '<span class="hu-knowcard__cat">' + esc(lead.categoryLabel) + '</span>' +
+                '<span class="hu-knowcard__title">' + esc(lead.title) + '</span>' +
+                '<span class="hu-knowcard__sum">' + esc(lead.summary || '') + '</span>' +
+                '<span class="hu-knowcard__meta">阅读 ' + Number(lead.viewCount || 0) + ' 次' +
+                (lead.materials && lead.materials.length ? ' · ' + esc(lead.materials.slice(0, 3).join(' / ')) : '') +
+                '</span></span></a>');
+            jQuery('#knowSide').html(list.slice(1).map(function (a) {
+                return '<a class="hu-knowcard" href="/article/' + esc(a.id) + '">' +
+                    '<span class="hu-knowcard__cat">' + esc(a.categoryLabel) + '</span>' +
+                    '<span class="hu-knowcard__title">' + esc(a.title) + '</span>' +
+                    '<span class="hu-knowcard__meta">阅读 ' + Number(a.viewCount || 0) + ' 次</span></a>';
+            }).join(''));
+            jQuery('#knowBand').prop('hidden', false);
+        }).fail(function () { /* 知识库不可用时详情页主体不受影响 */ });
     }
 
     $(document).ready(function () {
@@ -267,9 +470,10 @@
             });
         });
 
-        loadReviews();
+        loadKnowledge();
 
-        /* 收藏：回填已收藏态，未登录时点击由 huApi 统一跳转登录 */
+        /* 收藏：回填已收藏态，未登录时点击由 huApi 统一跳转登录。
+           同一个 ProductView 还带回折扣与库存角标，保证详情页角标与列表页同口径 */
         huApi({
             url: '/api/products/' + productId,
             silent: true,
@@ -278,9 +482,24 @@
                     $('#favBtn').addClass('is-favorited').attr('title', '取消收藏').find('i')
                         .removeClass('fa-heart-o').addClass('fa-heart');
                 }
+                if (!data) return;
+                if (data.discountLabel) {
+                    $('#pdpDiscount').text(data.discountLabel).prop('hidden', false);
+                }
+                if (data.soldOut === true) {
+                    $('#pdpSoldOut').prop('hidden', false);
+                    $('#addCartBtn').prop('disabled', true);
+                } else if (data.lowStock) {
+                    $('#pdpLowStock').text('库存紧张 · 仅剩 ' + Number(data.stock || 0) + ' 束').prop('hidden', false);
+                }
             }
         });
     });
+</script>
+
+<script th:inline="javascript">
+    /* 花型与花色的默认选择按「分类 + 商品名」猜，猜不出来时回落玫瑰/正红 */
+    var FLOWER_HINT = /*[[${(product.category != null ? product.category.name : '') + ' ' + (product.name != null ? product.name : '') + ' ' + (product.material != null ? product.material : '')}]]*/ '';
 </script>
 </body>
 </html>

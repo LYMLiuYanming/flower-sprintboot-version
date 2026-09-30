@@ -6,6 +6,8 @@
     <title>分类编辑 - 花语轩</title>
     <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <!-- 图标实时预览要用到 Font Awesome，页面此前只引了 layui -->
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
     <style>
         body { background: var(--ad-paper, #f6f5f1); padding: 18px 22px; }
         .layui-form-label { width: 88px; }
@@ -13,6 +15,9 @@
         .dialog-foot { position: fixed; left: 0; right: 0; bottom: 0; background: #fff;
             border-top: 1px solid #e8e3d9; padding: 12px 22px; text-align: right; }
         .hint { color: #8a8578; font-size: 12px; margin-left: 118px; }
+        .icon-block { position: relative; }
+        .icon-preview { position: absolute; right: 10px; top: 8px; width: 30px; height: 30px;
+            border-radius: 8px; background: #f1efe9; color: #6f7d5c; display: grid; place-items: center; font-size: 15px; }
     </style>
 </head>
 <body>
@@ -32,10 +37,22 @@
     </div>
     <div class="layui-form-item">
         <label class="layui-form-label">图标</label>
-        <div class="layui-input-block">
-            <input type="text" name="icon" maxlength="100" autocomplete="off" class="layui-input" placeholder="Font Awesome 图标名，如 leaf">
+        <div class="layui-input-block icon-block">
+            <input type="text" name="icon" id="iconInput" maxlength="100" autocomplete="off" class="layui-input"
+                   list="iconSuggest" placeholder="Font Awesome 图标名，如 heart / leaf / gift">
+            <span class="icon-preview" id="iconPreview"><i class="fas fa-leaf"></i></span>
+            <datalist id="iconSuggest">
+                <option value="heart"></option>
+                <option value="gift"></option>
+                <option value="star"></option>
+                <option value="leaf"></option>
+                <option value="user"></option>
+                <option value="bolt"></option>
+                <option value="circle"></option>
+                <option value="briefcase"></option>
+            </datalist>
         </div>
-        <div class="hint">仅接受字母、数字与连字符，不要填入外部链接或脚本</div>
+        <div class="hint">只填类名后缀（不带 fa- 前缀），保存时自动纠偏；前台分类瓦片与本页预览用的都是它</div>
     </div>
     <div class="layui-form-item">
         <label class="layui-form-label">排序<span style="color:#b3897a">*</span></label>
@@ -84,10 +101,24 @@
                     sortOrder: res.data.sortOrder == null ? 0 : res.data.sortOrder,
                     isActive: !!res.data.isActive
                 });
+                paintIconPreview();
             });
         }
 
         $('#btnCancel').on('click', function () { closeSelf(false); });
+
+        /* 预览与后端 normalizeIcon 同规则：整串粘贴「fas fa-leaf」也能立刻看到落库后的样子 */
+        function normalizeIcon(raw) {
+            return String(raw || '').trim().toLowerCase()
+                .replace(/^(?:fas|far|fab|fa)\s+/, '').replace(/^fa-/, '');
+        }
+
+        function paintIconPreview() {
+            var name = normalizeIcon($('#iconInput').val()) || 'leaf';
+            $('#iconPreview').html('<i class="fas fa-' + name + '"></i>');
+        }
+
+        $('#iconInput').on('input blur', paintIconPreview);
 
         form.on('submit(save)', function (data) {
             var payload = {

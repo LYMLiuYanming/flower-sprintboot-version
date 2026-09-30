@@ -30,6 +30,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/admin/**",
                         // 用户中心页面与 API
                         "/user/**",
+                        "/garden",
+                        "/api/garden/**",
                         "/api/user/**",
                         "/auth/api/user/**",
                         // 购物车、订单、地址、收藏、评价、优惠券（需登录）

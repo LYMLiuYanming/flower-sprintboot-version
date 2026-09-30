@@ -33,4 +33,21 @@ public class OrderScheduledTasks {
             log.error("超时订单扫描任务执行失败", e);
         }
     }
+
+    /**
+     * 发货满 N 天（默认 15 天）自动确认收货：鲜花签收后才有评价与售后窗口，
+     * 用户不点确认会让订单一直挂在「配送中」。同样靠 CAS 兜重复执行，扫到已变更的单直接跳过
+     */
+    @Scheduled(fixedDelayString = "${order.auto-receive-sweep-interval-ms:1800000}",
+            initialDelayString = "${order.auto-receive-initial-delay-ms:120000}")
+    public void autoConfirmReceivedOrders() {
+        try {
+            int confirmed = orderService.autoConfirmReceivedOrders();
+            if (confirmed > 0) {
+                log.info("发货超期订单自动确认收货 {} 笔", confirmed);
+            }
+        } catch (Exception e) {
+            log.error("自动确认收货任务执行失败", e);
+        }
+    }
 }

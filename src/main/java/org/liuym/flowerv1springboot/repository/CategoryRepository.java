@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,6 +39,14 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
 
     long countByParentId(UUID parentId);
 
+    /** 本分类 + 其直接子分类：分类筛选与分类专享券都按这一口径覆盖下级 */
+    default List<UUID> idsWithChildren(UUID categoryId) {
+        List<UUID> ids = new ArrayList<>();
+        ids.add(categoryId);
+        findByParentIdOrderBySortOrderAsc(categoryId).forEach(child -> ids.add(child.getId()));
+        return ids;
+    }
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Category c SET c.isActive = :isActive, c.updatedAt = CURRENT_TIMESTAMP WHERE c.id = :id")
     int updateActiveStatus(@Param("id") UUID id, @Param("isActive") Boolean isActive);
@@ -45,4 +54,15 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Category c SET c.sortOrder = :sortOrder, c.updatedAt = CURRENT_TIMESTAMP WHERE c.id = :id")
     int updateSortOrder(@Param("id") UUID id, @Param("sortOrder") Integer sortOrder);
+
+    /**
+     * 拖拽排序（G13）用的条件更新：只有排序值仍是读到的旧值才写入。
+     * 两个人同时在排同一批分类时，后提交的那个会得到 0 行而不是把别人的顺序盖掉
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Category c SET c.sortOrder = :targetOrder, c.updatedAt = CURRENT_TIMESTAMP "
+            + "WHERE c.id = :id AND c.sortOrder = :expectedOrder")
+    int updateSortOrderIfUnchanged(@Param("id") UUID id,
+                                   @Param("expectedOrder") Integer expectedOrder,
+                                   @Param("targetOrder") Integer targetOrder);
 }

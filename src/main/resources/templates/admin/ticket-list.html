@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工单队列 - 花语轩管理后台</title>
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/css/f-u.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
+</head>
+<body>
+<div class="layui-layout layui-layout-admin">
+    <div class="layui-header header" style="background: #211f1a;">
+        <div class="logo"><i class="fas fa-headphones"></i> 花语轩管理后台</div>
+        <div class="user-info">
+            <span><i class="fas fa-user-shield"></i> <span th:text="${operator}">客服</span></span>
+            <a href="/auth/logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+        </div>
+    </div>
+
+    <div class="layui-side layui-bg-black" style="top: 60px;width: 200px;">
+        <div class="layui-side-scroll">
+            <ul class="layui-nav layui-nav-tree" lay-filter="nav">
+                <li class="layui-nav-item"><a href="/admin"><i class="fas fa-tachometer-alt"></i> 控制台</a></li>
+                <li class="layui-nav-item"><a href="/admin/order-list"><i class="fas fa-list-alt"></i> 订单列表</a></li>
+                <li class="layui-nav-item layui-nav-itemed">
+                    <a href="javascript:;"><i class="fas fa-comments"></i> 客服与消息</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/ticket-list"><i class="fas fa-ticket-alt"></i> 工单队列</a></dd>
+                        <dd><a href="/admin/message-list"><i class="fas fa-bell"></i> 消息模板与记录</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item"><a href="/admin/audit-list"><i class="fas fa-history"></i> 操作日志</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="layui-body" style="left: 200px;background: #f1f3f6;">
+        <div class="content-body" style="padding: 18px;">
+            <div class="layui-card">
+                <div class="layui-card-header">
+                    <i class="fas fa-headphones"></i> 工单队列
+                    <span style="float:right;color:#8a8578;font-size:12px" id="scopeHint">默认按 SLA 剩余时间升序</span>
+                </div>
+                <div class="layui-card-body">
+                    <div class="hu-u-admin-cards" id="summaryCards"></div>
+
+                    <div class="layui-form hu-u-admin-filter" style="margin-bottom:12px">
+                        <div class="layui-inline"><input type="text" id="qKeyword" class="layui-input"
+                                                        placeholder="工单号 / 标题 / 描述" style="width:200px"></div>
+                        <div class="layui-inline">
+                            <select id="qStatus" style="width:130px">
+                                <option value="">全部状态</option>
+                                <option value="open">待受理</option>
+                                <option value="assigned">已派单</option>
+                                <option value="processing">处理中</option>
+                                <option value="resolved">已解决</option>
+                                <option value="closed">已关闭</option>
+                            </select>
+                        </div>
+                        <div class="layui-inline">
+                            <select id="qCategory" style="width:140px"><option value="">全部类型</option></select>
+                        </div>
+                        <div class="layui-inline">
+                            <select id="qPriority" style="width:120px"><option value="">全部优先级</option></select>
+                        </div>
+                        <div class="layui-inline">
+                            <select id="qDeadline" style="width:150px">
+                                <option value="">全部时限</option>
+                                <option value="overdue">已逾期</option>
+                                <option value="warning">即将超时（60 分钟内）</option>
+                                <option value="settled">已结单</option>
+                            </select>
+                        </div>
+                        <button class="layui-btn layui-btn-sm" id="qSearch"><i class="fas fa-search"></i> 查询</button>
+                        <button class="layui-btn layui-btn-sm layui-btn-primary" id="qReset">重置</button>
+                        <button class="layui-btn layui-btn-sm layui-btn-normal" id="qMine">只看我的</button>
+                    </div>
+
+                    <table class="layui-hide" id="ticketTable" lay-filter="ticketTable"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="layui-footer">© 2026 花语轩鲜花销售系统</div>
+</div>
+
+<script type="text/html" id="slaTpl">
+    {{- huSla(d); }}
+</script>
+<script type="text/html" id="titleTpl">
+    <div class="hu-u-ad-title">
+        <code>{{d.ticketNo}}</code>
+        <strong>{{d.title}}</strong>
+        <span>{{d.categoryLabel}} · 提交于 {{huFmt(d.createdAt)}}</span>
+    </div>
+</script>
+<script type="text/html" id="statusTpl">
+    {{- huStatus(d); }}
+</script>
+<script type="text/html" id="opTpl">
+    <a class="layui-btn layui-btn-xs" lay-event="detail"><i class="fas fa-stream"></i> 往返</a>
+    {{# if (!d.assigneeName) { }}
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="claim"><i class="fas fa-hand-paper"></i> 认领</a>
+    {{# } }}
+    {{# if (d.status === 'open' || d.status === 'assigned') { }}
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="process"><i class="fas fa-spinner"></i> 开始处理</a>
+    {{# } } else if (d.status === 'processing') { }}
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="resolve"><i class="fas fa-check"></i> 标记解决</a>
+    {{# } }}
+    {{# if (d.status !== 'closed' && d.status !== 'resolved') { }}
+    <a class="layui-btn layui-btn-xs layui-btn-primary" lay-event="close"><i class="fas fa-times"></i> 关闭</a>
+    {{# } }}
+</script>
+
+<script th:src="@{/jquery-3.7.1.min.js}"></script>
+<script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+<script th:src="@{/js/admin-common.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'layer', 'form'], function () {
+        var table = layui.table, layer = layui.layer, form = layui.form;
+        var esc = huAdmin.esc;
+        var state = huAdmin.listState('ticket-list');
+        var mineOnly = false;
+
+        window.huFmt = function (v) { return v ? String(v).replace('T', ' ').slice(0, 16) : '—'; };
+
+        /** SLA 高亮：剩余时长与配色都由服务端 deadlineState 给，后台与顾客侧看到的是同一口径 */
+        window.huSla = function (d) {
+            var tone = {overdue: 'bad', warning: 'warn', settled: 'muted', none: 'muted', normal: 'ok'}[d.deadlineState] || 'muted';
+            var label = {overdue: '已超时', warning: '即将超时', settled: '已结单', none: '未设时限', normal: '时限内'}[d.deadlineState] || '—';
+            var left = d.slaLeftMinutes;
+            var extra = '';
+            if (left != null) {
+                extra = left <= 0 ? ' ' + huHuman(Math.abs(left)) : ' 剩 ' + huHuman(left);
+            }
+            return '<span class="hu-u-ad-sla hu-u-ad-sla--' + tone + '">' +
+                (tone === 'bad' ? '<i class="fas fa-circle"></i> ' : '') + esc(label + extra) + '</span>' +
+                (d.escalated ? '<span class="hu-u-ad-sla hu-u-ad-sla--bad">已升级</span>' : '');
+        };
+
+        function huHuman(m) {
+            m = Math.max(0, Number(m) || 0);
+            if (m < 60) return m + ' 分';
+            var h = Math.floor(m / 60);
+            return h < 24 ? h + ' 小时 ' + (m % 60) + ' 分' : Math.floor(h / 24) + ' 天 ' + (h % 24) + ' 小时';
+        }
+        window.huHuman = huHuman;
+
+        window.huStatus = function (d) {
+            var tone = {resolved: 'ok', closed: 'muted', processing: 'info', assigned: 'info', open: 'warn'}[d.status] || 'muted';
+            return '<span class="hu-u-ad-status hu-u-ad-status--' + tone + '">' + esc(d.statusLabel || d.status) + '</span>';
+        };
+
+        /* ---------- 队列 ---------- */
+
+        table.render({
+            elem: '#ticketTable',
+            url: '/api/admin/tickets',
+            where: {status: '', category: '', priority: '', deadlineState: '', keyword: ''},
+            cols: [[
+                {field: 'title', title: '工单', minWidth: 300, templet: '#titleTpl'},
+                {field: 'status', title: '状态', width: 100, templet: '#statusTpl'},
+                {field: 'priority', title: '优先级', width: 92, templet: function (d) {
+                    return esc(d.priorityLabel) + (d.priority === 'urgent' ? ' <i class="fas fa-bolt" style="color:#d4380d"></i>' : '');
+                }},
+                {field: 'deadlineState', title: 'SLA 剩余', width: 168, templet: '#slaTpl', sort: true},
+                {field: 'assigneeName', title: '处理人', width: 110, templet: function (d) {
+                    return d.assigneeName ? esc(d.assigneeName) : '<span style="color:#9aa3af">未受理</span>';
+                }},
+                {field: 'hasUnreadReply', title: '顾客未读', width: 96, templet: function (d) {
+                    return d.hasUnreadReply ? '<span class="hu-u-ad-dot">有新回复</span>' : '—';
+                }},
+                {field: 'satisfaction', title: '满意度', width: 88, templet: function (d) {
+                    return d.satisfaction ? esc(d.satisfaction) + ' 分' : '—';
+                }},
+                {field: 'reopenCount', title: '重开', width: 74, templet: function (d) {
+                    return d.reopenCount ? '<span style="color:#d46b08">' + esc(d.reopenCount) + ' 次</span>' : '0';
+                }},
+                {title: '操作', width: 320, toolbar: '#opTpl', fixed: 'right'}
+            ]],
+            page: state.pageConfig(),
+            limit: state.limit(20),
+            limits: [20, 50, 100],
+            text: {none: '队列里没有符合条件的工单，这是好消息'},
+            done: state.done('/api/admin/tickets')
+        });
+
+        function reload() {
+            var where = {
+                status: $('#qStatus').val(),
+                category: $('#qCategory').val(),
+                priority: $('#qPriority').val(),
+                deadlineState: $('#qDeadline').val(),
+                keyword: $.trim($('#qKeyword').val())
+            };
+            table.reload('ticketTable', {where: where, page: {curr: 1}});
+        }
+
+        $('#qSearch').on('click', function () {
+            table.reload('ticketTable', {where: {
+                status: $('#qStatus').val(), category: $('#qCategory').val(),
+                priority: $('#qPriority').val(), deadlineState: $('#qDeadline').val(),
+                keyword: $.trim($('#qKeyword').val())
+            }});
+        });
+        $('#qReset').on('click', function () {
+            mineOnly = false;
+            $('#qKeyword').val('');
+            ['qStatus', 'qCategory', 'qPriority', 'qDeadline'].forEach(function (id) { $('#' + id).val(''); });
+            form.render('select');
+            state.reset();
+            $('#scopeHint').text('默认按 SLA 剩余时间升序');
+            reload();
+        });
+        $('#qMine').on('click', function () {
+            mineOnly = !mineOnly;
+            $(this).toggleClass('layui-btn-primary').toggleClass('layui-btn-normal');
+            $('#scopeHint').text(mineOnly ? '只统计分配给你的工单（U26 数据范围）' : '默认按 SLA 剩余时间升序');
+            reload();
+        });
+
+        /* ---------- 概览卡 ---------- */
+
+        function loadSummary() {
+            huAdmin.request({
+                url: '/api/admin/tickets/summary', type: 'GET', silent: true,
+                ok: function (res) {
+                    var d = res.data || {};
+                    var card = function (label, value, tone, note) {
+                        return '<div class="hu-u-ad-card hu-u-ad-card--' + tone + '"><span>' + esc(label) + '</span>' +
+                            '<strong>' + esc(value) + '</strong><em>' + esc(note || '') + '</em></div>';
+                    };
+                    $('#summaryCards').html(
+                        card('处理中', d.open || 0, 'info', '待受理 + 已派单 + 处理中') +
+                        card('已逾期', d.overdue || 0, d.overdue > 0 ? 'bad' : 'ok', '超过解决时限还没结单') +
+                        card('即将超时', d.approaching || 0, d.approaching > 0 ? 'warn' : 'ok', '剩余 60 分钟以内') +
+                        card('在册客服', d.agents || 0, 'muted', 'SLA 规则 ' + (d.slaRules || 0) + ' 条'));
+                }
+            });
+        }
+
+        function loadDict() {
+            huAdmin.request({
+                url: '/api/admin/tickets/dictionary', type: 'GET', silent: true,
+                ok: function (res) {
+                    var d = res.data || {};
+                    $('#qCategory').append((d.categories || []).map(function (c) {
+                        return '<option value="' + esc(c.code) + '">' + esc(c.label) + '</option>';
+                    }).join(''));
+                    $('#qPriority').append((d.priorities || []).map(function (p) {
+                        return '<option value="' + esc(p.code) + '">' + esc(p.label) + '</option>';
+                    }).join(''));
+                    form.render('select');
+                }
+            });
+        }
+
+        /* ---------- 详情与处理 ---------- */
+
+        function transit(id, to, extra, done) {
+            huAdmin.request({
+                url: '/api/admin/tickets/' + id + '/transit', type: 'POST',
+                data: $.extend({to: to}, extra || {}),
+                ok: function () { reload(); loadSummary(); if (done) done(); }
+            });
+        }
+
+        /** U16 往返：内部备注只在后台出现，顾客侧的接口根本不返回这一行 */
+        function openDetail(row) {
+            huAdmin.request({
+                url: '/api/admin/tickets/' + row.id, type: 'GET', silent: true,
+                ok: function (res) {
+                    var d = res.data || {};
+                    if (!d.brief) return;
+                    layer.open({
+                        type: 1, title: d.brief.ticketNo + ' · ' + esc(d.brief.title),
+                        area: ['820px', '680px'], shadeClose: false,
+                        content: renderDetail(d),
+                        success: function () { bindDetail(d); }
+                    });
+                },
+                fail: function (res) { huAdmin.toast(res.msg || '读取失败', 'err'); }
+            });
+        }
+
+        function renderDetail(d) {
+            var timeline = (d.timeline || []).map(function (e) {
+                return '<div class="hu-u-ad-node hu-u-ad-node--' + esc(e.authorType) + (e.internalNote ? ' is-internal' : '') + '">' +
+                    '<span class="hu-u-ad-node__dot"></span><div>' +
+                    '<div class="hu-u-ad-node__head"><b>' + esc(e.authorLabel) +
+                    (e.authorName ? ' · ' + esc(e.authorName) : '') + '</b>' +
+                    '<time>' + huFmt(e.createdAt) + '</time></div>' +
+                    '<p>' + esc(e.content) + '</p>' +
+                    (e.internalNote ? '<em class="hu-u-ad-internal">内部备注：顾客看不到这条</em>' : '') +
+                    '</div></div>';
+            }).join('');
+
+            var order = d.order ? '<div class="hu-u-ad-order"><code>' + esc(d.order.orderNo) + '</code>' +
+                '<span>' + esc(d.order.statusLabel || d.order.status) + '</span>' +
+                '<span>收货 ' + esc(d.order.receiverName || '—') + ' · ' + esc(d.order.receiverPhone || '—') + '</span>' +
+                (d.order.expressNo ? '<span>' + esc(d.order.expressCompany || '') + ' ' + esc(d.order.expressNo) + '</span>' : '') +
+                '</div>' : '<p class="hu-muted" style="font-size:13px">未关联订单</p>';
+
+            return '<div class="hu-u-ad-detail">' +
+                '<div class="hu-u-ad-bar">' + huStatus(d.brief) + huSla(d.brief) +
+                '<span>优先级 ' + esc(d.brief.priorityLabel) + '</span>' +
+                '<span>' + esc(d.slaText || '') + '</span></div>' +
+                '<p class="hu-u-ad-hint"><i class="fas fa-lightbulb"></i> ' + esc(d.nextStepHint || '') + '</p>' +
+                '<h4>问题描述</h4><p class="hu-u-ad-desc">' + esc(d.description || '—') + '</p>' +
+                '<h4>关联订单</h4>' + order +
+                (d.solution ? '<h4>处理结论</h4><p class="hu-u-ad-desc is-done">' + esc(d.solution) + '</p>' : '') +
+                '<h4>往返记录</h4><div class="hu-u-ad-timeline">' +
+                (timeline || '<p class="hu-muted" style="font-size:13px">还没有留言</p>') + '</div>' +
+                '<h4>回复顾客</h4>' +
+                '<div class="layui-form-item layui-form-text"><textarea id="adReply" class="layui-textarea" rows="3" ' +
+                'maxlength="2000" placeholder="写清楚下一步与时间点，顾客会同时收到一条站内信"></textarea></div>' +
+                '<label style="font-size:13px;color:#666"><input type="checkbox" id="adInternal"> 作为内部备注（不通知顾客）</label>' +
+                '<div class="hu-u-ad-actions">' +
+                '<button class="layui-btn layui-btn-sm" id="adSend"><i class="fas fa-paper-plane"></i> 发送回复</button>' +
+                (d.brief.status === 'processing' || d.brief.status === 'assigned' || d.brief.status === 'open'
+                    ? '<button class="layui-btn layui-btn-sm layui-btn-normal" id="adResolve">填写结论并解决</button>'
+                    : '') +
+                (d.brief.status !== 'closed' ? '<button class="layui-btn layui-btn-sm layui-btn-primary" id="adClose">关闭工单</button>' : '') +
+                (d.brief.assigneeId === null && d.brief.status !== 'closed'
+                    ? '<button class="layui-btn layui-btn-sm" id="adClaim">认领</button>' : '') +
+                '</div></div>';
+        }
+
+        function bindDetail(d) {
+            var id = d.brief.id;
+            $('#adSend').on('click', function () {
+                var content = $.trim($('#adReply').val());
+                if (!content) { huAdmin.toast('请填写回复内容', 'err'); return; }
+                huAdmin.request({
+                    url: '/api/admin/tickets/' + id + '/reply', type: 'POST',
+                    data: {content: content, internalNote: $('#adInternal').prop('checked')},
+                    ok: function () { layer.closeAll('page'); reload(); }
+                });
+            });
+            $('#adResolve').on('click', function () {
+                var solution = $.trim($('#adReply').val());
+                if (!solution) { huAdmin.toast('标记解决前必须填写处理结论，顾客会收到这条内容', 'err'); return; }
+                transit(id, 'resolved', {solution: solution}, function () { layer.closeAll('page'); });
+            });
+            $('#adClose').on('click', function () {
+                layer.confirm('关闭后顾客需要申请重新打开才能继续，确定关闭？', {icon: 3, title: '请确认'}, function (index) {
+                    layer.close(index);
+                    transit(id, 'closed', {reason: '客服确认已闭环'}, function () { layer.closeAll('page'); });
+                });
+            });
+            $('#adClaim').on('click', function () {
+                huAdmin.request({
+                    url: '/api/admin/tickets/' + id + '/claim', type: 'POST',
+                    ok: function () { layer.closeAll('page'); reload(); }
+                });
+            });
+        }
+
+        table.on('tool(ticketTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'detail') {
+                openDetail(row);
+            } else if (obj.event === 'claim') {
+                huAdmin.request({url: '/api/admin/tickets/' + row.id + '/claim', type: 'POST', ok: reload});
+            } else if (obj.event === 'process') {
+                transit(row.id, 'processing', {reason: '客服开始处理'});
+            } else if (obj.event === 'resolve') {
+                layer.prompt({title: '填写处理结论（顾客会收到这条）', formType: 3, area: ['420px', '140px']},
+                    function (value, index) {
+                        if (!value || $.trim(value).length < 2) { huAdmin.toast('请写清处理结论', 'err'); return; }
+                        layer.close(index);
+                        transit(row.id, 'resolved', {solution: $.trim(value)});
+                    });
+            } else if (obj.event === 'close') {
+                layer.confirm('确定关闭这张工单？', {icon: 3, title: '请确认'}, function (index) {
+                    layer.close(index);
+                    transit(row.id, 'closed', {reason: '客服关闭'});
+                });
+            }
+        });
+
+        $(function () {
+            loadDict();
+            loadSummary();
+            // 队列是客服的主屏：开着就 30 秒追一次，逾期红点不会停在原地
+            window.setInterval(function () { loadSummary(); }, 30000);
+        });
+    });
+</script>
+</body>
+</html>

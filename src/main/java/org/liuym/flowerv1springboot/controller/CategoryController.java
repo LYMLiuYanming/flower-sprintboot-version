@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,6 +41,15 @@ public class CategoryController {
     @GetMapping("/count")
     public Result<Long> getCategoryCount() {
         return Result.ok(categoryService.count());
+    }
+
+    /**
+     * 分类 → 在售商品数：前台分类瓦片用它显示真实库存款数，
+     * 一次取回而不是让页面按分类逐个请求
+     */
+    @GetMapping("/product-counts")
+    public Result<Map<UUID, Long>> productCounts() {
+        return Result.ok(categoryService.activeProductCountByCategory());
     }
 
     @GetMapping("/{id}")

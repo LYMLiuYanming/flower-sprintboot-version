@@ -201,6 +201,12 @@ public interface UserService {
     User register(String username, String rawPassword, String fullName, String phone, String email);
 
     /**
+     * 服务端注册校验（D01/D02/D03）：用户名格式、手机号格式、密码强度。
+     * 任一项不合法即抛 BusinessException 给出可读原因；重名/重号由控制器再查库。
+     */
+    void validateRegistration(String username, String rawPassword, String phone, String email);
+
+    /**
      * 修改个人资料，手机号/邮箱唯一性由实现层校验
      */
     User updateProfile(UUID id, UserDtos.ProfileRequest form);
@@ -209,6 +215,22 @@ public interface UserService {
      * 修改密码：必须校验原密码，成功后清除强制改密标记
      */
     void changePassword(UUID id, String oldRawPassword, String newRawPassword);
+
+    /**
+     * 提交注销申请（D16）：软删除进入冷静期，记录申请时间，数据原样保留。
+     * 已在冷静期内的重复调用视为幂等，不刷新申请时间。
+     */
+    void requestDeletion(UUID id);
+
+    /**
+     * 撤销注销申请（D16）：清空申请时间，账号恢复正常。
+     */
+    void cancelDeletion(UUID id);
+
+    /**
+     * 冷静期已届满的注销账号执行匿名化（D16 定时任务入口），返回处理条数。
+     */
+    int processExpiredDeletions();
 
     /**
      * 管理员重置密码，mustChangePassword 置为 true 迫使用户下次登录改密

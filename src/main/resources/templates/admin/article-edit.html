@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识库文章编辑 - 花语轩</title>
+    <link th:href="@{/layui-v2.13.9/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/css/admin-theme.css}" rel="stylesheet">
+    <link th:href="@{/fontawesome/6.4.0/css/all.min.css}" rel="stylesheet">
+    <style>
+        body { background: var(--ad-paper, #f6f5f1); padding: 18px 22px 84px; }
+        .layui-form-label { width: 92px; }
+        .layui-input-block { margin-left: 122px; }
+        .dialog-foot { position: fixed; left: 0; right: 0; bottom: 0; background: #fff;
+            border-top: 1px solid #e8e3d9; padding: 12px 22px; text-align: right; z-index: 5; }
+        .hint { color: #8a8578; font-size: 12px; margin-left: 122px; }
+        .cover-block { position: relative; }
+        .cover-preview { position: absolute; right: 10px; top: 6px; width: 96px; height: 44px; border-radius: 6px;
+            border: 1px solid #e8e3d9; background-size: cover; background-position: center; }
+        .pick-row { display: flex; flex-wrap: wrap; gap: 8px; }
+        .pick-chip { border: 1px solid #dcd6c8; background: #fff; border-radius: 4px; padding: 5px 10px;
+            cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+        .pick-chip img { width: 26px; height: 26px; object-fit: cover; border-radius: 3px; }
+        .pick-chip.is-on { border-color: #1c4b8a; background: #eaf1fa; color: #1c4b8a; font-weight: 600; }
+        .pick-box { border: 1px dashed #dcd6c8; border-radius: 6px; padding: 10px; max-height: 190px; overflow: auto; }
+        .pick-empty { color: #97917f; font-size: 12.5px; }
+    </style>
+</head>
+<body>
+<form class="layui-form" id="articleForm" lay-filter="articleForm">
+    <div class="layui-form-item">
+        <label class="layui-form-label">标题<span style="color:#b3897a">*</span></label>
+        <div class="layui-input-block">
+            <input type="text" name="title" maxlength="100" autocomplete="off" class="layui-input"
+                   lay-verify="required" lay-reqtext="请填写文章标题" placeholder="如：玫瑰收到后怎么养">
+        </div>
+    </div>
+
+    <div class="layui-form-item">
+        <label class="layui-form-label">分类<span style="color:#b3897a">*</span></label>
+        <div class="layui-input-block">
+            <select name="category" lay-filter="category">
+                <option value="care">养护指南</option>
+                <option value="language">花语故事</option>
+                <option value="guide">送礼手册</option>
+                <option value="story">产地与花艺</option>
+                <option value="festival">节日特辑</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="layui-form-item">
+        <label class="layui-form-label">摘要</label>
+        <div class="layui-input-block">
+            <input type="text" name="summary" maxlength="200" autocomplete="off" class="layui-input"
+                   placeholder="留空则自动取正文首句，列表卡片与搜索结果都用它">
+        </div>
+    </div>
+
+    <div class="layui-form-item">
+        <label class="layui-form-label">封面图</label>
+        <div class="layui-input-block cover-block">
+            <input type="text" name="coverImage" id="coverInput" maxlength="500" autocomplete="off" class="layui-input"
+                   placeholder="站内路径，如 /img/photos/hero-rose.jpg">
+            <span class="cover-preview" id="coverPreview"></span>
+        </div>
+        <div class="hint">只接受站内路径或 http(s) 地址；留空时列表卡片显示纯文字版式</div>
+    </div>
+
+    <div class="layui-form-item">
+        <label class="layui-form-label">关联花材</label>
+        <div class="layui-input-block">
+            <input type="text" name="materials" maxlength="300" autocomplete="off" class="layui-input"
+                   placeholder="逗号分隔，如：玫瑰,康乃馨">
+        </div>
+        <div class="hint">商品详情页侧栏按商品主花材命中这里填的词，命中越多排得越前（F16）</div>
+    </div>
+
+    <div class="layui-form-item">
+        <label class="layui-form-label">标签</label>
+        <div class="layui-input-block">
+            <input type="text" name="tags" maxlength="200" autocomplete="off" class="layui-input"
+                   placeholder="逗号分隔，如：养护,瓶插期">
+        </div>
+    </div>
+
+    <div class="layui-form-item">
+        <label class="layui-form-label">关联商品</label>
+        <div class="layui-input-block">
+            <div class="layui-input-inline" style="width:220px">
+                <input type="text" id="prodSearch" class="layui-input" placeholder="按商品名搜索后点选">
+            </div>
+            <div class="pick-box"><div class="pick-row" id="prodPicked"><span class="pick-empty">尚未关联商品</span></div></div>
+        </div>
+        <div class="hint">文章页会带出这些花礼；已删除的商品不会被挂上</div>
+    </div>
+
+    <div class="layui-form-item">
+        <label class="layui-form-label">状态</label>
+        <div class="layui-input-block">
+            <select name="status">
+                <option value="draft">草稿（前台不可见）</option>
+                <option value="published">已发布</option>
+                <option value="offline">已下线</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="layui-form-item">
+        <label class="layui-form-label">定时发布</label>
+        <div class="layui-input-block">
+            <input type="text" name="publishAt" id="publishAt" class="layui-input" placeholder="留空=保存即上线" readonly>
+        </div>
+        <div class="hint">填未来时间后状态保持「已发布」，到点自动出现在前台，不需要再回来点一次</div>
+    </div>
+
+    <div class="layui-form-item">
+        <label class="layui-form-label">定时下线</label>
+        <div class="layui-input-block">
+            <input type="text" name="offlineAt" id="offlineAt" class="layui-input" placeholder="留空=长期有效" readonly>
+        </div>
+    </div>
+
+    <div class="layui-form-item">
+        <label class="layui-form-label">置顶</label>
+        <div class="layui-input-block">
+            <input type="checkbox" name="isTop" lay-skin="switch" lay-text="是|否">
+        </div>
+    </div>
+
+    <div class="layui-form-item">
+        <label class="layui-form-label">排序</label>
+        <div class="layui-input-block">
+            <input type="number" name="sortOrder" min="0" max="9999" value="0" class="layui-input">
+        </div>
+        <div class="hint">数字越大越靠前，同花材命中数相同时用它定先后</div>
+    </div>
+
+    <div class="layui-form-item">
+        <label class="layui-form-label">署名</label>
+        <div class="layui-input-block">
+            <input type="text" name="authorName" maxlength="50" autocomplete="off" class="layui-input"
+                   placeholder="留空默认「花艺组」">
+        </div>
+    </div>
+
+    <div class="layui-form-item layui-form-text">
+        <label class="layui-form-label">正文<span style="color:#b3897a">*</span></label>
+        <div class="layui-input-block">
+            <div id="contentBox"></div>
+        </div>
+    </div>
+
+    <div class="dialog-foot">
+        <button type="button" class="layui-btn layui-btn-primary" id="btnCancel">取消</button>
+        <button type="submit" class="layui-btn" lay-submit lay-filter="save" id="btnSave">保存</button>
+    </div>
+</form>
+
+<script th:src="@{/layui-v2.13.9/layui/layui.js}"></script>
+<script th:src="@{/jquery-3.7.1.min.js}"></script>
+<script th:src="@{/js/admin-common.js}"></script>
+<script th:src="@{/js/richtext.js}"></script>
+<script th:inline="none">
+    layui.use(['form', 'layer', 'laydate'], function () {
+        var form = layui.form;
+        var layer = layui.layer;
+        var laydate = layui.laydate;
+        var id = new URLSearchParams(location.search).get('id');
+        var editor;
+        var picked = [];
+
+        if (id) $('#btnSave').text('保存修改');
+
+        laydate.render({elem: '#publishAt', type: 'datetime', trigger: 'click'});
+        laydate.render({elem: '#offlineAt', type: 'datetime', trigger: 'click'});
+
+        function closeSelf(refresh) {
+            var index = parent.layer.getFrameIndex(window.name);
+            if (refresh) parent.layui.table.reload('articleTable');
+            parent.layer.close(index);
+        }
+
+        /** 关联商品芯片：搜索 + 点选，避免让运营背 UUID */
+        function paintPicked() {
+            if (!picked.length) {
+                $('#prodPicked').html('<span class="pick-empty">尚未关联商品</span>');
+                return;
+            }
+            $('#prodPicked').html(picked.map(function (p) {
+                return '<span class="pick-chip is-on" data-id="' + p.id + '">' +
+                    (p.mainImage ? '<img src="' + huAdmin.safeUrl(p.mainImage) + '" alt="">' : '') +
+                    huAdmin.esc(p.name) + '<i class="fas fa-times"></i></span>';
+            }).join(''));
+        }
+
+        $('#prodSearch').on('input', function () {
+            var kw = $.trim($(this).val());
+            if (kw.length < 1) return;
+            clearTimeout(window.__kbSearchTimer);
+            window.__kbSearchTimer = setTimeout(function () {
+                $.getJSON('/api/admin/articles/products', {keyword: kw, limit: 8}, function (res) {
+                    if (res.code !== 200) return;
+                    var box = $('#prodPicked');
+                    var list = (res.data || []).filter(function (p) {
+                        return !picked.some(function (x) { return x.id === p.id; });
+                    });
+                    if (!list.length) return;
+                    box.prepend(list.map(function (p) {
+                        return '<span class="pick-chip" data-id="' + p.id + '" data-name="' + huAdmin.esc(p.name) + '"' +
+                            ' data-img="' + huAdmin.esc(p.mainImage || '') + '">＋ ' + huAdmin.esc(p.name) + '</span>';
+                    }).join(''));
+                });
+            });
+        });
+
+        $('#prodPicked').on('click', '.pick-chip', function () {
+            var $chip = $(this);
+            var pid = String($chip.data('id'));
+            if ($chip.hasClass('is-on')) {
+                picked = picked.filter(function (p) { return p.id !== pid; });
+                $chip.remove();
+                paintPicked();
+                return;
+            }
+            if (picked.length >= 6) { layer.msg('一篇文章最多关联 6 款花礼', {icon: 2}); return; }
+            picked.push({id: pid, name: String($chip.data('name')), mainImage: String($chip.data('img'))});
+            $chip.remove();
+            paintPicked();
+        });
+
+        function paintCover(value) {
+            var url = huAdmin.safeUrl(value);
+            $('#coverPreview').css('background-image', url ? 'url(' + url + ')' : 'none');
+        }
+
+        $('#coverInput').on('input', function () { paintCover($(this).val()); });
+
+        if (id) {
+            $.get('/api/admin/articles/' + id, function (res) {
+                if (res.code !== 200) { layer.msg(res.msg || '文章不存在', {icon: 2}); return; }
+                var d = res.data || {};
+                form.val('articleForm', {
+                    title: d.title || '',
+                    category: d.category || 'care',
+                    summary: d.summary || '',
+                    coverImage: d.coverImage || '',
+                    materials: (d.materials || []).join(','),
+                    tags: (d.tags || []).join(','),
+                    status: d.status || 'draft',
+                    publishAt: fmt(d.publishAt),
+                    offlineAt: fmt(d.offlineAt),
+                    isTop: !!d.isTop,
+                    sortOrder: d.sortOrder == null ? 0 : d.sortOrder,
+                    authorName: d.authorName || ''
+                });
+                paintCover(d.coverImage || '');
+                picked = [];
+                loadPicked(d.relatedProductIds || []);
+                bootEditor(d.content || '');
+            });
+        } else {
+            bootEditor('');
+        }
+
+        /** 文章里只存 UUID，回显时按 id 取一次在售商品名，运营看到的才是能认出来的东西 */
+        function loadPicked(ids) {
+            if (!ids.length) { paintPicked(); return; }
+            var wait = ids.length;
+            ids.forEach(function (uuid) {
+                $.getJSON('/api/products/' + uuid, function (res) {
+                    var p = res && res.data;
+                    picked.push({
+                        id: uuid,
+                        name: p ? p.name : '商品已删除',
+                        mainImage: p ? (p.mainImage || '') : ''
+                    });
+                    if (--wait === 0) paintPicked();
+                }).fail(function () {
+                    picked.push({id: uuid, name: '商品读取失败', mainImage: ''});
+                    if (--wait === 0) paintPicked();
+                });
+            });
+        }
+
+        function fmt(v) { return v ? String(v).replace('T', ' ').slice(0, 16) : ''; }
+
+        function bootEditor(html) {
+            editor = huRichText.create({
+                container: document.getElementById('contentBox'),
+                html: html,
+                height: 260,
+                maxChars: 8000,
+                placeholder: '支持小标题、列表、引用与链接；服务端入库前会再按白名单清洗一次'
+            });
+        }
+
+        $('#btnCancel').on('click', function () { closeSelf(false); });
+
+        form.on('submit(save)', function (data) {
+            var f = data.field;
+            var payload = {
+                title: $.trim(f.title),
+                summary: $.trim(f.summary) || null,
+                coverImage: $.trim(f.coverImage) || null,
+                content: editor ? editor.html() : '',
+                category: f.category,
+                tags: $.trim(f.tags) || null,
+                materials: $.trim(f.materials) || null,
+                relatedProductIds: picked.map(function (p) { return p.id; }),
+                status: f.status,
+                publishAt: f.publishAt ? f.publishAt.replace(' ', 'T') : null,
+                offlineAt: f.offlineAt ? f.offlineAt.replace(' ', 'T') : null,
+                isTop: f.isTop === 'on' || f.isTop === true,
+                sortOrder: Number(f.sortOrder) || 0,
+                authorName: $.trim(f.authorName) || null
+            };
+            if (!editor || editor.text().length === 0) {
+                huAdmin.toast('正文不能为空', 'err');
+                return false;
+            }
+            if (payload.publishAt && payload.offlineAt && payload.offlineAt <= payload.publishAt) {
+                huAdmin.toast('定时下线必须晚于定时发布', 'err');
+                return false;
+            }
+            huAdmin.request({
+                url: id ? '/api/admin/articles/' + id : '/api/admin/articles',
+                type: id ? 'PUT' : 'POST',
+                data: payload,
+                ok: function () { closeSelf(true); }
+            });
+            return false;
+        });
+    });
+</script>
+</body>
+</html>

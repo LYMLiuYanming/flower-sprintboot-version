@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{common/head :: resources}"></th:block>
+    <title>积分明细 · 花语轩</title>
+</head>
+<body class="hu-body">
+<div th:replace="~{common/header :: header}"></div>
+
+<div class="hu-pagehead">
+    <div class="hu-container hu-pagehead__row">
+        <div>
+            <div class="hu-crumb"><a href="/index">首页</a> / <a href="/user/profile">个人中心</a> / <span>积分明细</span></div>
+            <h1>积分明细</h1>
+            <p class="hu-pagehead__sub">消费 1 元累计 1 积分，100 积分抵 1 元，单笔最多抵扣应付金额的 20%</p>
+        </div>
+        <div class="hu-pagehead__aside">
+            <span class="hu-muted" style="font-size:13px">可用积分</span>
+            <div class="hu-num" id="balanceHero" style="font-size:26px">—</div>
+        </div>
+    </div>
+</div>
+
+<div class="hu-container">
+    <div class="hu-account">
+        <aside th:replace="~{common/account-nav :: accountNav('points')}"></aside>
+
+        <div>
+            <div class="hu-panel">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2>收支概览</h2>
+                        <p id="pointsHint">积分随订单发放与抵扣；订单取消或退款时，已抵扣的积分将原路返还。</p>
+                    </div>
+                </div>
+                <div class="hu-panel__body">
+                    <div class="hu-stat-row">
+                        <div class="hu-stat hu-panel"><div class="n" id="statBalance">—</div><div class="l">当前可用</div></div>
+                        <div class="hu-stat hu-panel"><div class="n" id="statGet">—</div><div class="l">累计获得</div></div>
+                        <div class="hu-stat hu-panel"><div class="n" id="statUse">—</div><div class="l">累计抵扣</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hu-panel" style="margin-top:24px">
+                <div class="hu-panel-head">
+                    <div>
+                        <h2>收支记录</h2>
+                        <p id="recordsMeta">正在载入…</p>
+                    </div>
+                    <div class="hu-chips">
+                        <button type="button" class="hu-chip is-active" data-dir="all">全部</button>
+                        <button type="button" class="hu-chip hu-chip--ghost" data-dir="get">获得</button>
+                        <button type="button" class="hu-chip hu-chip--ghost" data-dir="use">抵扣</button>
+                    </div>
+                </div>
+                <div class="hu-panel__body">
+                    <div id="pointsSkeleton" class="hu-point-list">
+                        <div class="hu-point" style="box-shadow:none">
+                            <div style="flex:1"><div class="hu-skeleton hu-skeleton--line w40"></div><div class="hu-skeleton hu-skeleton--line w60"></div></div>
+                        </div>
+                        <div class="hu-point" style="box-shadow:none">
+                            <div style="flex:1"><div class="hu-skeleton hu-skeleton--line w60"></div><div class="hu-skeleton hu-skeleton--line w40"></div></div>
+                        </div>
+                    </div>
+
+                    <div id="pointsList" class="hu-point-list" style="display:none"></div>
+
+                    <div id="pointsEmpty" class="hu-empty" style="display:none">
+                        <i class="fa fa-coins"></i>
+                        <strong id="pointsEmptyTitle">还没有积分记录</strong>
+                        <span style="font-size:14px" id="pointsEmptyTip">完成第一笔订单即可获得积分</span>
+                        <a href="/products" class="hu-btn hu-btn--solid hu-btn--sm" style="margin-top:18px">去挑一束</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{common/footer :: footer}"></div>
+
+<script th:inline="javascript">
+    var direction = 'all';
+
+    function esc(s) {
+        return $('<i>').text(s == null ? '' : String(s)).html();
+    }
+
+    function fmtTime(v) {
+        return v ? String(v).replace('T', ' ').slice(0, 16) : '—';
+    }
+
+    function typeLabel(t) {
+        return {'order_earn': '消费奖励', 'order_use': '订单抵扣', 'refund': '退款返还', 'adjust': '人工调整'}[t] || '积分变动';
+    }
+
+    function render(records) {
+        records = records || [];
+        $('#pointsSkeleton').hide();
+        if (!records.length) {
+            $('#pointsList').hide().empty();
+            $('#pointsEmptyTitle').text(direction === 'all' ? '还没有积分记录' : '没有该类型的记录');
+            $('#pointsEmpty').show();
+            return;
+        }
+        $('#pointsEmpty').hide();
+        var html = records.map(function (r) {
+            var isGet = r.direction === 'get';
+            return '<div class="hu-point">' +
+                '<div class="hu-point__icon ' + (isGet ? 'is-get' : 'is-use') + '"><i class="fa fa-' + (isGet ? 'arrow-up' : 'arrow-down') + '"></i></div>' +
+                '<div class="hu-point__main">' +
+                '<div class="hu-point__title">' + esc(r.title) + '</div>' +
+                '<div class="hu-point__meta">' + esc(typeLabel(r.type)) +
+                (r.refOrderNo ? '　·　订单 ' + esc(r.refOrderNo) : '') + '　·　' + fmtTime(r.time) + '</div>' +
+                '</div>' +
+                '<div class="hu-point__delta ' + (isGet ? 'is-get' : 'is-use') + '">' + (isGet ? '+' : '−') + r.points + '</div>' +
+                '</div>';
+        }).join('');
+        $('#pointsList').html(html).show();
+    }
+
+    function load() {
+        $('#pointsSkeleton').show();
+        $('#pointsList').hide();
+        $('#pointsEmpty').hide();
+        $('#recordsMeta').text('正在载入…');
+        huApi({
+            url: '/api/account/points',
+            data: {direction: direction},
+            ok: function (data) {
+                data = data || {};
+                $('#balanceHero').text(data.balance || 0);
+                $('#statBalance').text(data.balance || 0);
+                $('#statGet').text('+' + (data.totalGet || 0));
+                $('#statUse').text('−' + (data.totalUse || 0));
+                var n = (data.records || []).length;
+                $('#recordsMeta').text(n ? '共 ' + n + ' 条记录' : '暂无记录');
+                render(data.records);
+            },
+            fail: function () {
+                $('#pointsSkeleton').hide();
+                $('#recordsMeta').text('加载失败');
+            }
+        });
+    }
+
+    $(document).ready(function () {
+        load();
+        $('.hu-chip[data-dir]').on('click', function () {
+            direction = String($(this).data('dir'));
+            $('.hu-chip[data-dir]').removeClass('is-active').addClass('hu-chip--ghost');
+            $(this).addClass('is-active').removeClass('hu-chip--ghost');
+            load();
+        });
+    });
+</script>
+</body>
+</html>
